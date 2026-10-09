@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, Building2, PencilLine, ShieldCheck } from 'lucide-react';
-import { setMode } from '@/lib/mode';
+import { setDataMode as setMode } from '@/lib/mode';
 
 const OPTIONS = [
   {
