@@ -4,89 +4,141 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
-    --font-heading: ui-sans-serif, system-ui, sans-serif;
-    --font-body: ui-sans-serif, system-ui, sans-serif;
-    --font-display: ui-sans-serif, system-ui, sans-serif;
-    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    color-scheme: light;
+
+    /* Avera design system v2.0 — semantic tokens (light mode).
+       Every component consumes these tokens; never hardcode hex values. */
+    --background: 40 48% 94%;        /* Warm Linen #F7F2E8 */
+    --foreground: 165 20% 12%;       /* Avera Ink #182421 */
+    --card: 5 100% 99%;              /* Soft Porcelain #FFFDFC */
+    --card-foreground: 165 20% 12%;
+    --popover: 5 100% 99%;
+    --popover-foreground: 165 20% 12%;
+    --surface: 5 100% 99%;           /* Soft Porcelain */
+    --surface-subtle: 96 15% 93%;    /* #EEF1EC */
+    --surface-selected: 147 19% 91%; /* #E3ECE7 */
+    --text-secondary: 157 6% 43%;    /* Quiet Stone #66736E */
+    --text-inverse: 0 0% 100%;
+    --primary: 175 41% 22%;          /* Avera Forest #214E4A */
+    --primary-hover: 177 48% 16%;    /* Deep Evergreen #163C3A */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 147 19% 91%;        /* pale sage action-secondary */
+    --secondary-foreground: 165 20% 12%;
+    --muted: 96 15% 93%;
+    --muted-foreground: 157 6% 43%;
+    --accent: 147 19% 91%;
+    --accent-foreground: 165 20% 12%;
+    --clay: 13 47% 49%;              /* Hearth Clay #B85C43 */
+    --destructive: 0 44% 45%;        /* #A64040 */
+    --destructive-foreground: 0 0% 100%;
+    --border: 143 11% 86%;           /* #D6DED9 */
+    --border-strong: 152 9% 68%;     /* #A7B6AF */
+    --input: 143 11% 86%;
+    --ring: 204 46% 36%;             /* Focus Blue #326B86 */
+    --success: 158 50% 30%;          /* #267256 */
+    --success-surface: 144 32% 94%;  /* #EAF4EE */
+    --info: 204 46% 36%;             /* #326B86 */
+    --info-surface: 200 40% 93%;     /* #EAF2F6 */
+    --warning: 34 79% 33%;           /* #985D12 */
+    --warning-surface: 40 100% 94%;  /* #FFF4DE */
+    --danger: 0 44% 45%;             /* #A64040 */
+    --danger-surface: 0 65% 95%;     /* #FBECEC */
+    --approval: 13 47% 49%;          /* #B85C43 */
+    --approval-surface: 17 68% 94%;  /* #F8E9E3 */
+    /* Ordered chart palette (§10) */
+    --chart-1: 175 41% 22%;          /* Avera Forest */
+    --chart-2: 204 46% 36%;          /* Information Blue */
+    --chart-3: 150 12% 62%;          /* Restorative Sage #8FAF9F */
+    --chart-4: 13 47% 49%;           /* Hearth Clay */
+    --chart-5: 38 51% 48%;           /* Golden Ochre #B88A3B */
+    --chart-6: 289 13% 42%;          /* Soft Plum #735D78 */
+    /* Brand sidebar: Avera Forest (light) / Deep Evergreen (dark) */
+    --sidebar-background: 175 41% 22%;
+    --sidebar-foreground: 0 0% 100%;
+    --radius: 0.75rem;               /* 12px control radius; cards use rounded-2xl (16px) */
+    --font-heading: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-body: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-display: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
   }
 
+  /* Warm, organic dark mode — never a mechanical inversion. */
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    color-scheme: dark;
+
+    --background: 167 22% 8%;        /* #101917 */
+    --foreground: 42 32% 94%;        /* #F4F1EA */
+    --card: 167 23% 12%;             /* #172522 */
+    --card-foreground: 42 32% 94%;
+    --popover: 167 23% 12%;
+    --popover-foreground: 42 32% 94%;
+    --surface: 167 23% 12%;
+    --surface-subtle: 167 23% 16%;   /* #20332F */
+    --surface-selected: 164 25% 21%; /* #29443D */
+    --text-secondary: 154 9% 69%;    /* #A8B6B0 */
+    --text-inverse: 165 20% 12%;
+    --primary: 162 19% 66%;          /* #8FC1B2 — sage primary action */
+    --primary-hover: 162 17% 73%;    /* #A4D0C3 */
+    --primary-foreground: 165 20% 12%;
+    --secondary: 164 25% 21%;
+    --secondary-foreground: 42 32% 94%;
+    --muted: 167 23% 16%;
+    --muted-foreground: 154 9% 69%;
+    --accent: 164 25% 21%;
+    --accent-foreground: 42 32% 94%;
+    --clay: 15 65% 65%;              /* #E08A6D */
+    --destructive: 0 44% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 165 16% 24%;           /* #344843 */
+    --border-strong: 163 13% 37%;    /* #526A63 */
+    --input: 165 16% 24%;
+    --ring: 198 50% 65%;             /* #78B7D2 */
+    /* Status pairs keep their light tinted surfaces in dark mode so labels stay readable */
+    --success: 158 50% 30%;
+    --success-surface: 144 32% 94%;
+    --info: 204 46% 36%;
+    --info-surface: 200 40% 93%;
+    --warning: 34 79% 33%;
+    --warning-surface: 40 100% 94%;
+    --danger: 0 44% 45%;
+    --danger-surface: 0 65% 95%;
+    --approval: 15 65% 65%;
+    --approval-surface: 17 68% 94%;
+    --chart-1: 162 19% 66%;
+    --chart-2: 198 50% 65%;
+    --chart-3: 150 12% 62%;
+    --chart-4: 15 65% 65%;
+    --chart-5: 38 51% 48%;
+    --chart-6: 289 13% 42%;
+    --sidebar-background: 177 48% 16%; /* Deep Evergreen */
+    --sidebar-foreground: 0 0% 100%;
   }
 }
-
-
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-background text-foreground font-body;
+    @apply bg-background text-foreground font-body text-base antialiased;
+  }
+
+  /* Respect reduced-motion preferences (design system §13) */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
