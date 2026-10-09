@@ -1,0 +1,80 @@
+import { Link } from 'react-router-dom';
+import { Plug, Info } from 'lucide-react';
+import PageHeader from '@/components/layout/PageHeader';
+import SettingSection from '@/components/settings/SettingSection';
+import ThemeSelect from '@/components/settings/ThemeSelect';
+import StatusPill from '@/components/states/StatusPill';
+import ModeIndicator from '@/components/layout/ModeIndicator';
+import { useAuth } from '@/lib/AuthContext';
+
+export default function Settings() {
+  const { user } = useAuth();
+  return (
+    <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
+      <PageHeader title="Settings" subtitle="Profile, household, connections, and appearance." />
+      <div className="space-y-4">
+        <SettingSection title="Profile" description="Your Avera account details.">
+          {user ? (
+            <dl className="grid gap-3 text-base sm:grid-cols-2">
+              <div>
+                <dt className="text-sm text-muted-foreground">Name</dt>
+                <dd className="mt-0.5 font-medium text-foreground">{user.full_name || 'Not set'}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-muted-foreground">Email</dt>
+                <dd className="mt-0.5 font-medium text-foreground">{user.email}</dd>
+              </div>
+            </dl>
+          ) : (
+            <p className="text-base text-muted-foreground">Loading your profile…</p>
+          )}
+        </SettingSection>
+
+        <SettingSection title="Appearance" description="A warm, organic dark mode is available.">
+          <ThemeSelect />
+        </SettingSection>
+
+        <SettingSection title="Household" description="Members of your household workspace.">
+          <p className="text-base text-muted-foreground">
+            Household members arrive in a later stage. Every member will see only what they are authorized to see.
+          </p>
+        </SettingSection>
+
+        <SettingSection title="Bank connections" description="Simulated connections only in this stage.">
+          <div className="flex flex-wrap items-center gap-3">
+            <StatusPill tone="neutral" icon={Plug}>
+              Not connected
+            </StatusPill>
+          </div>
+          <p className="mt-3 text-base text-muted-foreground">
+            Bank connections arrive in a later stage. When enabled, Avera uses the Plaid Sandbox — Test account
+            flow with simulated institutions only. Credentials live in secure server-side secrets, never in this app.
+          </p>
+        </SettingSection>
+
+        <SettingSection title="Demo controls" description="Data mode for this session.">
+          <ModeIndicator variant="inline" />
+          <p className="mt-3 text-base text-muted-foreground">
+            Your current mode is set on this device only — nothing is saved to your account yet.{' '}
+            <Link to="/welcome" className="font-medium text-primary underline underline-offset-2">
+              View mode options
+            </Link>
+          </p>
+        </SettingSection>
+
+        <SettingSection title="Privacy" description="You stay in control of your information.">
+          <p className="flex items-start gap-2 text-base text-muted-foreground">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-info" aria-hidden="true" />
+            Avera never executes payments or authorizes transfers. Detailed privacy controls arrive with data services.
+          </p>
+        </SettingSection>
+
+        <SettingSection title="Notifications" description="Reminders about upcoming bills and goals.">
+          <p className="text-base text-muted-foreground">
+            Notification preferences arrive in a later stage, alongside bill and goal data.
+          </p>
+        </SettingSection>
+      </div>
+    </div>
+  );
+}

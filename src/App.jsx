@@ -7,6 +7,16 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ScrollToTop from './components/ScrollToTop';
 // Add page imports here
+import AppLayout from '@/components/layout/AppLayout';
+import Overview from '@/pages/Overview';
+import BillsBudget from '@/pages/BillsBudget';
+import YearlyPlan from '@/pages/YearlyPlan';
+import GoalsOpportunities from '@/pages/GoalsOpportunities';
+import Properties from '@/pages/Properties';
+import AskAveraPage from '@/pages/AskAveraPage';
+import Settings from '@/pages/Settings';
+import ModeEntry from '@/pages/ModeEntry';
+import { ThemeProvider } from 'next-themes';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -34,7 +44,16 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
-      {/* Add your page Route elements here */}
+      <Route element={<AppLayout />}>
+        <Route path="/" element={<Overview />} />
+        <Route path="/bills-budget" element={<BillsBudget />} />
+        <Route path="/yearly-plan" element={<YearlyPlan />} />
+        <Route path="/goals-opportunities" element={<GoalsOpportunities />} />
+        <Route path="/properties" element={<Properties />} />
+        <Route path="/ask-avera" element={<AskAveraPage />} />
+        <Route path="/settings" element={<Settings />} />
+      </Route>
+      <Route path="/welcome" element={<ModeEntry />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
@@ -44,6 +63,7 @@ const AuthenticatedApp = () => {
 function App() {
 
   return (
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <Router>
@@ -53,6 +73,7 @@ function App() {
         <Toaster />
       </QueryClientProvider>
     </AuthProvider>
+    </ThemeProvider>
   )
 }
 
