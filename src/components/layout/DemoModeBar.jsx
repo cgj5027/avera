@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FlaskConical, RotateCcw, LogOut } from 'lucide-react';
+import { ChevronDown, FlaskConical, RotateCcw, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ConfirmDeleteDialog from '@/components/finance/ConfirmDeleteDialog';
 import { useToast } from '@/components/ui/use-toast';
@@ -12,7 +12,7 @@ import { getDemoWorkspace, clearDataMode } from '@/lib/mode';
  * dataset's source, and offers reset (scoped to the signed-in user's active
  * demo workspace) and exit. Ordinary financial records are never touched.
  */
-export default function DemoModeBar() {
+export default function DemoModeBar({ compact = false }) {
   const [busy, setBusy] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
   const [resetOpen,setResetOpen]=useState(false);
@@ -20,6 +20,7 @@ export default function DemoModeBar() {
   const ws = getDemoWorkspace();
   if (!ws) return null;
   const profile = DEMO_PROFILES[ws.profile];
+  const Container = compact ? 'details' : 'div';
 
   const reset = async () => {
     setBusy(true);
@@ -49,11 +50,18 @@ export default function DemoModeBar() {
   };
 
   return (
-    <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl border border-border bg-surface px-4 py-3 shadow-sm sm:px-6">
+    <Container className={compact ? 'group mb-2 shrink-0 rounded-2xl border border-border bg-surface shadow-sm' : 'mb-6 flex shrink-0 flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl border border-border bg-surface px-4 py-3 shadow-sm sm:px-6'}>
+      {compact ? <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-2xl px-4 py-3 text-base font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-6 [&::-webkit-details-marker]:hidden">
+        <FlaskConical className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+        <span>Demo Mode — {profile?.label ?? 'Workspace'}</span>
+        <ChevronDown className="ml-auto h-4 w-4 shrink-0 group-open:rotate-180" aria-hidden="true" />
+      </summary> : (
       <span className="flex items-center gap-2 font-heading text-base font-semibold text-foreground">
         <FlaskConical className="h-5 w-5 text-primary" aria-hidden="true" />
         Demo Mode — {profile?.label ?? 'Workspace'}
       </span>
+      )}
+      <div className={compact ? 'flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-border px-4 py-3 sm:px-6' : 'contents'}>
       <span className="rounded-lg border border-border bg-surface-subtle px-2.5 py-1 text-sm text-muted-foreground">
         {ws.plaid_item_id ? 'Dataset: Plaid Sandbox + Avera sample plans' : 'Dataset: Avera sample data'}
       </span>
@@ -68,6 +76,7 @@ export default function DemoModeBar() {
           Exit Demo Mode
         </Button>
       </div>
+      </div>
       <ConfirmDeleteDialog open={resetOpen} onOpenChange={setResetOpen} title="Reset this demo profile?" description="This removes and replaces this account’s demo records. Ordinary financial records are preserved." onConfirm={reset} busy={busy} />
       <ConfirmDeleteDialog
         open={exitOpen}
@@ -77,6 +86,6 @@ export default function DemoModeBar() {
         onConfirm={exit}
         busy={busy}
       />
-    </div>
+    </Container>
   );
 }

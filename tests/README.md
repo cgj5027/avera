@@ -1,5 +1,7 @@
 # Audit validation
 
+For Ask Avera layout checks, build the frontend and start `npm run preview -- --host 127.0.0.1 --port 4173`, then run `node tests/chat-layout-browser.cjs` (override `AUDIT_BASE_URL` if the port changes). The fixture runner checks wider page/drawer layouts, a composer anchored above navigation, long-reply scrolling, Enter/Shift+Enter, drawer Escape/focus restoration and WCAG A/AA in light/dark themes, including short viewports and Demo Mode. No live AI calls are made.
+
 For the persistence follow-up, build the frontend, start `npm run preview -- --host 127.0.0.1 --port 4173`, then run `node tests/persistence-followup-browser.cjs`. This runner uses durable in-memory API fixtures and checks save/edit/page-return workflows plus opportunity success/empty/failure states at four widths in both themes. See `docs/STAGE3_FOLLOWUP.md`; fixture checks do not certify hosted persistence or web-search availability.
 
 Run `npm ci`, then `npm test`, `npm run lint`, `npm run typecheck`, and `npm run build` from the repository root.
