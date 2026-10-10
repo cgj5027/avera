@@ -30,6 +30,18 @@
     },
     "notes": {
       "type": "string"
+    },
+    "plaid_item_id": {
+      "type": "string",
+      "description": "Plaid Item the imported transaction came from. Empty for manual and demo records \u2014 importing never deletes or rewrites these."
+    },
+    "plaid_account_id": {
+      "type": "string",
+      "description": "Plaid account the imported transaction belongs to. Empty for manual and demo records."
+    },
+    "plaid_transaction_id": {
+      "type": "string",
+      "description": "Plaid's stable transaction identifier. Used as the upsert key so syncs are idempotent \u2014 modified transactions update in place instead of duplicating."
     }
   },
   "required": [
