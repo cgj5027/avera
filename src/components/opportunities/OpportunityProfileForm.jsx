@@ -5,26 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { JOB_TYPES } from './jobTypes';
-
-const WORK_MODES = [
-  { value: 'any', label: 'Any' },
-  { value: 'remote', label: 'Remote' },
-  { value: 'hybrid', label: 'Hybrid' },
-  { value: 'onsite', label: 'On-site' },
-];
-
-const EXPERIENCE_LEVELS = [
-  { value: 'entry_level', label: 'Entry level (0–2 years)' },
-  { value: 'mid_level', label: 'Mid level (3–9 years)' },
-  { value: 'senior', label: 'Senior (10+ years)' },
-];
+import { EXPERIENCE_LEVELS, JOB_TYPES, WORK_MODES } from './jobTypes';
 
 /**
  * Income-opportunity profile form. Values persist to the user's own
  * JobProfile record; nothing here contacts an external service.
  */
-export default function OpportunityProfileForm({ profile, saving, onSave }) {
+export default function OpportunityProfileForm({ profile, saving, onSave, onCancel }) {
   const [error, setError] = useState('');
   const submit = (e) => {
     e.preventDefault();
@@ -134,11 +121,16 @@ export default function OpportunityProfileForm({ profile, saving, onSave }) {
         />
       </div>
       {error && <p role="alert" className="text-base text-danger-text sm:col-span-2">{error}</p>}
-      <div className="sm:col-span-2">
+      <div className="flex flex-wrap gap-3 sm:col-span-2">
         <Button type="submit" disabled={saving} className="min-h-11 rounded-xl px-4">
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
           Save profile
         </Button>
+        {onCancel && (
+          <Button type="button" variant="outline" disabled={saving} className="min-h-11 rounded-xl px-4" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
       </div>
     </form>
   );

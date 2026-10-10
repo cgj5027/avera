@@ -1,19 +1,21 @@
 import { useEffect, useState } from 'react';
-import { Briefcase } from 'lucide-react';
+import { Briefcase, Search } from 'lucide-react';
 import StatusPill from '@/components/states/StatusPill';
+import InfoHint from '@/components/states/InfoHint';
 import { Button } from '@/components/ui/button';
 import OpportunityProfileForm from './OpportunityProfileForm';
+import ProfileSummary from './ProfileSummary';
 import ResumeUpload from './ResumeUpload';
 import OpportunityResults from './OpportunityResults';
 import { listRecords, createRecord, updateRecord } from '@/services/dataService';
 
 /**
- * Income-opportunity discovery: an optional profile of skills and job
- * preferences, saved to the user's own record, plus opportunity search
- * against the backend function. Self-contained.
+ * Income-opportunity discovery: a saved, read-until-edited work profile plus
+ * opportunity search in its own card, both against the backend function.
  */
 export default function OpportunityDiscovery() {
   const [profile, setProfile] = useState(null);
+  const [editing, setEditing] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
@@ -24,6 +26,7 @@ export default function OpportunityDiscovery() {
   /** Resume suggestions land in the editable form; nothing saves until the user confirms. */
   const applySuggestions = (suggestions) => {
     setProfile((p) => ({ ...(p ?? {}), ...suggestions }));
+    setEditing(true);
     setApplyKey((k) => k + 1);
   };
 
@@ -56,6 +59,7 @@ export default function OpportunityDiscovery() {
         ? await updateRecord('jobProfile', profile.id, values)
         : await createRecord('jobProfile', values);
       setProfile(saved);
+      setEditing(false);
     } catch {
       setSaveError(true);
     } finally {
@@ -64,36 +68,64 @@ export default function OpportunityDiscovery() {
   };
 
   return (
-    <section className="mt-6 rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <Briefcase className="h-5 w-5 text-primary" aria-hidden="true" />
-        <h2 className="font-heading text-base font-semibold text-foreground">Income opportunities</h2>
-        <StatusPill tone="neutral">Optional</StatusPill>
-      </div>
-      <p className="mt-2 max-w-2xl text-base text-muted-foreground">
-        Describe your skills and the kind of work you want to request job and gig listings. Search is optional. Results show source links; availability is not yet verified.
-      </p>
-      {saveError && (
-        <div className="mt-3" role="alert">
-          <StatusPill tone="danger">Profile could not be saved — please try again</StatusPill>
+    <div className="mt-6 space-y-6">
+      <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
+        <div className="flex flex-wrap items-center gap-3">
+          <Briefcase className="h-5 w-5 text-primary" aria-hidden="true" />
+          <h2 className="font-heading text-base font-semibold text-foreground">Work profile</h2>
+          <InfoHint text="Your skills and job preferences are used to match job and gig listings. The profile is saved read-only; use Edit profile to change it." />
+          <StatusPill tone="neutral">Optional</StatusPill>
         </div>
-      )}
-      {loadError ? (
-        <div className="mt-4" role="alert">
-          <p className="text-base text-danger-text">Your profile could not be loaded. Retry before saving changes.</p>
-          <Button type="button" variant="outline" className="mt-2" onClick={() => setReloadKey(k => k + 1)}>Retry loading profile</Button>
+        <p className="mt-2 max-w-2xl text-base text-muted-foreground">
+          Describes your skills and the work you want. Saved read-only; edit it any time.
+        </p>
+        {saveError && (
+          <div className="mt-3" role="alert">
+            <StatusPill tone="danger">Profile could not be saved — please try again</StatusPill>
+          </div>
+        )}
+        {loadError ? (
+          <div className="mt-4" role="alert">
+            <p className="text-base text-danger-text">Your profile could not be loaded. Retry before saving changes.</p>
+            <Button type="button" variant="outline" className="mt-2" onClick={() => setReloadKey(k => k + 1)}>Retry loading profile</Button>
+          </div>
+        ) : loaded && profile?.id && !editing ? (
+          <ProfileSummary
+            profile={profile}
+            onEdit={() => {
+              setSaveError(false);
+              setEditing(true);
+            }}
+          />
+        ) : loaded ? (
+          <div className="mt-4">
+            <ResumeUpload onApply={applySuggestions} />
+            <OpportunityProfileForm
+              key={applyKey}
+              profile={profile}
+              saving={saving}
+              onSave={save}
+              onCancel={profile?.id ? () => setEditing(false) : undefined}
+            />
+          </div>
+        ) : (
+          <div className="mt-4">
+            <StatusPill tone="info">Loading your profile</StatusPill>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
+        <div className="flex flex-wrap items-center gap-3">
+          <Search className="h-5 w-5 text-primary" aria-hidden="true" />
+          <h2 className="font-heading text-base font-semibold text-foreground">Job search</h2>
+          <InfoHint text="Searches current postings on the public web using your work profile. Results link to the source; availability and pay are not verified." />
         </div>
-      ) : loaded ? (
-        <>
-          <ResumeUpload onApply={applySuggestions} />
-          <OpportunityProfileForm key={applyKey} profile={profile} saving={saving} onSave={save} />
-          <OpportunityResults key={JSON.stringify(profile)} profile={profile} />
-        </>
-      ) : (
-        <div className="mt-4">
-          <StatusPill tone="info">Loading your profile</StatusPill>
-        </div>
-      )}
-    </section>
+        <p className="mt-2 max-w-2xl text-base text-muted-foreground">
+          Request current job and gig listings matched to your profile.
+        </p>
+        <OpportunityResults key={JSON.stringify(profile)} profile={profile} />
+      </section>
+    </div>
   );
 }

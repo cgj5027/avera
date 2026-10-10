@@ -163,6 +163,17 @@ describe('critical function invocation boundaries (mocked, not backend authoriza
     expect(sdk.entities.JobProfile.get).not.toHaveBeenCalled();expect(sdk.entities.JobProfile.update).not.toHaveBeenCalled();
     expect(screen.queryByText(/could not be saved/)).toBeNull();
   });
+  it('shows a saved profile as read-only until the user chooses to edit it', async () => {
+    sdk.entities.JobProfile.filter.mockResolvedValue({items:[{id:'p',skills:'Bookkeeping',experience_level:'mid_level',job_type:'part_time',work_mode:'remote'}],has_more:false});
+    render(<OpportunityDiscovery />);
+    expect(await screen.findByText('Saved')).toBeTruthy();
+    expect(screen.getByText('Bookkeeping')).toBeTruthy();expect(screen.getByText('Remote')).toBeTruthy();
+    expect(screen.queryByRole('button',{name:'Save profile'})).toBeNull();
+    fireEvent.click(screen.getByRole('button',{name:'Edit profile'}));
+    expect(screen.getByRole('button',{name:'Save profile'})).toBeTruthy();
+    fireEvent.click(screen.getByRole('button',{name:'Cancel'}));
+    expect(screen.queryByRole('button',{name:'Save profile'})).toBeNull();
+  });
   it('does not create a duplicate profile after a failed load', async () => {
     sdk.entities.JobProfile.filter.mockRejectedValue(new Error('offline'));
     render(<OpportunityDiscovery />);

@@ -129,7 +129,7 @@ export default function OpportunityResults({ profile }) {
   };
 
   return (
-    <div className="mt-6" aria-live="polite" aria-busy={status === 'loading'}>
+    <div className="mt-4" aria-live="polite" aria-busy={status === 'loading'}>
       <div className="flex flex-wrap items-center gap-3">
         <Button onClick={search} disabled={status === 'loading'} className="min-h-11 rounded-xl px-4">
           {status === 'loading' ? (
