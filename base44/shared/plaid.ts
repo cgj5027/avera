@@ -10,17 +10,22 @@ export async function plaidRequest(path, body, timeoutMs = 20000) {
   const clientSecret = secrets.get('PLAID_SECRET');
   if (!clientId || !clientSecret) throw new PlaidFailure('NOT_CONFIGURED');
   try {
+    // The Deno function runtime only supports 'follow'/'manual' redirects; 'error' throws.
+    // 'manual' keeps the no-redirect guarantee: a 3xx response is rejected below.
     const res = await fetch(PLAID_HOST + path, {
-      method: 'POST', redirect:'error', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', redirect:'manual', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...body, client_id: clientId, secret: clientSecret }),
       signal: AbortSignal.timeout(timeoutMs),
     });
+    if (res.status >= 300) throw new PlaidFailure('PLAID_UNAVAILABLE');
     const data = await res.json();
     if (!res.ok) throw new PlaidFailure(typeof data.error_code === 'string' ? data.error_code : 'PLAID_UNAVAILABLE');
     return data;
   } catch (error) {
     if (error instanceof PlaidFailure) throw error;
-    throw new PlaidFailure();
+    const wrapped = new PlaidFailure();
+    (wrapped as any).detail = `${error?.name ?? 'Error'}: ${error?.message ?? String(error)}`;
+    throw wrapped;
   }
 }
 export function chunk(array, size) {
