@@ -59,6 +59,7 @@ export default async function(req) {
         await base44.entities.PlaidItem.update(item.id,{last_synced_at:new Date().toISOString(),status:'active',last_sync_error:''});
         result.accounts=accounts.length;result.transactions=rows.length;
       } catch(error) {
+        console.error('sync failed:', (error as any)?.code ?? '', (error as any)?.detail ?? error?.message ?? error);
         const code=safeError(error); result.status='error';result.error=code;
         await base44.entities.PlaidItem.update(item.id,{status:['ITEM_LOGIN_REQUIRED','INVALID_ACCESS_TOKEN','ITEM_NOT_FOUND'].includes(code)?'needs_reauth':'error',last_sync_error:code});
       }
