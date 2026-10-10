@@ -20,6 +20,7 @@ export const DATA_ENTITIES = {
   mortgageRecord: 'MortgageRecord',
   forecastRecord: 'ForecastRecord',
   jobProfile: 'JobProfile',
+  plaidItem: 'PlaidItem',
 };
 
 const ent = (key) => {
@@ -88,6 +89,32 @@ export async function updateRecord(key, id, data) {
 export async function deleteRecord(key, id) {
   await owned(key, id);
   return ent(key).delete(id);
+}
+
+function chunk(array, size) {
+  const out = [];
+  for (let i = 0; i < array.length; i += size) out.push(array.slice(i, i + size));
+  return out;
+}
+
+/** Bulk create for seeding flows (demo workspaces). Owner-scoped like createRecord. */
+export async function createRecords(key, rows) {
+  await currentUser();
+  const created = [];
+  for (const batch of chunk(rows.map(writable), 200)) {
+    created.push(...(await ent(key).bulkCreate(batch)));
+  }
+  return created;
+}
+
+/** Deletes every owned record matching the query, in small batches.
+ *  Callers keep the query narrow (e.g. a demo_profile tag) on purpose. */
+export async function deleteRecordsWhere(key, query) {
+  const rows = await listRecords(key, query);
+  for (const batch of chunk(rows, 10)) {
+    await Promise.allSettled(batch.map((row) => ent(key).delete(row.id)));
+  }
+  return rows.length;
 }
 
 export async function getHouseholdProfile() {

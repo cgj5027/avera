@@ -1,0 +1,80 @@
+import { useState } from 'react';
+import { FlaskConical, RotateCcw, LogOut } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import ConfirmDeleteDialog from '@/components/finance/ConfirmDeleteDialog';
+import { useToast } from '@/components/ui/use-toast';
+import { DEMO_PROFILES } from '@/services/demoProfiles';
+import { resetDemoProfile, exitDemoMode } from '@/services/demoMode';
+import { getDemoWorkspace, clearDataMode } from '@/lib/mode';
+
+/**
+ * Persistent Demo Mode bar (Stage 3B): labels the experience, names the
+ * dataset's source, and offers reset (scoped to the signed-in user's active
+ * demo workspace) and exit. Ordinary financial records are never touched.
+ */
+export default function DemoModeBar() {
+  const [busy, setBusy] = useState(false);
+  const [exitOpen, setExitOpen] = useState(false);
+  const { toast } = useToast();
+  const ws = getDemoWorkspace();
+  if (!ws) return null;
+  const profile = DEMO_PROFILES[ws.profile];
+
+  const reset = async () => {
+    setBusy(true);
+    try {
+      const result = await resetDemoProfile();
+      toast({
+        title: 'Demo profile reset',
+        description: result.warning || 'The selected profile was restored to its original state.',
+      });
+      window.location.reload();
+    } catch {
+      setBusy(false);
+      toast({ title: 'Reset failed', description: 'Please try again.', variant: 'destructive' });
+    }
+  };
+
+  const exit = async () => {
+    setBusy(true);
+    try {
+      await exitDemoMode(clearDataMode);
+      toast({ title: 'Exited Demo Mode', description: 'The sample data for this profile was removed.' });
+      window.location.reload();
+    } catch {
+      setBusy(false);
+      toast({ title: 'Exit failed', description: 'Please try again.', variant: 'destructive' });
+    }
+  };
+
+  return (
+    <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl border border-border bg-surface px-4 py-3 shadow-sm sm:px-6">
+      <span className="flex items-center gap-2 font-heading text-base font-semibold text-foreground">
+        <FlaskConical className="h-5 w-5 text-primary" aria-hidden="true" />
+        Demo Mode — {profile?.label ?? 'Workspace'}
+      </span>
+      <span className="rounded-lg border border-border bg-surface-subtle px-2.5 py-1 text-sm text-muted-foreground">
+        {ws.plaid_item_id ? 'Dataset: Plaid Sandbox (simulated bank)' : 'Dataset: Avera sample data'}
+      </span>
+      <span className="hidden text-sm text-muted-foreground md:inline">Nothing here moves real money.</span>
+      <div className="ml-auto flex items-center gap-2">
+        <Button variant="outline" size="sm" className="min-h-9 rounded-lg" onClick={reset} disabled={busy}>
+          <RotateCcw className="h-4 w-4" aria-hidden="true" />
+          Reset demo profile
+        </Button>
+        <Button variant="ghost" size="sm" className="min-h-9 rounded-lg" onClick={() => setExitOpen(true)} disabled={busy}>
+          <LogOut className="h-4 w-4" aria-hidden="true" />
+          Exit Demo Mode
+        </Button>
+      </div>
+      <ConfirmDeleteDialog
+        open={exitOpen}
+        onOpenChange={setExitOpen}
+        title="Exit Demo Mode and remove the sample data?"
+        description="This removes the selected demo profile's data for your account only. Your ordinary financial records are never touched."
+        onConfirm={exit}
+        busy={busy}
+      />
+    </div>
+  );
+}

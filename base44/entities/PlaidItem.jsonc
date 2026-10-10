@@ -47,6 +47,10 @@
     "last_sync_error": {
       "type": "string",
       "description": "Human-readable error from the last failed sync, empty when healthy."
+    },
+    "demo_profile": {
+      "type": "string",
+      "description": "Demo Mode workspace this Item belongs to: early_career, multi_income, or financial_improvement. Empty for ordinary connections; demo reset only removes Items carrying this tag for the signed-in user."
     }
   },
   "required": [

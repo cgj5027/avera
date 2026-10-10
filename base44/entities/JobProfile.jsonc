@@ -32,6 +32,10 @@
     "target_monthly_income": {
       "type": "number",
       "minimum": 0
+    },
+    "demo_profile": {
+      "type": "string",
+      "description": "Demo Mode workspace this record belongs to: early_career, multi_income, or financial_improvement. Empty for ordinary records; demo reset only removes records carrying this tag for the signed-in user."
     }
   },
   "required": [

@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import SidebarNav from './SidebarNav';
 import MobileNav from './MobileNav';
+import DemoModeBar from './DemoModeBar';
 
 /** App shell: forest sidebar on desktop, labeled bar + More sheet on mobile. */
 export default function AppLayout() {
@@ -16,6 +17,7 @@ export default function AppLayout() {
       <div className="lg:pl-60">
         <MobileNav />
         <main id="main-content" className="pb-28 lg:pb-12">
+          <DemoModeBar />
           <Outlet />
         </main>
       </div>
