@@ -58,13 +58,23 @@ function nextOccurrence(lastDate, frequency, today = new Date()) {
   return next;
 }
 
-/** Recurring expense patterns in the linked data, as suggested bill entries. */
+/**
+ * Recurring expense patterns in the linked data, as suggested bill entries.
+ * Charges the user marked "not recurring" are excluded now and for future
+ * transactions of the same merchant name.
+ */
 export function estimateBillCandidates(transactions = [], { minMonths = 2 } = {}) {
+  const notRecurringNames = new Set(
+    transactions
+      .filter((t) => t.not_recurring)
+      .map((t) => normalizeName(t.description || t.category))
+      .filter(Boolean)
+  );
   const groups = new Map();
   for (const t of transactions) {
     if (t.type === 'income') continue;
     const key = normalizeName(t.description || t.category);
-    if (!key) continue;
+    if (!key || notRecurringNames.has(key)) continue;
     const group = groups.get(key) ?? [];
     group.push(t);
     groups.set(key, group);

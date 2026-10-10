@@ -31,6 +31,11 @@
     "notes": {
       "type": "string"
     },
+    "not_recurring": {
+      "type": "boolean",
+      "default": false,
+      "description": "User marked this charge as not recurring. It is excluded from recurring-bill detection now, and future charges with the same name stay unflagged."
+    },
     "plaid_item_id": {
       "type": "string",
       "description": "Plaid Item the imported transaction came from. Empty for manual and demo records \u2014 importing never deletes or rewrites these."

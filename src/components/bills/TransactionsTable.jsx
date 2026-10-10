@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Repeat, Check, Pencil, Download, Sparkles, RefreshCw, Keyboard, Plus } from 'lucide-react';
+import { Search, Repeat, Check, Pencil, BellOff, Download, Sparkles, RefreshCw, Keyboard, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,6 +19,7 @@ import { formatCurrency } from '@/utils/format';
 
 const PAGE_SIZE = 25;
 const UNCATEGORIZED = 'uncategorized';
+const CUSTOM_CATEGORY = '__custom__';
 
 const isSynced = (t) => Boolean(t.plaid_item_id) || t.source === 'Plaid Sandbox';
 
@@ -40,6 +41,7 @@ export default function TransactionsTable({
   onAddBill,
   onSaveTransaction,
   onAddTransaction,
+  onMarkNotRecurring,
   onSuggestCategories,
 }) {
   const [search, setSearch] = useState('');
@@ -71,6 +73,13 @@ export default function TransactionsTable({
   }, [rows]);
 
   const savedNames = useMemo(() => new Set(bills.map((b) => normalizeName(b.name))), [bills]);
+
+  /* Every category worth offering on edit: budget categories plus any category already used on a transaction. */
+  const categoryOptions = useMemo(() => {
+    const defined = categories.map((c) => c.name);
+    const used = rows.map((t) => t.category).filter(Boolean);
+    return [...new Set([...defined, ...used])];
+  }, [categories, rows]);
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -284,29 +293,29 @@ export default function TransactionsTable({
                   <TableRow key={t.id} className={isRecurring ? 'bg-warning-surface' : undefined}>
                     <TableCell className="whitespace-nowrap text-sm tabular-nums text-muted-foreground">{t.date}</TableCell>
                     <TableCell className="font-medium text-foreground">
-                      <span className="inline-flex items-center gap-1">
-                        {t.description || 'Unnamed'}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setSaveError('');
-                            setEditing({ transaction: t, category: t.category || '' });
-                            }}
-                            disabled={busy}
-                            aria-label={`Edit category for ${t.description || 'transaction'}`}
-                          className="h-7 w-7"
-                        >
-                          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                        </Button>
-                      </span>
+                      {t.description || 'Unnamed'}
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                       {accountNames.find((a) => a.id === t.plaid_account_id)?.name || '—'}
                     </TableCell>
                     <TableCell>
-                      <span className="inline-flex items-center rounded-full bg-surface-subtle px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                        {t.category || 'Uncategorized'}
+                      <span className="inline-flex items-center gap-1">
+                        <span className="inline-flex items-center rounded-full bg-surface-subtle px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                          {t.category || 'Uncategorized'}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setSaveError('');
+                            setEditing({ transaction: t, category: t.category || '', custom: false });
+                          }}
+                          disabled={busy}
+                          aria-label={`Edit category for ${t.description || 'transaction'}`}
+                          className="h-7 w-7"
+                        >
+                          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                        </Button>
                       </span>
                     </TableCell>
                     <TableCell>
@@ -341,6 +350,16 @@ export default function TransactionsTable({
                             className="min-h-9 rounded-lg px-3"
                           >
                             Add as bill
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => onMarkNotRecurring(t)}
+                            disabled={busy}
+                            className="min-h-9 rounded-lg px-3"
+                          >
+                            <BellOff className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+                            Not recurring
                           </Button>
                         </span>
                       ) : isTracked ? (
@@ -408,9 +427,18 @@ export default function TransactionsTable({
             <div className="space-y-1.5">
               <Label htmlFor="txn-category">Transaction category</Label>
               <Select
-                value={editing?.category || UNCATEGORIZED}
+                value={
+                  editing?.custom
+                    ? CUSTOM_CATEGORY
+                    : editing?.category || UNCATEGORIZED
+                }
                 onValueChange={(value) =>
-                  setEditing((cur) => ({ ...cur, category: value === UNCATEGORIZED ? '' : value }))
+                  setEditing((cur) => ({
+                    ...cur,
+                    custom: value === CUSTOM_CATEGORY,
+                    category:
+                      value === UNCATEGORIZED || value === CUSTOM_CATEGORY ? '' : value,
+                  }))
                 }
               >
                 <SelectTrigger id="txn-category" className="w-full">
@@ -418,13 +446,27 @@ export default function TransactionsTable({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={UNCATEGORIZED}>Uncategorized</SelectItem>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.name}>
-                      {c.name} · {formatCurrency(categoryRemaining[c.name] ?? 0)} left
+                  {categoryOptions.map((name) => (
+                    <SelectItem key={name} value={name}>
+                      {name}
+                      {categoryRemaining[name] !== undefined
+                        ? ` · ${formatCurrency(categoryRemaining[name])} left`
+                        : ''}
                     </SelectItem>
                   ))}
+                  <SelectItem value={CUSTOM_CATEGORY}>Other (type a category)</SelectItem>
                 </SelectContent>
               </Select>
+              {editing?.custom && (
+                <Input
+                  value={editing?.category ?? ''}
+                  onChange={(e) => setEditing((cur) => ({ ...cur, category: e.target.value }))}
+                  placeholder="Type a category name"
+                  aria-label="Custom transaction category"
+                  className="mt-2 min-h-11 rounded-xl"
+                  autoFocus
+                />
+              )}
               <p className="text-xs text-muted-foreground">
                 Assigning a budget category counts this transaction toward that category's monthly spending.
               </p>

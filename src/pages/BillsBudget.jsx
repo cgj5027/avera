@@ -140,6 +140,12 @@ export default function BillsBudget() {
   const addManualTransaction = (payload) =>
     run(() => createRecord('transaction', payload), 'Transaction added');
 
+  const markNotRecurring = (transaction) =>
+    run(
+      () => updateRecord('transaction', transaction.id, { not_recurring: true }),
+      'Marked as not recurring — future charges with this name stay unflagged'
+    );
+
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     const { kind, record } = deleteTarget;
@@ -285,6 +291,7 @@ export default function BillsBudget() {
               onAddBill={addBillFromCandidate}
               onSaveTransaction={saveTransactionRow}
               onAddTransaction={() => setAddTxnOpen(true)}
+              onMarkNotRecurring={markNotRecurring}
               onSuggestCategories={suggestCategories}
             />
           </TabsContent>
