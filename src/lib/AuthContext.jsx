@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { queryClientInstance } from '@/lib/query-client';
 import { appParams } from '@/lib/app-params';
@@ -7,6 +7,7 @@ import { setModeOwner, clearDataMode } from '@/lib/mode';
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
+  const authEpoch=useRef(0);
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
@@ -80,10 +81,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   const checkUserAuth = async () => {
+    const epoch=++authEpoch.current;
     try {
       // Now check if the user is authenticated
       setIsLoadingAuth(true);
       const currentUser = await base44.auth.me();
+      if(epoch!==authEpoch.current) return;
       if (!currentUser?.id) throw new Error('Account verification failed');
       setAuthError(null);
       setModeOwner(currentUser.id);
@@ -92,6 +95,7 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingAuth(false);
       setAuthChecked(true);
     } catch (error) {
+      if(epoch!==authEpoch.current) return;
       console.error('User auth check failed');
       setModeOwner(null);
       setUser(null);
@@ -112,6 +116,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = (shouldRedirect = true) => {
+    authEpoch.current++;
+    setIsLoadingAuth(false);
     clearDataMode();
     setModeOwner(null);
     setUser(null);

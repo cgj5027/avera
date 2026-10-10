@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
+import { getDataMode, getDemoWorkspace } from '@/lib/mode';
 import { base44 } from '@/api/base44Client';
 import PageHeader from '@/components/layout/PageHeader';
 import SummaryCard from '@/components/finance/SummaryCard';
@@ -150,7 +151,7 @@ export default function BillsBudget() {
 
   const suggestCategories = () =>
     run(async () => {
-      const res = await base44.functions.invoke('suggestCategories', {});
+      const res = await base44.functions.invoke('suggestCategories', {dataset:getDataMode()==='demo'?{mode:'demo',profile:getDemoWorkspace()?.profile}:{mode:'ordinary'}});
       if (res.data?.error) throw new Error(res.data.error);
     }, 'Categories suggested for your transactions');
 

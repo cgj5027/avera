@@ -61,6 +61,13 @@ describe('demo and UI fixtures, distinct from real Plaid Sandbox',()=>{
     await removeDemoData('early_career',['ordinary']);
     expect(rows.Account.map(r=>r.id)).toEqual(['ordinary','other-demo']);expect(rows.PlaidItem).toHaveLength(1);expect(sdk.functions.invoke).not.toHaveBeenCalled();
   });
+  it('rejects owned record mutations outside the active dataset and prevents retagging',async()=>{
+    rows.Bill=[{id:'ordinary',created_by_id:'a',demo_profile:''},{id:'demo',created_by_id:'a',demo_profile:'early_career'}];
+    await expect(data.updateRecord('bill','demo',{amount:10})).rejects.toThrow('active dataset');
+    setDemoWorkspace({profile:'early_career'});setDataMode('demo');
+    await expect(data.deleteRecord('bill','ordinary')).rejects.toThrow('active dataset');
+    await data.updateRecord('bill','demo',{amount:20,demo_profile:''});expect(rows.Bill[1].demo_profile).toBe('early_career');
+  });
   it('resets only active user demo bill dismissals',async()=>{
     rows.BillSuggestionDismissal=[{id:'active',created_by_id:'a',demo_profile:'early_career'},{id:'ordinary',created_by_id:'a'},{id:'other-user',created_by_id:'b',demo_profile:'early_career'},{id:'other-profile',created_by_id:'a',demo_profile:'multi_income'}];
     await removeDemoData('early_career');

@@ -41,7 +41,9 @@ const assert=require('node:assert/strict');
    if(path==='/ask-avera') {await page.getByLabel('Ask Avera',{exact:true}).fill('My demo finances?');await page.getByRole('button',{name:'Send question'}).click();await page.getByText(/Fixture response only/).waitFor();}
    await check(path);
    if(path==='/bills-budget') {for(const tab of ['Budget','Goals','Transactions']) {await page.getByRole('tab',{name:tab,exact:true}).click();await check(path,tab+' tab');}}
+   if(path==='/ask-avera') await page.locator('summary').filter({hasText:'Demo Mode'}).click();
    await page.getByRole('button',{name:'Reset demo profile'}).click();await page.getByRole('dialog').waitFor();await check(path,'reset confirmation');await page.keyboard.press('Escape');await page.getByRole('dialog').waitFor({state:'hidden'});
+   if(path==='/ask-avera') await page.locator('summary').filter({hasText:'Demo Mode'}).click();
    if(path==='/settings') {
     await page.getByRole('button',{name:'Reconnect',exact:true}).waitFor();
     await page.getByRole('button',{name:'Sync now'}).click();await page.getByRole('alert').filter({hasText:/Some connections/}).waitFor();await check(path,'failed sync');

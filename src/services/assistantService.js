@@ -19,6 +19,10 @@ async function authenticatedInvoke(name, payload, timeoutMs = SERVICE_TIMEOUT_MS
     ]);
     const current = await base44.auth.me();
     if (current?.id !== user.id) throw new Error('Your account changed. Please try again.');
+    if (payload.dataset) {
+      const dataset=getDataMode()==='demo'?{mode:'demo',profile:getDemoWorkspace()?.profile}:{mode:'ordinary'};
+      if(JSON.stringify(dataset)!==JSON.stringify(payload.dataset)) throw new Error('Your dataset changed. Please try again.');
+    }
     return response.data;
   } finally {
     clearTimeout(timer);

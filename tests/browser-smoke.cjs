@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
   for (const theme of ['light','dark']) for(const width of [320,390,768,1440]) {
     const page=await browser.newPage({viewport:{width,height:900}});
     const errors=[];page.on('pageerror',e=>errors.push(e.message));
-    await page.addInitScript(({theme})=>{localStorage.setItem('base44_access_token','audit-fixture');localStorage.setItem('theme',theme);sessionStorage.setItem('avera_data_mode','manual');},{theme});
+    await page.addInitScript(({theme})=>{localStorage.setItem('base44_access_token','audit-fixture');localStorage.setItem('theme',theme);sessionStorage.setItem('avera_data_mode:audit-user','manual');},{theme});
     await page.route('https://**/*',route=>route.abort());
     await page.route('**/api/**',async route=>{
       const path=new URL(route.request().url()).pathname;
@@ -28,6 +28,7 @@ const assert = require('node:assert/strict');
           Transaction:[{id:'t',category:'Groceries',amount:50,type:'expense',date:'2026-10-01'}],
           Property:[{id:'p',nickname:'Home',estimated_value:100000,taxes_monthly:100}],
           MortgageRecord:[{id:'m',property_id:'p',outstanding_balance:40000,monthly_payment:500}],
+          JobProfile:[{id:'job',skills:'Bookkeeping',job_type:'any'}],
           Goal:[{id:'g',name:'Emergency fund',target_amount:5000,saved_amount:1000,target_date:'2027-10-01'}],
         };
         body={items:(fixture[entity]||[]).map(r=>({...r,created_by_id:'audit-user'})),has_more:false,next_cursor:null};
@@ -35,7 +36,7 @@ const assert = require('node:assert/strict');
       else body={};
       await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
     });
-    for(const path of ['/','/bills-budget','/yearly-plan','/goals-opportunities','/properties','/settings','/login','/register','/ask-avera']) {
+    for(const path of ['/','/bills-budget','/yearly-plan','/opportunities','/properties','/settings','/login','/register','/ask-avera']) {
       await page.goto((process.env.AUDIT_BASE_URL || 'http://127.0.0.1:5173')+path,{waitUntil:'domcontentloaded'});
       await page.waitForTimeout(150);
       await page.getByRole('heading').first().waitFor();
@@ -47,7 +48,7 @@ const assert = require('node:assert/strict');
         await page.getByRole('button',{name:'Send question'}).click();
         await page.getByText(/Browser fixture only/).waitFor();
       }
-      if (path === '/goals-opportunities') {
+      if (path === '/opportunities') {
         await page.getByRole('button',{name:'Find opportunities'}).click();
         await page.getByText('Source-linked results',{exact:true}).waitFor();
       }
@@ -57,11 +58,13 @@ const assert = require('node:assert/strict');
       if(accessibility.length)violations.push({theme,width,path,accessibility});
       results.push({theme,width,path,title,overflow:false});
       const dialogs = {
-        '/': ['Add account'], '/bills-budget': ['Add bill'],
-        '/yearly-plan': ['Add income source'], '/goals-opportunities': ['Add goal','Log contribution'],
+        '/': ['Add account'], '/bills-budget': ['Add bill','Add goal','Log contribution'],
+        '/yearly-plan': ['Add income source'], '/opportunities': [],
         '/properties': ['Add property'],
       };
       for (const button of dialogs[path] || []) {
+        if(path==='/') await page.getByRole('button',{name:/Accounts/}).click();
+        if(path==='/bills-budget' && ['Add goal','Log contribution'].includes(button)) await page.getByRole('tab',{name:'Goals',exact:true}).click();
         await page.getByRole('button',{name:button,exact:true}).click();
         const dialog=page.getByRole('dialog');await dialog.waitFor();
         await page.waitForTimeout(250);
@@ -74,7 +77,7 @@ const assert = require('node:assert/strict');
         }
         await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
       }
-      if (path === '/goals-opportunities') {
+      if (path === '/opportunities') {
         await page.route('**/api/**',route=>new URL(route.request().url()).pathname.includes('/functions/searchJobOpportunities') ? route.fulfill({status:503,contentType:'application/json',body:'{"error":"fixture unavailable"}'}) : route.fallback());
         await page.getByRole('button',{name:'Find opportunities'}).click();
         await page.getByText('Demonstration listings',{exact:true}).waitFor();
@@ -99,7 +102,9 @@ const assert = require('node:assert/strict');
       if (path === '/bills-budget') {
         await page.getByRole('tab',{name:'Budget',exact:true}).click();
         for (const button of ['Add budget category','Log spending']) {
-          await page.getByRole('button',{name:button,exact:true}).click();
+          if(path==='/') await page.getByRole('button',{name:/Accounts/}).click();
+        if(path==='/bills-budget' && ['Add goal','Log contribution'].includes(button)) await page.getByRole('tab',{name:'Goals',exact:true}).click();
+        await page.getByRole('button',{name:button,exact:true}).click();
           await page.getByRole('dialog').waitFor();await page.waitForTimeout(250);
           const a=await page.evaluate(async()=>{const r=await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}});return r.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}));});
           if(a.length)violations.push({theme,width,path,dialog:button,accessibility:a});

@@ -70,7 +70,7 @@ export default function ProjectedIncomeDialog({ open, onOpenChange, candidate, o
         source: candidate?.source === 'Plaid Sandbox' ? 'Plaid Sandbox' : 'Manual',
         notes:
           candidate?.annual_amount > 0
-            ? `AI projected ${formatCurrency(candidate.annual_amount)}/yr (Estimated).${candidate.rationale ? ` ${candidate.rationale}` : ''}`
+            ? `Calculated projection ${formatCurrency(candidate.annual_amount)}/yr (Estimated).${candidate.rationale ? ` ${candidate.rationale}` : ''}`
             : '',
       });
       onOpenChange(false);

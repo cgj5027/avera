@@ -88,7 +88,11 @@ function writable(data) {
 async function owned(key, id) {
   const user = await currentUser();
   const record = await ent(key).get(id);
-  if (record.created_by_id !== user.id) throw new Error('You cannot access this record.');
+  if (!record || record.created_by_id !== user.id) throw new Error('You cannot access this record.');
+  if (key !== 'plaidItem') {
+    const profile=getDataMode()==='demo'?getDemoWorkspace()?.profile:'';
+    if ((record.demo_profile || '') !== profile) throw new Error('This record is outside your active dataset.');
+  }
   return record;
 }
 
@@ -112,7 +116,9 @@ export async function updateRecord(key, id, data) {
       await ent('transaction').update(transaction.id, { category: data.name });
     }
   }
-  return ent(key).update(id, writable(data));
+  const fields=writable(data);
+  delete fields.demo_profile;
+  return ent(key).update(id, fields);
 }
 export async function deleteRecord(key, id) {
   await owned(key, id);

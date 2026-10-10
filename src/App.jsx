@@ -28,7 +28,7 @@ import ErrorState from '@/components/states/ErrorState';
 import { ThemeProvider } from 'next-themes';
 
 export const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, checkAppState } = useAuth();
+  const { user, isLoadingAuth, isLoadingPublicSettings, authError, checkAppState } = useAuth();
   const location = useLocation();
   const publicRoute = ['/login', '/register', '/forgot-password', '/reset-password'].includes(location.pathname);
   const loginPath = '/login?returnTo=' + encodeURIComponent(location.pathname + location.search);
@@ -45,7 +45,7 @@ export const AuthenticatedApp = () => {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/oauth/consent" element={<OAuthConsent />} />
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to={loginPath} replace />} />}>
-      <Route element={<AppLayout />}>
+      <Route element={<AppLayout key={user?.id} />}>
         <Route path="/" element={<Overview />} />
         <Route path="/bills-budget" element={<BillsBudget />} />
         <Route path="/yearly-plan" element={<YearlyPlan />} />

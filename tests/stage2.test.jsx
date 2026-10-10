@@ -7,6 +7,7 @@ import AskAveraConversation from '../src/components/askavera/AskAveraConversatio
 import OpportunityResults from '../src/components/opportunities/OpportunityResults';
 import OpportunityDiscovery from '../src/components/opportunities/OpportunityDiscovery';
 import OpportunityProfileForm from '../src/components/opportunities/OpportunityProfileForm';
+import { setModeOwner, setDataMode, setDemoWorkspace } from '../src/lib/mode';
 import * as data from '../src/services/dataService';
 
 const sdk = vi.hoisted(() => ({ auth: { me: vi.fn() }, functions: { invoke: vi.fn() }, entities: { JobProfile: { filter: vi.fn(), get: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() } }, user: { id: 'a' } }));
@@ -69,6 +70,11 @@ describe('critical function invocation boundaries (mocked, not backend authoriza
   it('rejects responses if the authenticated account changes during the request', async () => {
     sdk.functions.invoke.mockImplementation(async () => { sdk.user={id:'b'}; return {data:{answer:'A private response'}}; });
     await expect(askAvera('My balance?')).rejects.toThrow('account changed');
+  });
+  it('rejects a financial answer when the active dataset changes during the request',async()=>{
+    setModeOwner('a');setDataMode('manual');
+    sdk.functions.invoke.mockImplementation(async()=>{setDemoWorkspace({profile:'early_career'});setDataMode('demo');return {data:{answer:'ordinary private context'}};});
+    await expect(askAvera('What are my finances?')).rejects.toThrow('dataset changed');
   });
   it.each([{}, {answer:123}, {answer:' '}, {answer:'x'.repeat(20001)}])('rejects malformed answers', async payload => {
     sdk.functions.invoke.mockResolvedValue({data:payload});
