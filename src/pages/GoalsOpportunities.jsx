@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Target } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/layout/PageHeader';
@@ -11,6 +11,7 @@ import GoalCard from '@/components/goals/GoalCard';
 import GoalDialog from '@/components/goals/GoalDialog';
 import GoalContributionDialog from '@/components/goals/GoalContributionDialog';
 import IncomeGapPanel from '@/components/goals/IncomeGapPanel';
+import OpportunityDiscovery from '@/components/opportunities/OpportunityDiscovery';
 import { listRecords, createRecord, updateRecord, deleteRecord } from '@/services/dataService';
 import * as calc from '@/services/financialCalculations';
 import { round2 } from '@/services/financialCalculations';
@@ -148,15 +149,7 @@ export default function GoalsOpportunities() {
         <IncomeGapPanel goals={goals} monthlyIncome={monthlyIncome} monthlyExpenses={monthlyExpenses} />
       </div>
 
-      <section className="mt-6 rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <Target className="h-5 w-5 text-primary" aria-hidden="true" />
-          <h2 className="font-heading text-base font-semibold text-foreground">Opportunities</h2>
-        </div>
-        <p className="mt-2 text-base text-muted-foreground">
-          Job and gig discovery arrives in a later stage and will show only real, sourced listings — never fabricated ones.
-        </p>
-      </section>
+      <OpportunityDiscovery />
 
       <GoalDialog
         open={goalDialog.open}
@@ -164,16 +157,15 @@ export default function GoalsOpportunities() {
         goal={goalDialog.goal}
         onSave={saveGoal}
       />
-      {contribution && (
-        <GoalContributionDialog
-          open
-          onOpenChange={(open) => {
-            if (!open) setContribution(null);
-          }}
-          goal={contribution}
-          onSave={applyContribution}
-        />
-      )}
+      {/* Mounted even when closed so a dismissed draft survives reopening. */}
+      <GoalContributionDialog
+        open={Boolean(contribution)}
+        onOpenChange={(open) => {
+          if (!open) setContribution(null);
+        }}
+        goal={contribution}
+        onSave={applyContribution}
+      />
       <ConfirmDeleteDialog
         open={Boolean(deleteGoal)}
         onOpenChange={(open) => {

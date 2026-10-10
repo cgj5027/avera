@@ -18,6 +18,10 @@
       "type": "string",
       "format": "date"
     },
+    "source": {
+      "type": "string",
+      "description": "Where the figure came from: Manual, Sample data, Plaid Sandbox, or Estimated."
+    },
     "notes": {
       "type": "string"
     }

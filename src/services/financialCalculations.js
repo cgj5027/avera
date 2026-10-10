@@ -240,6 +240,30 @@ export function calculateIncomeGap(goal, { monthlyIncome = 0, monthlyExpenses = 
   };
 }
 
+/**
+ * Income gap after reserving capacity already committed to other goals'
+ * deadlines (Stage 2). Each other goal reserves its own required monthly
+ * amount; goals without a deadline reserve nothing. Deterministic and
+ * reproducible from the same saved records every time.
+ */
+export function calculateIncomeGapAllocated(goal, allGoals = [], context = {}, today = new Date()) {
+  const base = calculateIncomeGap(goal, context, today);
+  if (!base) return null;
+  const otherReserve = round2(
+    allGoals
+      .filter((g) => g.id !== goal.id)
+      .reduce((s, g) => s + (goalRequiredMonthly(g, today) ?? 0), 0)
+  );
+  const allocatedCapacity = round2(Math.max(0, base.capacity - otherReserve));
+  return {
+    ...base,
+    otherReserve,
+    allocatedCapacity,
+    shortfall: round2(Math.max(0, base.required - allocatedCapacity)),
+    surplus: round2(Math.max(0, allocatedCapacity - base.required)),
+  };
+}
+
 export function propertyEquity(property, mortgage) {
   if (property?.estimated_value == null || !Number.isFinite(Number(property.estimated_value))) return null;
   if (mortgage && (mortgage.outstanding_balance == null || !Number.isFinite(Number(mortgage.outstanding_balance)))) return null;

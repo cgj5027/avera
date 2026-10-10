@@ -4,7 +4,7 @@ import StatusPill from '@/components/states/StatusPill';
 import EmptyState from '@/components/states/EmptyState';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { calculateIncomeGap, goalMonthsRemaining } from '@/services/financialCalculations';
+import { calculateIncomeGapAllocated, goalMonthsRemaining } from '@/services/financialCalculations';
 import { formatCurrency, formatDate } from '@/utils/format';
 
 /**
@@ -28,7 +28,7 @@ export default function IncomeGapPanel({ goals, monthlyIncome, monthlyExpenses }
   }
 
   const goal = goals.find((g) => g.id === selectedId) ?? goals[0];
-  const gap = calculateIncomeGap(goal, { monthlyIncome, monthlyExpenses });
+  const gap = calculateIncomeGapAllocated(goal, goals, { monthlyIncome, monthlyExpenses });
   const months = goalMonthsRemaining(goal.target_date);
 
   return (
@@ -69,24 +69,43 @@ export default function IncomeGapPanel({ goals, monthlyIncome, monthlyExpenses }
             <dt className="text-sm text-muted-foreground">Monthly savings capacity</dt>
             <dd className="mt-0.5 font-heading text-lg font-semibold tabular-nums text-foreground">{formatCurrency(gap.capacity)}</dd>
           </div>
+          <div>
+            <dt className="text-sm text-muted-foreground">
+              After other goals reserve {formatCurrency(gap.otherReserve)}/mo
+            </dt>
+            <dd className="mt-0.5 font-heading text-lg font-semibold tabular-nums text-foreground">
+              {formatCurrency(gap.allocatedCapacity)}
+            </dd>
+          </div>
           <div className="sm:col-span-2">
             <dt className="text-sm text-muted-foreground">Result</dt>
             <dd className="mt-1 flex flex-wrap items-center gap-2">
               {gap.shortfall > 0 ? (
                 <>
                   <StatusPill tone="danger" icon={CircleDollarSign}>Monthly shortfall</StatusPill>
-                  <span className="tabular-nums text-foreground">{formatCurrency(gap.shortfall)}/mo extra income or budget room needed</span>
+                  <span className="tabular-nums text-foreground">{formatCurrency(gap.shortfall)}/mo extra income needed after other goals</span>
                 </>
               ) : (
                 <>
                   <StatusPill tone="success" icon={CircleDollarSign}>Covered</StatusPill>
-                  <span className="tabular-nums text-foreground">{formatCurrency(gap.surplus)}/mo of capacity remains</span>
+                  <span className="tabular-nums text-foreground">{formatCurrency(gap.surplus)}/mo of capacity remains after other goals</span>
                 </>
               )}
             </dd>
           </div>
         </dl>
       )}
+      <div className="mt-4 rounded-xl bg-surface-subtle p-4 text-sm text-muted-foreground">
+        <p className="font-medium text-foreground">How this is calculated</p>
+        <p className="mt-1">
+          Required monthly = (Target − Saved) ÷ months to deadline. Savings capacity = monthly income − bills − budget
+          limits − property costs. Capacity after reservations = capacity − the required monthly of every other goal.
+        </p>
+        <p className="mt-1">
+          Assumptions: every figure comes from your saved records (Manual); pay and bill frequencies are amortized to
+          monthly; a goal without a deadline reserves nothing; property equity is not counted as income.
+        </p>
+      </div>
     </section>
   );
 }

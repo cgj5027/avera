@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -14,11 +14,16 @@ import { round2 } from '@/services/financialCalculations';
 
 const EMPTY = { name: '', target_amount: '', saved_amount: '', target_date: '' };
 
-/** Add-or-edit dialog for a savings goal. */
+/**
+ * Add-or-edit dialog for a savings goal.
+ * For a new goal, typed values survive an accidental dismissal (outside click,
+ * Escape) so nothing is lost; the draft clears on Cancel or a successful save.
+ */
 export default function GoalDialog({ open, onOpenChange, goal, onSave }) {
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const draftRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
@@ -30,10 +35,20 @@ export default function GoalDialog({ open, onOpenChange, goal, onSave }) {
             saved_amount: String(goal.saved_amount ?? ''),
             target_date: goal.target_date ?? '',
           }
-        : { ...EMPTY }
+        : draftRef.current ?? { ...EMPTY }
     );
     setError('');
   }, [open, goal]);
+
+  /* Keep the newest typed values as the draft while adding. */
+  useEffect(() => {
+    if (open && !goal) draftRef.current = form;
+  }, [open, goal, form]);
+
+  const closeAndDiscard = () => {
+    draftRef.current = null;
+    onOpenChange(false);
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -53,7 +68,7 @@ export default function GoalDialog({ open, onOpenChange, goal, onSave }) {
       target_date: form.target_date || undefined,
       source: 'Manual',
     });
-      onOpenChange(false);
+      closeAndDiscard();
     } catch {
       setError('Unable to save. Please try again.');
     } finally {
@@ -89,7 +104,7 @@ export default function GoalDialog({ open, onOpenChange, goal, onSave }) {
           </div>
           {error && <p role="alert" className="text-base text-danger-text">{error}</p>}
           <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={closeAndDiscard}>Cancel</Button>
             <Button type="submit" disabled={saving}>{goal ? 'Save changes' : 'Add goal'}</Button>
           </DialogFooter>
         </form>

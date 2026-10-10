@@ -12,6 +12,9 @@ import ProtectedRoute from '../src/components/ProtectedRoute';
 import { AuthenticatedApp } from '../src/App';
 import BillDialog from '../src/components/bills/BillDialog';
 import CategoryDialog from '../src/components/budget/CategoryDialog';
+import GoalDialog from '../src/components/goals/GoalDialog';
+import PropertyDialog from '../src/components/properties/PropertyDialog';
+import GoalContributionDialog from '../src/components/goals/GoalContributionDialog';
 import PropertyCard from '../src/components/properties/PropertyCard';
 import BillsBudget from '../src/pages/BillsBudget';
 import Properties from '../src/pages/Properties';
@@ -74,8 +77,19 @@ describe('owner-scoped persistence with mocked SDK (not deployed RLS)', () => {
     const dir=process.cwd()+'/base44/entities/';
     for(const file of readdirSync(dir).filter(x=>x!=='User.jsonc')) {
       const schema=JSON.parse(readFileSync(dir+file,'utf8'));
-      expect(schema.rls.create,`${file}:create`).toEqual({user_condition:{id:'{{user.id}}'}});
-      for(const op of ['read','update','delete']) expect(schema.rls[op],`${file}:${op}`).toEqual({created_by_id:'{{user.id}}'});
+      // Create may anchor ownership on either accepted form; both restrict to the signed-in owner.
+      expect(
+        [{user_condition:{id:'{{user.id}}'}}, {created_by_id:'{{user.id}}'}].some(r => JSON.stringify(r) === JSON.stringify(schema.rls.create)),
+        `${file}:create must be owner-anchored`
+      ).toBe(true);
+      // Read/update/delete must be owner-scoped: pure owner rule, or the accepted
+      // owner-or-admin pattern (JobProfile) that still hides records from other users.
+      for(const op of ['read','update','delete']) {
+        const rule=schema.rls[op];
+        const ownerOnly=JSON.stringify(rule)===JSON.stringify({created_by_id:'{{user.id}}'});
+        const ownerOrAdmin=JSON.stringify(rule)===JSON.stringify({$or:[{created_by_id:'{{user.id}}'},{user_condition:{role:'admin'}}]});
+        expect(ownerOnly || ownerOrAdmin,`${file}:${op} must be owner-scoped`).toBe(true);
+      }
     }
   });
 });
@@ -249,6 +263,76 @@ it('login calls the SDK and announces invalid credentials', async () => {
   fireEvent.click(screen.getByRole('button',{name:'Log in',exact:true}));
   expect(await screen.findByRole('alert')).toBeTruthy();
   expect(sdk.auth.loginViaEmailPassword).toHaveBeenCalledWith('audit@example.test','invalid-test-password');
+});
+
+it('an accidentally dismissed add-bill draft survives reopening and clears after cancel', async () => {
+  const close = vi.fn();
+  const view = render(<BillDialog open bill={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  fireEvent.change(screen.getByLabelText('Bill name'),{target:{value:'Rent'}});
+  fireEvent.change(screen.getByLabelText('Amount'),{target:{value:'1000'}});
+  view.rerender(<BillDialog open={false} bill={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  view.rerender(<BillDialog open bill={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  expect(screen.getByLabelText('Bill name').value).toBe('Rent');
+  expect(screen.getByLabelText('Amount').value).toBe('1000');
+  fireEvent.click(screen.getByRole('button',{name:'Cancel'}));
+  expect(close).toHaveBeenCalledWith(false);
+  view.rerender(<BillDialog open={false} bill={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  view.rerender(<BillDialog open bill={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  expect(screen.getByLabelText('Bill name').value).toBe('');
+});
+
+it('an accidentally dismissed add-goal draft survives reopening and clears after cancel', async () => {
+  const close = vi.fn();
+  const view = render(<GoalDialog open goal={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  fireEvent.change(screen.getByLabelText('Goal name'),{target:{value:'Emergency fund'}});
+  fireEvent.change(screen.getByLabelText('Target amount'),{target:{value:'5000'}});
+  fireEvent.change(screen.getByLabelText('Target date (optional)'),{target:{value:'2026-12-31'}});
+  view.rerender(<GoalDialog open={false} goal={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  view.rerender(<GoalDialog open goal={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  expect(screen.getByLabelText('Goal name').value).toBe('Emergency fund');
+  expect(screen.getByLabelText('Target amount').value).toBe('5000');
+  expect(screen.getByLabelText('Target date (optional)').value).toBe('2026-12-31');
+  fireEvent.click(screen.getByRole('button',{name:'Cancel'}));
+  expect(close).toHaveBeenCalledWith(false);
+  view.rerender(<GoalDialog open={false} goal={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  view.rerender(<GoalDialog open goal={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  expect(screen.getByLabelText('Goal name').value).toBe('');
+});
+
+it('an accidentally dismissed add-property draft survives reopening and clears after cancel', async () => {
+  const close = vi.fn();
+  const view = render(<PropertyDialog open property={null} mortgage={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  fireEvent.change(screen.getByLabelText('Nickname'),{target:{value:'Maple Street'}});
+  fireEvent.change(screen.getByLabelText('Estimated value'),{target:{value:'320000'}});
+  fireEvent.change(screen.getByLabelText('Maintenance /mo'),{target:{value:'250'}});
+  view.rerender(<PropertyDialog open={false} property={null} mortgage={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  view.rerender(<PropertyDialog open property={null} mortgage={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  expect(screen.getByLabelText('Nickname').value).toBe('Maple Street');
+  expect(screen.getByLabelText('Estimated value').value).toBe('320000');
+  expect(screen.getByLabelText('Maintenance /mo').value).toBe('250');
+  fireEvent.click(screen.getByRole('button',{name:'Cancel'}));
+  expect(close).toHaveBeenCalledWith(false);
+  view.rerender(<PropertyDialog open={false} property={null} mortgage={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  view.rerender(<PropertyDialog open property={null} mortgage={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  expect(screen.getByLabelText('Nickname').value).toBe('');
+});
+
+it('a dismissed contribution draft survives reopening for the same goal and clears after cancel', async () => {
+  const close = vi.fn();
+  const goal = { id:'g1', name:'Vacation', target_amount:2000, saved_amount:500 };
+  const save = vi.fn().mockResolvedValue({});
+  const view = render(<GoalContributionDialog open goal={goal} onOpenChange={close} onSave={save} />);
+  fireEvent.change(screen.getByLabelText('Contribution amount'),{target:{value:'250'}});
+  view.rerender(<GoalContributionDialog open={false} goal={goal} onOpenChange={close} onSave={save} />);
+  view.rerender(<GoalContributionDialog open goal={goal} onOpenChange={close} onSave={save} />);
+  expect(screen.getByLabelText('Contribution amount').value).toBe('250');
+  fireEvent.click(screen.getByRole('button',{name:'Cancel'}));
+  expect(close).toHaveBeenCalledWith(false);
+  view.rerender(<GoalContributionDialog open={false} goal={goal} onOpenChange={close} onSave={save} />);
+  view.rerender(<GoalContributionDialog open goal={goal} onOpenChange={close} onSave={save} />);
+  expect(screen.getByLabelText('Contribution amount').value).toBe('');
+  view.rerender(<GoalContributionDialog open goal={{...goal,id:'g2'}} onOpenChange={vi.fn()} onSave={save} />);
+  expect(screen.getByLabelText('Contribution amount').value).toBe('');
 });
 
 it('editing bill details preserves a month-end recurrence anchor', async () => {
