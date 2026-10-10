@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, Sparkles, X } from 'lucide-react';
+import { Check, ChevronDown, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/utils/format';
 
@@ -27,6 +27,7 @@ const DECLINED_KEY = 'avera-declined-budget-suggestions';
  * stay hidden on this device.
  */
 export default function SuggestedBudgetCategories({ categories, busy, onConfirm }) {
+  const [expanded, setExpanded] = useState(false);
   const [declined, setDeclined] = useState(() => {
     try {
       const raw = JSON.parse(localStorage.getItem(DECLINED_KEY) ?? '[]');
@@ -60,7 +61,7 @@ export default function SuggestedBudgetCategories({ categories, busy, onConfirm 
         Common household categories to get started — confirm the ones you'd like to track, or decline to hide them.
       </p>
       <ul className="mt-4 flex flex-wrap gap-2">
-        {suggestions.map((s) => (
+        {(expanded ? suggestions : suggestions.slice(0, 4)).map((s) => (
           <li
             key={s.name}
             className="flex items-center gap-2 rounded-full border border-border bg-surface-subtle py-1.5 pl-3 pr-1.5"
@@ -89,6 +90,20 @@ export default function SuggestedBudgetCategories({ categories, busy, onConfirm 
           </li>
         ))}
       </ul>
+      {suggestions.length > 4 && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-3 min-h-8"
+        >
+          {expanded ? 'Show fewer' : `Show all ${suggestions.length} suggestions`}
+          <ChevronDown
+            className={`ml-1 h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`}
+            aria-hidden="true"
+          />
+        </Button>
+      )}
     </section>
   );
 }

@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
+import { base44 } from '@/api/base44Client';
 import PageHeader from '@/components/layout/PageHeader';
 import SummaryCard from '@/components/finance/SummaryCard';
 import ConfirmDeleteDialog from '@/components/finance/ConfirmDeleteDialog';
@@ -123,8 +124,14 @@ export default function BillsBudget() {
   const confirmSuggestedCategory = (name, monthly_limit) =>
     run(() => createRecord('budgetCategory', { name, monthly_limit }), 'Category added');
 
-  const saveTransactionCategory = (transaction, category) =>
-    run(() => updateRecord('transaction', transaction.id, { category }), 'Category updated');
+  const saveTransactionRow = (id, payload) =>
+    run(() => updateRecord('transaction', id, payload), 'Transaction updated');
+
+  const suggestCategories = () =>
+    run(async () => {
+      const res = await base44.functions.invoke('suggestCategories', {});
+      if (res.data?.error) throw new Error(res.data.error);
+    }, 'Categories suggested for your transactions');
 
   const logSpending = (category, payload) => run(() => category._transaction ? updateRecord('transaction', category._transaction.id, payload) : createRecord('transaction', payload), category._transaction ? 'Spending updated' : 'Spending logged');
 
@@ -172,6 +179,11 @@ export default function BillsBudget() {
     (c) => !bills.some((b) => normalizeName(b.name) === normalizeName(c.name))
   ).length;
 
+  const remainingByCategory = {};
+  for (const c of categories) {
+    remainingByCategory[c.name] = (Number(c.monthly_limit) || 0) - calc.spentInMonth(transactions, c.name, range);
+  }
+
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
       <PageHeader title="Bills & Budget" subtitle="Due dates, recurring bills, and category budgets." />
@@ -179,7 +191,7 @@ export default function BillsBudget() {
         <TabsList className="mb-6">
           <TabsTrigger value="bills" className="min-h-9 rounded-lg px-4">Bills</TabsTrigger>
           <TabsTrigger value="budget" className="min-h-9 rounded-lg px-4">Budget</TabsTrigger>
-          {linkedTransactions.length > 0 && (
+          {transactions.length > 0 && (
             <TabsTrigger value="transactions" className="min-h-9 rounded-lg px-4">
               Transactions
               {recurringCount > 0 && (
@@ -254,40 +266,20 @@ export default function BillsBudget() {
               ))}
             </div>
           )}
-          <section className="rounded-2xl border border-border bg-surface p-5">
-            <h2 className="font-heading text-base font-semibold text-foreground">Spending history</h2>
-            <p className="mt-1 text-base text-muted-foreground">Every logged expense — manual entries plus imported linked charges. Add new spending with Log spending on a category card.</p>
-            {transactions.length === 0 ? <p className="mt-3 text-base text-muted-foreground">No spending logged yet.</p> : (
-              <ul className="mt-3 divide-y divide-border">
-                {transactions.filter(t => t.type !== 'income').map(t => (
-                  <li key={t.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                    <div><p className="text-base font-medium text-foreground">{t.description || t.category || 'Spending'}</p><p className="text-sm text-muted-foreground">{t.category || 'Uncategorized'} · {t.date}</p></div>
-                    <div className="flex flex-wrap items-center gap-2"><span className="tabular-nums text-foreground">{formatCurrency(t.amount)}</span>
-                      {t.plaid_item_id ? (
-                        <span className="text-xs text-muted-foreground">Imported — manage in the Transactions tab</span>
-                      ) : (
-                        <>
-                          <Button variant="outline" aria-label={`Edit spending ${t.description || t.category || ''}`} onClick={() => setLogDialog({ name: t.category || 'Uncategorized', _transaction: t })} disabled={busy}>Edit</Button>
-                          <Button variant="outline" className="text-danger-text" aria-label={`Delete spending ${t.description || t.category || ''}`} onClick={() => setDeleteTarget({ kind: 'transaction', record: t })} disabled={busy}>Delete</Button>
-                        </>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
         </TabsContent>
 
-        {linkedTransactions.length > 0 && (
+        {transactions.length > 0 && (
           <TabsContent value="transactions" className="mt-0">
             <TransactionsTable
               transactions={transactions}
               bills={bills}
               accounts={accounts.filter((a) => a.plaid_item_id)}
+              categories={categories}
+              categoryRemaining={remainingByCategory}
               busy={busy}
               onAddBill={addBillFromCandidate}
-              onSaveCategory={saveTransactionCategory}
+              onSaveTransaction={saveTransactionRow}
+              onSuggestCategories={suggestCategories}
             />
           </TabsContent>
         )}
