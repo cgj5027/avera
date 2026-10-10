@@ -218,6 +218,51 @@ export default function YearlyPlan() {
         <SummaryCard label="Cash after 12 months" value={formatCurrency(projection.yearEndCash)} source="Estimated" note={`Starting from ${formatCurrency(calc.availableCash(accounts))} in saved balances.`} />
       </div>
 
+      <section className="mt-6 rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="font-heading text-base font-semibold text-foreground">Income sources</h2>
+            <p className="mt-1 text-base text-muted-foreground">
+              Single- and multi-income households — each source uses its own pay frequency.
+            </p>
+          </div>
+          <Button onClick={() => setIncomeDialog({ open: true, income: null })} className="min-h-11 rounded-xl px-4">
+            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+            Add income source
+          </Button>
+        </div>
+        {incomes.length === 0 ? (
+          <div className="mt-4">
+            <EmptyState
+              heading="No income sources yet"
+              description="Add each paycheck or income stream — your projections, goals, and overview all update from these."
+            />
+          </div>
+        ) : (
+          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {incomes.map((income) => (
+              <IncomeCard
+                key={income.id}
+                income={income}
+                busy={busy}
+                onEdit={(i) => setIncomeDialog({ open: true, income: i })}
+                onDelete={setDeleteIncome}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {incomeCandidates.length > 0 && (
+        <div className="mt-6">
+          <PossibleIncomeSources
+            candidates={incomeCandidates}
+            busy={busy || projecting}
+            onAdd={addIncomeFromCandidate}
+          />
+        </div>
+      )}
+
       <div className="mt-6">
         <MonthlyPlanChart rows={projection.rows} />
       </div>
@@ -259,51 +304,6 @@ export default function YearlyPlan() {
           estimate={{ income: projection.estimateUsed.income, expenses: projection.estimateUsed.expenses, months: est.months }}
         />
       </div>
-
-      {incomeCandidates.length > 0 && (
-        <div className="mt-6">
-          <PossibleIncomeSources
-            candidates={incomeCandidates}
-            busy={busy || projecting}
-            onAdd={addIncomeFromCandidate}
-          />
-        </div>
-      )}
-
-      <section className="mt-6 rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="font-heading text-base font-semibold text-foreground">Income sources</h2>
-            <p className="mt-1 text-base text-muted-foreground">
-              Single- and multi-income households — each source uses its own pay frequency.
-            </p>
-          </div>
-          <Button onClick={() => setIncomeDialog({ open: true, income: null })} className="min-h-11 rounded-xl px-4">
-            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-            Add income source
-          </Button>
-        </div>
-        {incomes.length === 0 ? (
-          <div className="mt-4">
-            <EmptyState
-              heading="No income sources yet"
-              description="Add each paycheck or income stream — your projections, goals, and overview all update from these."
-            />
-          </div>
-        ) : (
-          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {incomes.map((income) => (
-              <IncomeCard
-                key={income.id}
-                income={income}
-                busy={busy}
-                onEdit={(i) => setIncomeDialog({ open: true, income: i })}
-                onDelete={setDeleteIncome}
-              />
-            ))}
-          </div>
-        )}
-      </section>
 
       {forecasts.length > 0 && (
         <section className="mt-6 rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
