@@ -11,6 +11,13 @@ export function formatCurrency(value, { currency = 'USD' } = {}) {
   }).format(Number(value));
 }
 
+/** Today's date in the viewer's timezone, as YYYY-MM-DD. */
+export function todayISO() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 export function formatDate(value) {
   if (!value) return '—';
   return new Date(value).toLocaleDateString('en-US', {
