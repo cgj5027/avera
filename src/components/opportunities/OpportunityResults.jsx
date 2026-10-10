@@ -48,10 +48,14 @@ function OpportunityItem({ item, profile }) {
     <li className="break-words rounded-2xl border border-border bg-surface-subtle p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <p className="font-heading text-base font-semibold text-foreground">{item.title}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            {item.publisher && <SourceChip source={item.publisher} />}
+            <p className="font-heading text-base font-semibold text-foreground">{item.title}</p>
+          </div>
           <p className="mt-0.5 text-sm text-muted-foreground">
             {item.company}
             {item.location ? ` · ${item.location}` : ''}
+            {item.posted_at ? ` · Posted ${item.posted_at}` : ''}
           </p>
         </div>
         {item.url && (
@@ -67,6 +71,15 @@ function OpportunityItem({ item, profile }) {
         )}
       </div>
       <p className="mt-2 break-all text-sm text-muted-foreground">Source: {new URL(item.url).hostname} · Posting availability and freshness not verified</p>
+      {item.match_reasons?.length > 0 && (
+        <ul className="mt-2 flex flex-wrap gap-2">
+          {item.match_reasons.map((reason, i) => (
+            <li key={i} className="rounded-lg bg-surface-selected px-2.5 py-1 text-sm text-foreground">
+              {reason}
+            </li>
+          ))}
+        </ul>
+      )}
       <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
         <div>
           <dt className="text-muted-foreground">Advertised compensation</dt>
@@ -92,9 +105,9 @@ function OpportunityItem({ item, profile }) {
 
 /**
  * Income-opportunity results. Calls the searchJobOpportunities backend
- * function; when the external jobs API is not configured (or fails) it shows a
- * transparent unavailable state plus clearly labeled demonstration listings —
- * never fabricated listings presented as live postings.
+ * function; when the external jobs service is not configured (or fails) it
+ * shows a transparent unavailable state plus clearly labeled demonstration
+ * listings — never fabricated listings presented as live postings.
  */
 export default function OpportunityResults({ profile }) {
   const [status, setStatus] = useState('idle'); // idle | loading | live | none | unavailable
@@ -168,7 +181,7 @@ export default function OpportunityResults({ profile }) {
             ))}
           </ul>
           <p className="mt-3 text-sm text-muted-foreground">
-            Take-home estimates assume advertised hourly compensation is gross pay before taxes and deductions. A fixed 78% share and your available hours are planning assumptions, not guaranteed pay. Actual take-home depends on taxes, deductions, and hours offered.
+            Take-home estimates assume advertised hourly compensation is gross pay before taxes and deductions. A fixed 78% share and your available hours are planning assumptions, not guaranteed pay. Actual take-home depends on taxes, deductions, and hours offered. Postings come from public web search; coverage is not exhaustive and availability is not verified.
           </p>
         </>
       )}

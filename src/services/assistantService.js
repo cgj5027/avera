@@ -52,6 +52,7 @@ export function sourceListingUrl(value) {
 export async function searchOpportunities(profile) {
   const data = await authenticatedInvoke('searchJobOpportunities', {
     skills: profile?.skills ?? '',
+    experience: profile?.experience ?? '',
     preferred_roles: profile?.preferred_roles ?? '',
     work_mode: profile?.work_mode ?? 'any',
     location: profile?.location ?? '',
@@ -61,10 +62,19 @@ export async function searchOpportunities(profile) {
   if (!Array.isArray(data?.opportunities)) throw new Error('Invalid search response.');
   const items = data.opportunities.filter(item =>
     item && typeof item.title === 'string' && item.title.trim() &&
-    typeof item.company === 'string' && item.company.trim() && sourceListingUrl(item.url) &&
-    (item.compensation == null || typeof item.compensation === 'string') &&
-    (item.location == null || typeof item.location === 'string')
-  ).map(item => ({ ...item, url: sourceListingUrl(item.url) }));
+    typeof item.company === 'string' && item.company.trim() && sourceListingUrl(item.url)
+  ).map(item => ({
+    title: item.title.trim(),
+    company: item.company.trim(),
+    url: sourceListingUrl(item.url),
+    compensation: typeof item.compensation === 'string' && item.compensation.trim() ? item.compensation : null,
+    location: typeof item.location === 'string' && item.location.trim() ? item.location : null,
+    publisher: typeof item.publisher === 'string' && item.publisher.trim() ? item.publisher : null,
+    posted_at: typeof item.posted_at === 'string' && item.posted_at.trim() ? item.posted_at : null,
+    match_reasons: Array.isArray(item.match_reasons)
+      ? item.match_reasons.filter((r) => typeof r === 'string' && r.trim()).slice(0, 3)
+      : [],
+  }));
   if (items.length !== data.opportunities.length) throw new Error('Search returned unverified listing data.');
   return items;
 }

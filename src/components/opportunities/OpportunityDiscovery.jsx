@@ -3,6 +3,7 @@ import { Briefcase } from 'lucide-react';
 import StatusPill from '@/components/states/StatusPill';
 import { Button } from '@/components/ui/button';
 import OpportunityProfileForm from './OpportunityProfileForm';
+import ResumeUpload from './ResumeUpload';
 import OpportunityResults from './OpportunityResults';
 import { listRecords, createRecord, updateRecord } from '@/services/dataService';
 
@@ -18,6 +19,13 @@ export default function OpportunityDiscovery() {
   const [saveError, setSaveError] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [applyKey, setApplyKey] = useState(0);
+
+  /** Resume suggestions land in the editable form; nothing saves until the user confirms. */
+  const applySuggestions = (suggestions) => {
+    setProfile((p) => ({ ...(p ?? {}), ...suggestions }));
+    setApplyKey((k) => k + 1);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -76,7 +84,8 @@ export default function OpportunityDiscovery() {
         </div>
       ) : loaded ? (
         <>
-          <OpportunityProfileForm profile={profile} saving={saving} onSave={save} />
+          <ResumeUpload onApply={applySuggestions} />
+          <OpportunityProfileForm key={applyKey} profile={profile} saving={saving} onSave={save} />
           <OpportunityResults key={JSON.stringify(profile)} profile={profile} />
         </>
       ) : (
