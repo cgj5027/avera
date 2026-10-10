@@ -124,10 +124,13 @@ export function estimateFromTransactions(transactions = []) {
 }
 
 /**
- * Income sources observed in transactions (linked or manual), as suggested
- * income entries the user can add on the Yearly Plan.
+ * Recurring deposit patterns in the transaction history (linked or manual).
+ * A deposit name is a pattern only when it repeats across at least `minMonths`
+ * distinct months AND its per-month cadence fits a known pay frequency —
+ * one-off deposits (refunds, gifts, sale proceeds) never become income sources,
+ * so they cannot distort the annual projection.
  */
-export function estimateIncomeCandidates(transactions = []) {
+export function incomePatternGroups(transactions = [], { minMonths = 2 } = {}) {
   const groups = new Map();
   for (const t of transactions) {
     if (t.type !== 'income') continue;
@@ -137,30 +140,41 @@ export function estimateIncomeCandidates(transactions = []) {
     group.push(t);
     groups.set(key, group);
   }
-  const candidates = [];
+  const patterns = [];
   for (const group of groups.values()) {
     const lastDate = group.map((t) => t.date).filter(Boolean).sort().at(-1);
     if (!lastDate) continue;
     const monthsSeen = countMonths(group.map((t) => t.date));
-    const perMonth = group.length / Math.max(1, monthsSeen);
+    if (monthsSeen < minMonths) continue;
+    const perMonth = group.length / monthsSeen;
     const match = OCCURRENCE_TO_FREQUENCY.find((f) => perMonth >= f.minPerMonth);
-    const frequency = match ? match.frequency : 'monthly';
+    if (!match) continue; // deposits with no repeating cadence are not a pay stream
     const amount = round2(group.reduce((s, t) => s + num(t.amount), 0) / group.length);
     const sources = [
       ...new Set(group.map((t) => (Boolean(t.plaid_item_id) || t.source === 'Plaid Sandbox' ? 'Plaid Sandbox' : 'Manual'))),
     ];
-    candidates.push({
+    patterns.push({
       name: mostCommon(group.map((t) => t.description || t.category || 'Unknown')),
-      frequency,
+      frequency: match.frequency,
       amount,
-      monthly: monthlyFromFrequency(amount, frequency),
+      monthly: monthlyFromFrequency(amount, match.frequency),
       occurrences: group.length,
       months_seen: monthsSeen,
       last_date: lastDate,
       source: sources.length === 1 ? sources[0] : 'Estimated',
     });
   }
-  return candidates.sort((a, b) => b.monthly - a.monthly);
+  return patterns.sort((a, b) => b.monthly - a.monthly);
+}
+
+/** Suggested income entries the user can add on the Yearly Plan. */
+export function estimateIncomeCandidates(transactions = []) {
+  return incomePatternGroups(transactions);
+}
+
+/** Monthly income implied by every detected recurring deposit pattern, saved or not. */
+export function incomePatternMonthly(transactions = []) {
+  return round2(incomePatternGroups(transactions).reduce((s, p) => s + p.monthly, 0));
 }
 
 /** Suggestions not yet saved as bills (matched by normalized name). */

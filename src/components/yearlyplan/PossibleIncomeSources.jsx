@@ -14,7 +14,7 @@ export default function PossibleIncomeSources({ candidates, busy, onAdd }) {
       <div>
         <h2 className="font-heading text-base font-semibold text-foreground">Possible income sources from your transactions</h2>
         <p className="mt-1 text-base text-muted-foreground">
-          Deposits detected in your linked and manually entered transactions. Adding one projects its annual earnings with Avera AI — you can adjust the figures before saving.
+          Recurring deposits detected in your linked and manually entered transactions — one-off deposits are excluded. Adding one projects its annual earnings with Avera AI, and you can adjust the figures before saving.
         </p>
       </div>
       <ul className="mt-4 divide-y divide-border">

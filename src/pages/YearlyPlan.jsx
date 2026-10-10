@@ -18,7 +18,7 @@ import IncomeDialog from '@/components/income/IncomeDialog';
 import { base44 } from '@/api/base44Client';
 import { listRecords, createRecord, updateRecord, deleteRecord, getHouseholdProfile } from '@/services/dataService';
 import * as calc from '@/services/financialCalculations';
-import { estimateFromTransactions, estimateIncomeCandidates, normalizeName } from '@/services/plaidEstimates';
+import { estimateFromTransactions, estimateIncomeCandidates, incomePatternMonthly, normalizeName } from '@/services/plaidEstimates';
 import { formatCurrency, formatDate } from '@/utils/format';
 
 /** Yearly Plan: live projection from income, bills, budget limits, and property costs. */
@@ -98,6 +98,8 @@ export default function YearlyPlan() {
 
   const { incomes, bills, budgetCategories, properties, mortgages, accounts, transactions, forecasts } = data;
   const est = estimateFromTransactions(transactions);
+  /* Recurring deposit patterns project income automatically when no income sources are saved. */
+  const detectedIncomeMonthly = incomePatternMonthly(transactions);
   const projection = calc.projectYearlyPlan({
     incomes,
     bills,
@@ -106,7 +108,7 @@ export default function YearlyPlan() {
     mortgages,
     accounts,
     months: 12,
-    estimate: { income: est.hasData ? est.monthlyIncome : 0, expenses: est.hasData ? est.monthlyExpenses : 0 },
+    estimate: { income: detectedIncomeMonthly, expenses: est.hasData ? est.monthlyExpenses : 0 },
   });
   const hasInputs =
     incomes.length || bills.length || budgetCategories.length || properties.length
@@ -158,7 +160,7 @@ export default function YearlyPlan() {
         assumptions: [
           `Rolling 12-month plan from ${projection.rows[0].key} through ${projection.rows[11].key}. Monthly income ${projection.monthlyIncome}; monthly expenses ${projection.monthlyExpenses} (bills averaged by frequency, budget limits ${projection.budgetTotal}, property costs ${projection.propertyCosts}); starting cash ${calc.availableCash(accounts)}.`,
           projection.estimateUsed.income || projection.estimateUsed.expenses
-            ? `Linked-account estimates applied: income ${projection.estimateUsed.income}/mo, expenses ${projection.estimateUsed.expenses}/mo, averaged from ${est.months} months of imported transactions.`
+            ? `Linked-account estimates applied: income ${projection.estimateUsed.income}/mo from recurring deposit patterns, expenses ${projection.estimateUsed.expenses}/mo averaged from ${est.months} months of imported transactions.`
             : '',
         ].filter(Boolean).join(' '),
       })
@@ -196,7 +198,7 @@ export default function YearlyPlan() {
             incomes.length
               ? 'Income sources normalized to a month.'
               : projection.estimateUsed.income
-                ? `From ${est.months} months of linked transactions.`
+                ? `From recurring deposits across ${est.months} months of linked transactions.`
                 : 'Income sources normalized to a month.'
           }
         />
