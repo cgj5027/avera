@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,18 +12,33 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { round2 } from '@/services/financialCalculations';
 
-/** Log a contribution toward a goal; the caller applies it to saved_amount. */
+/**
+ * Log a contribution toward a goal; the caller applies it to saved_amount.
+ * A typed amount survives an accidental dismissal (outside click, Escape) for
+ * the same goal; the draft clears on Cancel or a successful save.
+ */
 export default function GoalContributionDialog({ open, onOpenChange, goal, onSave }) {
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const draftRef = useRef(null);
 
   useEffect(() => {
-    if (open) {
-      setAmount('');
-      setError('');
-    }
+    if (!open) return;
+    const draft = draftRef.current;
+    setAmount(draft && draft.goalId === goal?.id ? draft.amount : '');
+    setError('');
   }, [open, goal]);
+
+  /* Keep the newest typed amount as the draft for this goal. */
+  useEffect(() => {
+    if (open) draftRef.current = { goalId: goal?.id, amount };
+  }, [open, goal, amount]);
+
+  const closeAndDiscard = () => {
+    draftRef.current = null;
+    onOpenChange(false);
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -33,7 +48,7 @@ export default function GoalContributionDialog({ open, onOpenChange, goal, onSav
     setSaving(true);
     try {
       await onSave(round2(value));
-      onOpenChange(false);
+      closeAndDiscard();
     } catch {
       setError('Unable to save. Please try again.');
     } finally {
@@ -55,7 +70,7 @@ export default function GoalContributionDialog({ open, onOpenChange, goal, onSav
           </div>
           {error && <p role="alert" className="text-base text-danger-text">{error}</p>}
           <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={closeAndDiscard}>Cancel</Button>
             <Button type="submit" disabled={saving}>Log contribution</Button>
           </DialogFooter>
         </form>

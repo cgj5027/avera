@@ -157,16 +157,15 @@ export default function GoalsOpportunities() {
         goal={goalDialog.goal}
         onSave={saveGoal}
       />
-      {contribution && (
-        <GoalContributionDialog
-          open
-          onOpenChange={(open) => {
-            if (!open) setContribution(null);
-          }}
-          goal={contribution}
-          onSave={applyContribution}
-        />
-      )}
+      {/* Mounted even when closed so a dismissed draft survives reopening. */}
+      <GoalContributionDialog
+        open={Boolean(contribution)}
+        onOpenChange={(open) => {
+          if (!open) setContribution(null);
+        }}
+        goal={contribution}
+        onSave={applyContribution}
+      />
       <ConfirmDeleteDialog
         open={Boolean(deleteGoal)}
         onOpenChange={(open) => {
