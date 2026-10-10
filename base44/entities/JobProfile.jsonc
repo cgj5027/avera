@@ -8,6 +8,16 @@
     "experience": {
       "type": "string"
     },
+    "experience_level": {
+      "type": "string",
+      "enum": [
+        "entry_level",
+        "mid_level",
+        "senior"
+      ],
+      "default": "entry_level",
+      "description": "Self-selected experience level used to filter job search results to listings suited to the candidate."
+    },
     "preferred_roles": {
       "type": "string"
     },

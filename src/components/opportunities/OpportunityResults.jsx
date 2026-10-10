@@ -35,6 +35,13 @@ const SAMPLE_OPPORTUNITIES = [
   },
 ];
 
+/** Maps a server-side match score to a clearly labeled fit tier. */
+function fitTier(score) {
+  if (score >= 4) return { label: 'Strong fit', tone: 'success' };
+  if (score >= 2) return { label: 'Good fit', tone: 'info' };
+  return { label: 'Possible fit', tone: 'neutral' };
+}
+
 function OpportunityItem({ item, profile }) {
   const hours = ['number', 'string'].includes(typeof profile?.weekly_hours) ? profile.weekly_hours : null;
   const monthlyTakeHome = estimatedTakeHomeMonthly(
@@ -50,6 +57,11 @@ function OpportunityItem({ item, profile }) {
         <div>
           <div className="flex flex-wrap items-center gap-2">
             {item.publisher && <SourceChip source={item.publisher} />}
+            {typeof item.match_score === 'number' && (
+              <StatusPill tone={fitTier(item.match_score).tone}>
+                {fitTier(item.match_score).label}
+              </StatusPill>
+            )}
             <p className="font-heading text-base font-semibold text-foreground">{item.title}</p>
           </div>
           <p className="mt-0.5 text-sm text-muted-foreground">
@@ -181,6 +193,7 @@ export default function OpportunityResults({ profile }) {
             ))}
           </ul>
           <p className="mt-3 text-sm text-muted-foreground">
+            Listings are ranked by how well each one fits your profile — preferred roles, available hours, income target, and experience level (results not matching your experience level are excluded).{' '}
             Take-home estimates assume advertised hourly compensation is gross pay before taxes and deductions. A fixed 78% share and your available hours are planning assumptions, not guaranteed pay. Actual take-home depends on taxes, deductions, and hours offered. Postings come from public web search; coverage is not exhaustive and availability is not verified.
           </p>
         </>

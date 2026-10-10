@@ -13,6 +13,12 @@ const WORK_MODES = [
   { value: 'onsite', label: 'On-site' },
 ];
 
+const EXPERIENCE_LEVELS = [
+  { value: 'entry_level', label: 'Entry level (0–2 years)' },
+  { value: 'mid_level', label: 'Mid level (3–9 years)' },
+  { value: 'senior', label: 'Senior (10+ years)' },
+];
+
 /**
  * Income-opportunity profile form (Stage 2). Values persist to the user's own
  * JobProfile record; nothing here contacts an external service.
@@ -34,6 +40,9 @@ export default function OpportunityProfileForm({ profile, saving, onSave }) {
     onSave({
       skills,
       experience: String(f.get('experience') ?? '').trim(),
+      experience_level: EXPERIENCE_LEVELS.some((l) => l.value === f.get('experience_level'))
+        ? String(f.get('experience_level'))
+        : 'entry_level',
       preferred_roles: String(f.get('preferred_roles') ?? '').trim(),
       work_mode: String(f.get('work_mode') ?? 'any'),
       location: String(f.get('location') ?? '').trim(),
@@ -66,6 +75,19 @@ export default function OpportunityProfileForm({ profile, saving, onSave }) {
           placeholder="Brief summary — years, roles, certifications"
           className="mt-1.5 rounded-xl bg-surface"
         />
+      </div>
+      <div>
+        <Label htmlFor="opp-level">Experience level</Label>
+        <Select name="experience_level" defaultValue={profile?.experience_level ?? 'entry_level'}>
+          <SelectTrigger id="opp-level" className="mt-1.5 min-h-11 rounded-xl">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {EXPERIENCE_LEVELS.map((l) => (
+              <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div>
         <Label htmlFor="opp-roles">Preferred jobs or gigs</Label>

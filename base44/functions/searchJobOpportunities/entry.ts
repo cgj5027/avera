@@ -21,6 +21,9 @@ export default async function(req) {
     const profile = {
       skills: str(body.skills),
       experience: str(body.experience),
+      experience_level: ['entry_level', 'mid_level', 'senior'].includes(body.experience_level)
+        ? body.experience_level
+        : 'entry_level',
       preferred_roles: str(body.preferred_roles),
       work_mode: ['any', 'remote', 'hybrid', 'onsite'].includes(body.work_mode) ? body.work_mode : 'any',
       location: str(body.location),

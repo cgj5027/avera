@@ -12,6 +12,62 @@
 
 const MAX_LISTINGS = 6;
 
+/** Experience levels accepted from the profile; used as a search filter. */
+export const EXPERIENCE_LEVELS = ['entry_level', 'mid_level', 'senior'];
+
+/** True when a posting's title clearly targets a different experience level. */
+export function titleMismatchesExperience(title, level) {
+  const t = (title || '').toLowerCase();
+  if (level === 'entry_level' &&
+      /\b(senior|sr\.?|lead|principal|staff|director|head of|manager)\b/.test(t)) return true;
+  if (level === 'senior' &&
+      /\b(entry[- ]level|junior|assistant|no experience)\b/.test(t)) return true;
+  return false;
+}
+
+/** Profile text -> lowercase keyword tokens (3+ chars) for title matching. */
+function keywords(text) {
+  return (typeof text === 'string' ? text.toLowerCase().split(/[,;/]|\s+/) : [])
+    .map((w) => w.replace(/[^a-z0-9+#]/g, ''))
+    .filter((w) => w.length >= 3);
+}
+
+/** First hourly rate in a compensation string ("$20-$30/hr" -> 20). */
+function hourlyRateFrom(text) {
+  const m = typeof text === 'string'
+    ? /(?:\$|usd\s*)?(\d+(?:\.\d+)?)\s*(?:\/|per\s+)?\s*(?:hr|hour)/i.exec(text)
+    : null;
+  const rate = m ? Number(m[1]) : NaN;
+  return Number.isFinite(rate) && rate > 0 ? rate : null;
+}
+
+/**
+ * Server-side relevance score for one normalized listing: preferred roles,
+ * available hours and the monthly income target all raise the score.
+ */
+export function scoreOpportunity(item, profile) {
+  const title = (item.title || '').toLowerCase();
+  const roles = keywords(profile.preferred_roles);
+  const skills = keywords(profile.skills);
+  let score = 0;
+  if (roles.length && roles.some((w) => title.includes(w))) score += 3;
+  if (skills.length && skills.some((w) => title.includes(w))) score += 1;
+  const rate = hourlyRateFrom(item.compensation);
+  const hours = Number(profile.weekly_hours);
+  const target = Number(profile.target_monthly_income);
+  if (rate && Number.isFinite(hours) && hours > 0) {
+    if (Number.isFinite(target) && target > 0) {
+      const monthly = rate * hours * (52 / 12);
+      if (monthly >= target * 0.9) score += 2;
+      else if (monthly >= target * 0.5) score += 1;
+    }
+    const haystack = `${title} ${(item.compensation || '').toLowerCase()}`;
+    if (/part[- ]time/.test(haystack) && hours < 35) score += 1;
+    if (/full[- ]time/.test(haystack) && hours >= 35) score += 1;
+  }
+  return score;
+}
+
 /** Server-side validation of a direct listing URL. */
 export function isPublicHttpsUrl(value) {
   if (typeof value !== 'string') return false;
@@ -74,6 +130,8 @@ async function searchViaWebSearch(base44, profile) {
       'PROFILE:',
       `Skills: ${profile.skills}`,
       `Experience: ${profile.experience || 'not provided'}`,
+      `Experience level: ${profile.experience_level === 'senior' ? 'senior (10+ years)' : profile.experience_level === 'mid_level' ? 'mid-level (3-9 years)' : 'entry-level (0-2 years)'}`,
+      'Experience level is a hard filter: only include listings suited to that level. Never return postings that clearly require more or less experience.',
       `Preferred roles: ${profile.preferred_roles || 'any'}`,
       `Work mode: ${profile.work_mode}`,
       `Location: ${profile.location || 'any (prefer remote or major US metros)'}`,
@@ -129,6 +187,7 @@ export async function searchListings(base44, profile, providerId = 'web_search')
   const provider = PROVIDERS[providerId];
   if (!provider) throw new Error('Unknown opportunity source.');
   const rawList = await provider(base44, profile);
+  const level = EXPERIENCE_LEVELS.includes(profile.experience_level) ? profile.experience_level : 'entry_level';
   const seenUrls = new Set();
   const opportunities = (Array.isArray(rawList) ? rawList : [])
     .map(normalizeListing)
@@ -139,6 +198,11 @@ export async function searchListings(base44, profile, providerId = 'web_search')
       seenUrls.add(item.url);
       return true;
     })
+    // Experience level is a filter, not just a preference: drop clear mismatches.
+    .filter((item) => !titleMismatchesExperience(item.title, level))
+    .map((item) => ({ ...item, match_score: scoreOpportunity(item, profile) }))
+    // Best fit first; Array.prototype.sort is stable, so equal scores keep order.
+    .sort((a, b) => b.match_score - a.match_score)
     .slice(0, MAX_LISTINGS);
-  return { source_provider: providerId, opportunities };
+  return { source_provider: providerId, experience_level: level, opportunities };
 }
