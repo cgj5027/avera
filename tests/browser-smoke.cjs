@@ -6,7 +6,8 @@ const assert = require('node:assert/strict');
   const browser = await chromium.launch({ headless:true, executablePath:process.env.CHROMIUM_PATH || '/usr/bin/chromium', args:['--no-sandbox'] });
   const results=[]; const violations=[];
   for (const theme of ['light','dark']) for(const width of [320,390,768,1440]) {
-    const page=await browser.newPage({viewport:{width,height:900}});
+    const page=await browser.newPage({viewport:{width,height:Number(process.env.AUDIT_HEIGHT)||900}});
+    const feedbackPayloads=[];
     const errors=[];page.on('pageerror',e=>errors.push(e.message));
     await page.addInitScript(({theme})=>{localStorage.setItem('base44_access_token','audit-fixture');localStorage.setItem('theme',theme);sessionStorage.setItem('avera_data_mode:audit-user','manual');},{theme});
     await page.route('https://**/*',route=>route.abort());
@@ -16,6 +17,11 @@ const assert = require('node:assert/strict');
       let body;
       if(path.includes('public-settings'))body={id:'audit',public_settings:{}};
       else if(path.endsWith('/User/me'))body={id:'audit-user',email:'audit@example.test',full_name:'Audit User',role:'user'};
+      else if(path.includes('/functions/submitFeedback')) {
+        feedbackPayloads.push(route.request().postDataJSON());
+        if(feedbackPayloads.length===1) return route.fulfill({status:503,contentType:'application/json',body:'{"error":"fixture network failure"}'});
+        body={saved:true};
+      }
       else if(path.includes('/functions/askAvera')) body={answer:'Browser fixture only: **$100.00** is a test figure, not a live calculation. '+ 'longword'.repeat(30)};
       else if(path.includes('/functions/searchJobOpportunities')) body={opportunities:[{title:'Fixture role',company:'Fixture employer',compensation:'$25/hr',location:'Remote',url:'https://www.indeed.com/viewjob?jk=fixture'}]};
       else if(path.endsWith('/v2/list')) {
@@ -36,7 +42,8 @@ const assert = require('node:assert/strict');
       else body={};
       await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
     });
-    for(const path of ['/','/bills-budget','/yearly-plan','/opportunities','/properties','/settings','/login','/register','/ask-avera']) {
+    const paths=process.env.AUDIT_PATHS?JSON.parse(process.env.AUDIT_PATHS):['/','/bills-budget','/yearly-plan','/opportunities','/properties','/settings','/login','/register','/ask-avera'];
+    for(const path of paths) {
       await page.goto((process.env.AUDIT_BASE_URL || 'http://127.0.0.1:5173')+path,{waitUntil:'domcontentloaded'});
       await page.waitForTimeout(150);
       await page.getByRole('heading').first().waitFor();
@@ -47,6 +54,18 @@ const assert = require('node:assert/strict');
         await page.getByLabel('Ask Avera',{exact:true}).fill('What are my savings?');
         await page.getByRole('button',{name:'Send question'}).click();
         await page.getByText(/Browser fixture only/).waitFor();
+      }
+      if (path === '/settings') {
+        await page.getByRole('radio',{name:'4 of 5'}).check();
+        await page.getByLabel('Your feedback').fill('Fixture testing feedback');
+        await page.getByRole('checkbox',{name:'I agree to send this rating and message to the app team.'}).check();
+        await page.getByRole('button',{name:'Submit feedback'}).click();
+        await page.getByRole('alert').filter({hasText:'Feedback was not confirmed'}).waitFor();
+        assert.equal(await page.getByLabel('Your feedback').inputValue(),'Fixture testing feedback');
+        await page.getByRole('button',{name:'Submit feedback'}).click();
+        await page.getByRole('status').filter({hasText:'Feedback saved'}).waitFor();
+        assert.deepEqual(feedbackPayloads[0],feedbackPayloads[1],'feedback retry preserves idempotency key');
+        assert.deepEqual(Object.keys(feedbackPayloads[0]).sort(),['consent','message','rating','request_id'],'no financial context attached');
       }
       if (path === '/opportunities') {
         await page.getByRole('button',{name:'Find opportunities'}).click();
@@ -66,8 +85,17 @@ const assert = require('node:assert/strict');
         if(path==='/') await page.getByRole('button',{name:/Accounts/}).click();
         if(path==='/bills-budget' && ['Add goal','Log contribution'].includes(button)) await page.getByRole('tab',{name:'Goals',exact:true}).click();
         await page.getByRole('button',{name:button,exact:true}).click();
-        const dialog=page.getByRole('dialog');await dialog.waitFor();
-        await page.waitForTimeout(250);
+        const dialog=page.getByRole('dialog');await dialog.waitFor();await page.waitForTimeout(250);
+        if(button==='Add goal') {
+          const target=await dialog.getByLabel('Target amount').boundingBox();
+          const starting=await dialog.getByLabel('Starting savings').boundingBox();
+          if(width<640)assert(starting.y>target.y+target.height,'goal inputs stack on mobile');
+          else assert(Math.abs(starting.y-target.y)<2,'goal inputs share desktop row');
+          const save=dialog.getByRole('button',{name:'Add goal',exact:true});await save.scrollIntoViewIfNeeded();
+          assert((await save.boundingBox()).height>=44,'goal save touch target');
+          assert((await dialog.getByRole('button',{name:'Cancel',exact:true}).boundingBox()).height>=44,'goal cancel touch target');
+          if(width===320 && theme==='light')await page.screenshot({animations:'disabled',path:'/tmp/avera-final-goal-layout.png'});
+        }
         const rect=await dialog.boundingBox();assert(rect.x>=0&&rect.x+rect.width<=width,`dialog overflow ${width} ${button}`);
         const dialogAxe=await page.evaluate(async()=>{const r=await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}});return r.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}));});
         if(dialogAxe.length)violations.push({theme,width,path,dialog:button,accessibility:dialogAxe});

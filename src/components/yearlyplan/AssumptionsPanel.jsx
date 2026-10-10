@@ -23,6 +23,8 @@ export default function AssumptionsPanel({ projection, incomes, bills, estimate 
           Nothing to project yet — add income sources, bills, budget categories, or properties.
         </p>
       ) : (
+        <>
+        <p className="mb-4 text-base text-muted-foreground">Each category uses the larger of its bills or budget limit. Uncategorized obligations and property costs are included. These are planning amounts, not actual spending or guaranteed take-home savings.</p>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           {incomes.length > 0 && (
             <div>
@@ -103,6 +105,7 @@ export default function AssumptionsPanel({ projection, incomes, bills, estimate 
             </div>
           )}
         </dl>
+        </>
       )}
     </section>
   );

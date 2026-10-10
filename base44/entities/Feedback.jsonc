@@ -1,0 +1,42 @@
+{
+  "name": "Feedback",
+  "type": "object",
+  "properties": {
+    "rating": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "message": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "submission_key": {
+      "type": "string"
+    },
+    "consent": {
+      "type": "boolean",
+      "const": true
+    }
+  },
+  "required": [
+    "rating",
+    "message",
+    "submission_key",
+    "consent"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

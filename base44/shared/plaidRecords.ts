@@ -40,17 +40,24 @@ export async function credentialFor(base44, user, item) {
   if (item.created_by_id !== user.id) throw new Error('Item ownership failed');
   const vault = base44.asServiceRole.entities.PlaidCredential;
   const rows = await allRecords(vault,{owner_id:user.id,item_id:item.item_id});
-  if (rows.length === 1 && rows[0].access_token?.startsWith('access-sandbox-')) return rows[0];
-  // Legacy Item adoption: its access_token sits on the PlaidItem record itself.
-  // Move it into the private credential store so sync works without a reconnect.
+  const valid = row => row?.id && row.owner_id === user.id && row.item_id === item.item_id && typeof row.access_token === 'string' && row.access_token.startsWith('access-sandbox-');
+  if (rows.length === 1 && valid(rows[0])) return rows[0];
+  if (rows.length) throw new Error('Reconnect this Sandbox Item');
+  // Adopt only the same, server-read, owned legacy Item. Replay history from
+  // a fresh cursor; the client-editable public cursor is not authoritative.
   const legacy = await allRecords(base44.asServiceRole.entities.PlaidItem,{id:item.id});
-  const token = legacy[0]?.access_token;
+  const old = legacy[0];
+  if (legacy.length !== 1 || old.created_by_id !== user.id || old.item_id !== item.item_id || (old.demo_profile || '') !== (item.demo_profile || '')) throw new Error('Item ownership failed');
+  const token = old.access_token;
   if (typeof token !== 'string' || !token.startsWith('access-sandbox-')) throw new Error('Reconnect this Sandbox Item');
-  const credential = { owner_id:user.id, item_id:item.item_id, access_token:token,
-    credential_key:`${user.id}:${item.item_id}`, sync_cursor: typeof item.sync_cursor === 'string' ? item.sync_cursor : '',
-    ...(item.demo_profile ? {demo_profile:item.demo_profile} : {}) };
-  await vault.upsert([credential],{key:'credential_key'});
-  return credential;
+  await vault.upsert([{ owner_id:user.id, item_id:item.item_id, access_token:token,
+    credential_key:`${user.id}:${item.item_id}`, sync_cursor:'',
+    ...(old.demo_profile ? {demo_profile:old.demo_profile} : {}) }],{key:'credential_key'});
+  const saved = await allRecords(vault,{owner_id:user.id,item_id:item.item_id});
+  if (saved.length !== 1 || !valid(saved[0])) throw new Error('Credential migration incomplete');
+  // Clear the old secret only after the private persisted record is verified.
+  await base44.asServiceRole.entities.PlaidItem.update(old.id,{access_token:''});
+  return saved[0];
 }
 export async function persistImported(entity, rows, owner, itemId, idField, prune = false) {
   const existing=await allRecords(entity,{created_by_id:owner,plaid_item_id:itemId,source:'Plaid Sandbox'});

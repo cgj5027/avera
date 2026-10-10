@@ -213,7 +213,7 @@ export default function YearlyPlan() {
           label="Projected annual expenses"
           value={formatCurrency(projection.annualExpenses)}
           source={bills.length || budgetCategories.length || properties.length ? 'Estimated' : projection.estimateUsed.expenses ? 'Plaid Sandbox' : 'Estimated'}
-          note="From bills, budget limits, and property costs."
+          note="Categorized bills count within their budget; uncategorized obligations and property costs are included."
           hint={
             bills.length || budgetCategories.length || properties.length
               ? 'Bills are averaged by pay frequency. Budget category limits and property costs (taxes, insurance, HOA, maintenance) are added monthly.'

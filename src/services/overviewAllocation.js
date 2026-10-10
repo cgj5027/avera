@@ -8,7 +8,8 @@ export function monthlyAllocation(projection, records) {
   if (!Array.isArray(billsBreakdown) || !estimateUsed || typeof estimateUsed !== 'object') return null;
   const amounts = [income, expenses, budgetTotal, propertyCosts, ...billsBreakdown.map(b => b?.monthly)];
   if (amounts.some(value => typeof value !== 'number' || !Number.isFinite(value) || value < 0)) return null;
-  if (Math.abs(round2(billsBreakdown.reduce((sum, bill) => sum + bill.monthly, 0) + budgetTotal + propertyCosts) - (estimateUsed.expenses > 0 ? 0 : expenses)) > 0.001) return null;
+
+  if (typeof projection.plannedCategoryTotal !== 'number' || expenses !== (estimateUsed.expenses > 0 ? estimateUsed.expenses : projection.plannedCategoryTotal)) return null;
   const groups = new Map();
   const group = name => {
     const label = typeof name === 'string' && name.trim() ? name.trim() : 'Uncategorized';
@@ -40,6 +41,7 @@ export function monthlyAllocation(projection, records) {
   }
   buckets.sort((a, b) => Number(a.key === 'category:uncategorized') - Number(b.key === 'category:uncategorized') || a.name.localeCompare(b.name));
   const plannedExpenses = round2(buckets.reduce((sum, bucket) => sum + bucket.value, 0));
+  if (plannedExpenses !== expenses) return null;
   const unallocated = round2(Math.max(0, income - plannedExpenses));
   const shortfall = round2(Math.max(0, plannedExpenses - income));
   if (unallocated > 0) buckets.push({ key: 'unallocated', name: 'Unallocated income', value: unallocated });

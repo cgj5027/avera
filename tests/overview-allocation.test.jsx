@@ -55,7 +55,7 @@ describe('monthly allocation of the existing projection', () => {
     const budgetCategories = [{ name: 'Housing', monthly_limit: 1500 }, { name: 'Food', monthly_limit: 300 }];
     const projection = projectYearlyPlan({ incomes: [{ amount: 3000, frequency: 'monthly' }], bills, budgetCategories });
     const result = monthlyAllocation(projection, { bills, budgetCategories });
-    expect(result).toMatchObject({ expenses: 1900, overlap: 1200, unallocated: 1100 });
+    expect(result).toMatchObject({ expenses: 1900, overlap: 0, unallocated: 1100 });
     expect(result.slices.map(s => [s.name, s.value])).toEqual([['Food', 300], ['Housing', 1500], ['Uncategorized', 100], ['Unallocated income', 1100]]);
   });
   it('keeps obligations above the category limit rather than hiding an overrun', () => {

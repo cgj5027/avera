@@ -10,7 +10,7 @@ Run `npm ci`, then `npm test`, `npm run lint`, `npm run typecheck`, and `npm run
 
 Unit tests cover calculations, money/date handling, recurrence, and redirect security. Integration tests exercise the actual React components and persistence service using an in-memory Base44 SDK fixture. They do not prove deployed RLS, email delivery, OAuth, or durable cloud persistence.
 
-One `it.fails` test explicitly reproduces the unresolved concurrent goal-contribution overwrite. Vitest reports it as **expected fail**; it is not successful application behavior.
+The concurrent goal-contribution regression now uses independent contribution rows and is a normal passing assertion, including retries and deletion cleanup. The legacy Plaid acceptance regression is also an ordinary passing test; no expected failures are suppressed.
 
 For browser checks, start `npm run dev -- --host 127.0.0.1` in another terminal and run `npm run test:browser`. Set `AUDIT_BASE_URL` if Vite uses another port. Chromium must be installed; `CHROMIUM_PATH` selects its executable (default `/usr/bin/chromium`). Playwright and axe-core are development dependencies.
 
@@ -27,3 +27,9 @@ The current backend functions are present. `tests/stage3-backend.test.js` execut
 Run `npm run typecheck:backend` in addition to the frontend checks. Start `npm run dev -- --host 127.0.0.1` and run `npm run test:stage3:browser` for the current six-route demo/Sandbox UI audit, with all four widths, both themes, populated tabs, reset confirmation, sync failure and disconnect states. External API calls are fixture-intercepted. The older generic browser runner references a retired combined goals/opportunities route and was not used as current Stage 3 evidence.
 
 For actual programmatic Sandbox testing, securely configure `BASE44_TEST_APP_ID` and `BASE44_TEST_USER_TOKEN`, then run `node tests/live-sandbox.mjs`. The linked test app must have the revised schemas/functions and server-side Sandbox Plaid secrets deployed. Without bindings the script exits 2 without making network calls. It creates and removes only its new demo-tagged Item; it does not print tokens, record contents or IDs. This does not replace manual real Plaid Link or two-user authorization validation.
+
+## Acceptance repair follow-up
+
+`tests/acceptance-fixes.test.jsx` verifies actual contribution/feedback/Ask handlers with SDK fixtures, shared expense totals, explicit income basis and consent/retry UI behavior. `tests/acceptance-legacy-plaid.test.js` checks private vault migration, owner rejection and safe token retirement. The general browser runner exercises feedback failure/retry payloads at all four widths in both themes.
+
+`node tests/live-isolation.mjs` requires the isolated app ID and two disposable authenticated-user tokens (`BASE44_TEST_USER_TOKEN` and `BASE44_TEST_SECOND_USER_TOKEN`). It tests only fresh synthetic goals/contributions and attempts cleanup; missing bindings produce exit 2 with no requests. It does not replace full entity/admin/private-file/real-Link checks. See `docs/ISOLATED_ACCEPTANCE_TESTING.md` before running live harnesses.

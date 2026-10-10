@@ -22,12 +22,12 @@ export default function GoalsSection({ goals, monthlyIncome, monthlyExpenses, bu
           Add goal
         </Button>
       </div>
-      <p className="text-base text-muted-foreground">Each goal is compared against your full monthly savings capacity independently. Funds are not allocated between goals.</p>
+      <p className="text-base text-muted-foreground">Goal cards compare each goal independently. The income gap breakdown below also reserves the monthly requirements of other dated goals.</p>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {goals.length === 0 ? (
           <EmptyState
             heading="No savings goals yet"
-            description="Set a target, what you have saved, and an optional deadline. Avera shows your pace against your real monthly savings capacity — never a guess."
+            description="Set a target, what you have saved, and an optional deadline. Avera shows your pace against your recorded planning capacity."
           />
         ) : (
           goals.map((goal) => (
@@ -59,7 +59,7 @@ export default function GoalsSection({ goals, monthlyIncome, monthlyExpenses, bu
           if (!open) setContribution(null);
         }}
         goal={contribution}
-        onSave={(amount) => onApplyContribution(contribution.id, amount)}
+        onSave={(amount, requestId) => onApplyContribution(contribution.id, amount, requestId)}
       />
     </div>
   );

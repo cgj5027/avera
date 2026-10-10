@@ -71,9 +71,8 @@
     "react-hot-toast": "^2.6.0",
     "react-leaflet": "^4.2.1",
     "react-markdown": "^9.0.1",
-    "react-quill-new": "^3.8.3",
     "react-resizable-panels": "^2.1.7",
-    "react-router-dom": "^6.26.0",
+    "react-router-dom": "^7.18.4",
     "recharts": "^2.15.4",
     "sonner": "^2.0.1",
     "tailwind-merge": "^3.0.2",
@@ -84,6 +83,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",
+    "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^22.13.5",
     "@types/react": "^18.2.66",
@@ -102,7 +102,7 @@
     "nitro": "^3.0.260610-beta",
     "playwright": "^1.64.0",
     "postcss": "^8.5.3",
-    "tailwindcss": "^3.4.17",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.8.2",
     "vite": "^8.2.0",
     "vitest": "^5.0.3"

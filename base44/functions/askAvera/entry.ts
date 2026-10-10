@@ -4,6 +4,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { datasetQuery } from '../../shared/dataset.ts';
 import { assistantInsights, assistantPrompt } from '../../shared/assistantInsights.ts';
+import { planningTotal, planningRound } from '../../shared/planning.ts';
+import { withGoalContributions } from '../../shared/goalSavings.ts';
 import { allRecords } from '../../shared/plaid.ts';
 
 const num = (v) => (typeof v !== 'boolean' && Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -38,10 +40,10 @@ export default async function(req) {
           limit: 50, fields: ['name', 'monthly_limit']
         }),
         allRecords(base44.entities.Goal, scope, {
-          limit: 30, fields: ['name', 'target_amount', 'saved_amount', 'target_date', 'source']
+          limit: 30, fields: ['id', 'demo_profile', 'name', 'target_amount', 'saved_amount', 'target_date', 'source']
         }),
         allRecords(base44.entities.IncomeSource, scope, {
-          limit: 20, fields: ['name', 'type', 'amount', 'frequency', 'active', 'source']
+          limit: 20, fields: ['name', 'type', 'amount', 'frequency', 'income_basis', 'active', 'source']
         }),
         allRecords(base44.entities.Property, scope, {
           limit: 20, fields: ['id', 'nickname', 'property_type', 'estimated_value', 'taxes_monthly', 'insurance_monthly', 'hoa_monthly', 'maintenance_monthly']
@@ -59,13 +61,14 @@ export default async function(req) {
 
     const monthlyFromFrequency = (amount, frequency) => {
       const perYear = { weekly: 52, biweekly: 26, semimonthly: 24, monthly: 12, quarterly: 4, semiannual: 2, annual: 1 }[frequency] ?? 12;
-      return Math.round(((num(amount) * perYear) / 12) * 100) / 100;
+      return planningRound((num(amount) * perYear) / 12);
     };
 
     const accountRows = accounts;
     const billRows = bills;
     const categoryRows = categories;
-    const goalRows = goals;
+    const contributions=await allRecords(base44.entities.GoalContribution,scope);
+    const goalRows = withGoalContributions(goals,contributions);
     const incomeRows = incomes;
     const propertyRows = properties;
     const mortgageRows = mortgages;
@@ -81,14 +84,14 @@ export default async function(req) {
 
     const context = {
       dataset: body.dataset?.mode === 'demo' ? `Demo Mode: ${body.dataset.profile}` : 'Ordinary user records',
-      data_note: 'User-owned stored records and calculated planning totals. Sample data and Plaid Sandbox are simulated, never real bank balances. Planning limits are additional to bills and property costs. Stored balances may be outdated; check balance_as_of. Transactions are realized activity and must not be added to planned expenses.',
+      data_note: 'User-owned stored records and calculated planning totals. Sample data and Plaid Sandbox are simulated, never real bank balances. Planning uses the larger of categorized bills or their category budget; uncategorized bills and property costs remain included. Each source has a user-entered gross/net basis or unknown. No tax conversion is performed. Stored balances may be outdated; check balance_as_of. Transactions are realized activity and must not be added to planned expenses.',
       household: householdRows[0] ?? null,
-      cash: { total: Math.round(totalCash * 100) / 100, definition: 'Checking, savings and cash balances only.', net_account_balances: Math.round(netAccountBalances * 100) / 100, accounts: accountRows },
-      planned_monthly_expenses: Math.round((monthlyBills + budgetLimits + propertyCosts) * 100) / 100,
-      property_monthly_costs: Math.round(propertyCosts * 100) / 100,
-      income: { monthly_total: Math.round(monthlyIncome * 100) / 100, sources: incomeRows.map(i => ({...i, monthly_equivalent: typeof i.amount === 'number' && Number.isFinite(i.amount) && i.amount >= 0 ? monthlyFromFrequency(i.amount, i.frequency) : null})) },
-      recurring_bills: { monthly_total: Math.round(monthlyBills * 100) / 100, bills: billRows.map(b => ({...b, monthly_equivalent: typeof b.amount === 'number' && Number.isFinite(b.amount) && b.amount >= 0 ? monthlyFromFrequency(b.amount, b.frequency) : null})) },
-      budget: { monthly_limits_total: Math.round(budgetLimits * 100) / 100, categories: categoryRows },
+      cash: { total: planningRound(totalCash), definition: 'Checking, savings and cash balances only.', net_account_balances: planningRound(netAccountBalances), accounts: accountRows },
+      planned_monthly_expenses: planningTotal(billRows.map(b=>({category:b.category,amount:monthlyFromFrequency(b.amount,b.frequency)})),categoryRows.map(c=>({name:c.name,limit:num(c.monthly_limit)})),propertyCosts),
+      property_monthly_costs: planningRound(propertyCosts),
+      income: { monthly_total: planningRound(monthlyIncome), sources: incomeRows.map(i => ({...i, monthly_equivalent: typeof i.amount === 'number' && Number.isFinite(i.amount) && i.amount >= 0 ? monthlyFromFrequency(i.amount, i.frequency) : null})) },
+      recurring_bills: { monthly_total: planningRound(monthlyBills), bills: billRows.map(b => ({...b, monthly_equivalent: typeof b.amount === 'number' && Number.isFinite(b.amount) && b.amount >= 0 ? monthlyFromFrequency(b.amount, b.frequency) : null})) },
+      budget: { monthly_limits_total: planningRound(budgetLimits), categories: categoryRows },
       goals: goalRows,
       properties: propertyRows,
       mortgages: mortgageRows,

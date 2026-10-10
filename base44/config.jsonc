@@ -1,7 +1,7 @@
 {
   "name": "base44-app",
   "site": {
-    "installCommand": "npm install",
+    "installCommand": "npm ci",
     "buildCommand": "npm run build",
     "serveCommand": "npm run dev",
     "outputDirectory": "./dist"

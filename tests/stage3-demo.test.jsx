@@ -112,3 +112,13 @@ describe('demo and UI fixtures, distinct from real Plaid Sandbox',()=>{
   });
 
 });
+
+it('demo reset removes only this user demo contributions, retaining ordinary and foreign ledgers',async()=>{
+ rows.GoalContribution=[
+  {id:'own-demo',created_by_id:'a',goal_id:'g',amount:10,contribution_key:'demo',demo_profile:'early_career'},
+  {id:'ordinary',created_by_id:'a',goal_id:'h',amount:20,contribution_key:'ordinary',demo_profile:''},
+  {id:'foreign',created_by_id:'b',goal_id:'k',amount:30,contribution_key:'foreign',demo_profile:'early_career'},
+ ];
+ await removeDemoData('early_career');
+ expect(rows.GoalContribution.map(r=>r.id)).toEqual(['ordinary','foreign']);
+});

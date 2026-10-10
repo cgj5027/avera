@@ -1,0 +1,39 @@
+{
+  "name": "GoalContribution",
+  "type": "object",
+  "properties": {
+    "goal_id": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 1000000000.0
+    },
+    "contribution_key": {
+      "type": "string"
+    },
+    "demo_profile": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "goal_id",
+    "amount",
+    "contribution_key"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

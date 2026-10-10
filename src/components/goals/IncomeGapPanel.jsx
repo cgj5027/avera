@@ -87,7 +87,7 @@ export default function IncomeGapPanel({ goals, monthlyIncome, monthlyExpenses }
               {gap.shortfall > 0 ? (
                 <>
                   <StatusPill tone="danger" icon={CircleDollarSign}>Monthly shortfall</StatusPill>
-                  <span className="tabular-nums text-foreground">{formatCurrency(gap.shortfall)}/mo additional take-home income needed after other goals</span>
+                  <span className="tabular-nums text-foreground">{formatCurrency(gap.shortfall)}/mo additional monthly income needed after other goals (planning estimate)</span>
                 </>
               ) : (
                 <>
@@ -102,12 +102,11 @@ export default function IncomeGapPanel({ goals, monthlyIncome, monthlyExpenses }
       <div className="mt-4 rounded-xl bg-surface-subtle p-4 text-sm text-muted-foreground">
         <p className="font-medium text-foreground">How this is calculated</p>
         <p className="mt-1">
-          Required monthly = (Target − Saved) ÷ months to deadline. Savings capacity = monthly income − bills − budget
-          limits − property costs. Capacity after reservations = capacity − the required monthly of every other goal.
+          Required monthly = (Target − Saved) ÷ months to deadline. Savings capacity = recorded monthly income − category-inclusive planned expenses. Capacity after reservations = capacity − the required monthly of every other goal.
         </p>
         <p className="mt-1">
           Assumptions: every figure comes from your saved records (Manual); pay and bill frequencies are amortized to
-          monthly; a goal without a deadline reserves nothing; enter take-home income to estimate a net gap — saved income has no gross/net classification; property equity is not counted as income.
+          monthly; a goal without a deadline reserves nothing; gross, mixed, or unspecified income does not establish take-home capacity; no tax conversion is performed; property equity is not counted as income.
         </p>
       </div>
     </section>

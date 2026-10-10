@@ -5,7 +5,8 @@ export function assistantInsights({ incomes, bills, categories, accounts, proper
   const warnings = [];
   const active = incomes.filter(i=>i.active!==false);
   if(!active.length) warnings.push('No active income sources are recorded. A zero calculated income is not proof of no earnings.');
-  warnings.push('Income records do not specify gross versus net. Monthly income and any surplus or income gap are planning estimates, not verified take-home capacity.');
+  const basis=active.length && active.every(i=>i.income_basis==='net')?'net':active.length && active.every(i=>i.income_basis==='gross')?'gross':'mixed_or_unknown';
+  warnings.push(basis==='net'?'Income is marked net by the user; it is not bank-verified take-home capacity.':basis==='gross'?'Income is marked gross before taxes/deductions. Never call its surplus or gap take-home capacity.':'Income records have mixed or unspecified gross versus net basis. Monthly income, surplus and gaps are planning estimates, not verified take-home capacity.');
   const invalidIncome=active.some(i=>!money(i.amount) || !['weekly','biweekly','semimonthly','monthly','quarterly','semiannual','annual',undefined].includes(i.frequency));
   const invalidExpenses=bills.some(b=>!money(b.amount) || !['weekly','biweekly','semimonthly','monthly','quarterly','semiannual','annual',undefined].includes(b.frequency)) || categories.some(c=>!money(c.monthly_limit)) || mortgages.some(m=>!money(m.monthly_payment)) || properties.some(p=>['taxes_monthly','insurance_monthly','hoa_monthly','maintenance_monthly'].some(k=>p[k]!==undefined && !money(p[k])));
   if(invalidIncome || invalidExpenses) warnings.push('Some planning amounts or frequencies are missing or invalid. Do not describe totals as complete.');
@@ -15,7 +16,7 @@ export function assistantInsights({ incomes, bills, categories, accounts, proper
   const staleAccounts=accounts.filter(a=>!a.balance_as_of || !Number.isFinite(Date.parse(a.balance_as_of)) || Date.parse(a.balance_as_of)<today.getTime()-7*86400000 || Date.parse(a.balance_as_of)>today.getTime());
   if(staleAccounts.length) warnings.push('Some balances have unknown, future or older-than-seven-day timestamps. Stored balances are not confirmed current cash.');
   const overlap=bills.filter(b=>categories.some(c=>String(c.name||'').trim().toLowerCase()===String(b.category||'').trim().toLowerCase())).map(b=>b.name);
-  if(overlap.length) warnings.push('Bills overlap named budget categories. The existing Yearly Plan adds limits to bills; Overview uses category-inclusive planning. Explain this difference before treating the Yearly Plan surplus as definitive.');
+  if(overlap.length) warnings.push('Categorized bills count within their category budget, with obligations above the limit counted in full. Budget limits are plans, not actual spending.');
   const known=active.length>0 && !invalidIncome && !invalidExpenses && (bills.length>0 || categories.length>0 || properties.length>0);
   const surplus=known?round(monthlyIncome-monthlyExpenses):null;
   const goalPlans=goals.map(goal=>{
@@ -36,7 +37,7 @@ export function assistantInsights({ incomes, bills, categories, accounts, proper
       goal.additional_monthly_income_gap=round(Math.max(0,goal.required_monthly-available));
     }
   }
-  return {as_of:today.toISOString().slice(0,10),warnings,planning_surplus:surplus,planning_surplus_definition:'Stored income minus additive Yearly Plan bills, category limits and property costs. Gross/net basis unknown. Excludes realized transactions and is not savings already held.',goals:goalPlans,total_goal_required_monthly:totalRequired,all_goals_monthly_gap:surplus!==null && totalRequired!==null?round(Math.max(0,totalRequired-surplus)):null,goal_method:'Remaining target divided by at least one rounded-up 30.44-day month. Individual gaps reserve requirements for other dated goals. Undated goals reserve no amount. Reached deadlines require review, not an on-track claim.',budget_bill_overlap:overlap,stale_or_undated_accounts:staleAccounts.map(a=>a.name)};
+  return {income_basis:basis,as_of:today.toISOString().slice(0,10),warnings,planning_surplus:surplus,planning_surplus_definition:'Stored income minus category-inclusive bills/budget limits and uncategorized property costs. Use the income_basis field; no tax conversion is performed. Excludes realized transactions and is not savings already held.',goals:goalPlans,total_goal_required_monthly:totalRequired,all_goals_monthly_gap:surplus!==null && totalRequired!==null?round(Math.max(0,totalRequired-surplus)):null,goal_method:'Remaining target divided by at least one rounded-up 30.44-day month. Individual gaps reserve requirements for other dated goals. Undated goals reserve no amount. Reached deadlines require review, not an on-track claim.',budget_bill_overlap:overlap,stale_or_undated_accounts:staleAccounts.map(a=>a.name)};
 }
 export function assistantPrompt(context, question) {
   return [
@@ -50,7 +51,7 @@ export function assistantPrompt(context, question) {
     'Use insights.goals for monthly goal requirements and income gaps; do not do fresh deadline arithmetic or count the same capacity toward every goal. For overdue goals explain the deadline needs review. If several goals could match the question, ask which goal or explain the combined requirement.',
     'Use insights.planning_surplus only as an estimate, never as existing savings, a current account balance, or assured affordability. Income has unknown gross/net basis; do not estimate taxes or assert take-home pay. Negative surplus is a planning deficit, not a negative bank balance.',
     'Pay attention to insights.warnings. Missing records are unknown rather than proof of zero. Explain the relevant limitation briefly and ask one focused question if needed. Do not bury a useful partial answer behind a general disclaimer.',
-    'Budget limits are planned amounts, not actual spending. Do not add realized transactions to planned expenses. When budget_bill_overlap is present, explain that the additive Yearly Plan differs from the category-inclusive Overview; do not confidently recommend spending the ambiguous surplus.',
+    'Budget limits are planned amounts, not actual spending. Do not add realized transactions to planned expenses. Categorized bills count within their budget, not in addition to it. Explain the shared category-inclusive planning policy and do not call projected surplus realized savings.',
     'Recent transactions are a limited evidence sample. Do not rank actual spending, infer a monthly trend or promise savings from that sample. A listed account balance is stored and may be outdated; cite its timestamp and never treat investments or credit limits as liquid cash.',
     'General educational suggestions are allowed if clearly framed as options, not user-specific facts. Do not invent job listings, provider quotes, savings percentages or interest rates. Refer opportunity questions to the Opportunities page and its verified search results.',
     'You are read-only. You may suggest that the user review or edit records in Bills & Budget, Yearly Plan, Properties or Goals. Never claim to have saved changes, moved money, made payments or contacted a provider. Do not request credentials, access tokens or account numbers.',

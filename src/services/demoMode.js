@@ -20,6 +20,7 @@ const DEMO_ENTITIES = [
   'bill',
   'billSuggestionDismissal',
   'budgetCategory',
+  'goalContribution',
   'goal',
   'property',
   'mortgageRecord',

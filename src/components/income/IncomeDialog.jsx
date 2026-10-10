@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { INCOME_TYPES, FREQUENCIES, round2 } from '@/services/financialCalculations';
 
-const EMPTY = { name: '', type: 'salary', amount: '', frequency: 'monthly' };
+const EMPTY = { name: '', type: 'salary', amount: '', frequency: 'monthly', income_basis:'unknown' };
 
 /** Add-or-edit dialog for a household income source. */
 export default function IncomeDialog({ open, onOpenChange, income, defaultFrequency, onSave }) {
@@ -30,6 +30,7 @@ export default function IncomeDialog({ open, onOpenChange, income, defaultFreque
             type: income.type ?? 'salary',
             amount: String(income.amount ?? ''),
             frequency: income.frequency ?? 'monthly',
+            income_basis:income.income_basis ?? 'unknown',
           }
         : { ...EMPTY, frequency: defaultFrequency ?? 'monthly' }
     );
@@ -45,7 +46,7 @@ export default function IncomeDialog({ open, onOpenChange, income, defaultFreque
     if (!Number.isFinite(amount) || amount <= 0) return setError('Enter an amount greater than zero.');
     setSaving(true);
     try {
-      await onSave({ name, type: form.type, amount: round2(amount), frequency: form.frequency, active: true, source: 'Manual' });
+      await onSave({ name, type: form.type, amount: round2(amount), frequency: form.frequency, income_basis:form.income_basis, active: true, source: 'Manual' });
       onOpenChange(false);
     } catch {
       setError('Unable to save. Please try again.');
@@ -93,6 +94,18 @@ export default function IncomeDialog({ open, onOpenChange, income, defaultFreque
           <div className="space-y-1.5">
             <Label htmlFor="income-amount">Amount per paycheck</Label>
             <Input id="income-amount" type="number" step="0.01" min="0" inputMode="decimal" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} placeholder="0.00" className="min-h-11 rounded-xl tabular-nums" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="income-basis">Income basis</Label>
+            <Select value={form.income_basis} onValueChange={v=>setForm(f=>({...f,income_basis:v}))}>
+              <SelectTrigger id="income-basis" className="min-h-11 rounded-xl"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unknown">Not specified</SelectItem>
+                <SelectItem value="gross">Gross — before taxes and deductions</SelectItem>
+                <SelectItem value="net">Net — take-home amount</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">Avera does not estimate taxes or convert gross income into take-home income.</p>
           </div>
           {error && <p role="alert" className="text-base text-danger-text">{error}</p>}
           <DialogFooter className="gap-2">

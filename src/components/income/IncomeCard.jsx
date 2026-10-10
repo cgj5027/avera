@@ -12,7 +12,7 @@ export default function IncomeCard({ income, onEdit, onDelete, busy }) {
         <div>
           <h3 className="font-heading text-base font-semibold text-foreground">{income.name}</h3>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            {INCOME_TYPES[income.type] ?? 'Other'} · {FREQUENCIES[income.frequency]?.label ?? 'Monthly'}
+            {INCOME_TYPES[income.type] ?? 'Other'} · {FREQUENCIES[income.frequency]?.label ?? 'Monthly'} · {income.income_basis==='net'?'Net (take-home)':income.income_basis==='gross'?'Gross (before deductions)':'Basis not specified'}
           </p>
         </div>
         <div className="text-right">

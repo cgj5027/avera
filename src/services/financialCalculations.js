@@ -1,3 +1,4 @@
+import { planningTotal } from '../../base44/shared/planning';
 /**
  * Financial calculation services — business-logic layer.
  * Pure functions only: pass data in, return data out, so they are
@@ -93,11 +94,9 @@ export function propertyMonthlyCostsTotal(properties = [], mortgages = []) {
   );
 }
 
-/** Total recurring monthly obligations: bills + budget category limits + property costs. */
+/** Category-inclusive plan: max(category obligations, limit), plus uncategorized costs. */
 export function totalMonthlyExpenses({ bills = [], budgetCategories = [], properties = [], mortgages = [] } = {}) {
-  return round2(
-    monthlyBillsTotal(bills) + budgetLimitsTotal(budgetCategories) + propertyMonthlyCostsTotal(properties, mortgages)
-  );
+  return planningTotal(bills.map(b=>({category:b.category,amount:monthlyFromFrequency(b.amount,b.frequency)})),budgetCategories.map(c=>({name:c.name,limit:num(c.monthly_limit)})),propertyMonthlyCostsTotal(properties,mortgages));
 }
 
 export function availableCash(accounts = []) {
@@ -333,9 +332,7 @@ export function projectYearlyPlan({
   const propertyCosts = propertyMonthlyCostsTotal(properties, mortgages);
   const billsBreakdown = bills.map((b) => ({ name: b.name, monthly: monthlyFromFrequency(b.amount, b.frequency) }));
   const manualMonthlyIncome = monthlyIncomeTotal(incomes);
-  const manualMonthlyExpenses = round2(
-    billsBreakdown.reduce((s, b) => s + b.monthly, 0) + budgetTotal + propertyCosts
-  );
+  const manualMonthlyExpenses = totalMonthlyExpenses({bills,budgetCategories,properties,mortgages});
   // Linked-account estimates fill only the gaps manual records leave.
   const estimateIncome = incomes.length === 0 ? round2(num(estimate.income)) : 0;
   const estimateExpenses = manualMonthlyExpenses === 0 ? round2(num(estimate.expenses)) : 0;
@@ -346,7 +343,7 @@ export function projectYearlyPlan({
     : round2(incomes.filter(i => i.active !== false).reduce((s, i) => s + num(i.amount) * (FREQUENCIES[i.frequency] ?? FREQUENCIES.monthly).perYear, 0));
   const annualExpenses = estimateExpenses
     ? round2(estimateExpenses * 12)
-    : round2(bills.reduce((s, b) => s + num(b.amount) * (FREQUENCIES[b.frequency] ?? FREQUENCIES.monthly).perYear, 0) + (budgetTotal + propertyCosts) * 12);
+    : planningTotal(bills.map(b=>({category:b.category,amount:num(b.amount)*(FREQUENCIES[b.frequency] ?? FREQUENCIES.monthly).perYear})),budgetCategories.map(c=>({name:c.name,limit:num(c.monthly_limit)*12})),propertyCosts*12);
   const annualSavings = round2(annualIncome - annualExpenses);
   const start = new Date(startingFrom.getFullYear(), startingFrom.getMonth(), 1);
   const rows = [];
@@ -368,6 +365,7 @@ export function projectYearlyPlan({
   return {
     monthlyIncome,
     monthlyExpenses,
+    plannedCategoryTotal:manualMonthlyExpenses,
     budgetTotal,
     propertyCosts,
     billsBreakdown,

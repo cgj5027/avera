@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { round2 } from '@/services/financialCalculations';
 
 /**
- * Log a contribution toward a goal; the caller applies it to saved_amount.
+ * Log a contribution toward a goal; saved as an independent, retry-safe contribution.
  * A typed amount survives an accidental dismissal (outside click, Escape) for
  * the same goal; the draft clears on Cancel or a successful save.
  */
@@ -22,6 +22,7 @@ export default function GoalContributionDialog({ open, onOpenChange, goal, onSav
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const draftRef = useRef(null);
+  const requestRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
@@ -37,6 +38,7 @@ export default function GoalContributionDialog({ open, onOpenChange, goal, onSav
 
   const closeAndDiscard = () => {
     draftRef.current = null;
+    requestRef.current = null;
     onOpenChange(false);
   };
 
@@ -47,7 +49,9 @@ export default function GoalContributionDialog({ open, onOpenChange, goal, onSav
     if (!Number.isFinite(value) || value <= 0) return setError('Enter a contribution greater than zero.');
     setSaving(true);
     try {
-      await onSave(round2(value));
+      const signature = `${goal?.id}:${round2(value)}`;
+      if (requestRef.current?.signature !== signature) requestRef.current = {signature,id:crypto.randomUUID()};
+      await onSave(round2(value), requestRef.current.id);
       closeAndDiscard();
     } catch {
       setError('Unable to save. Please try again.');
@@ -70,8 +74,8 @@ export default function GoalContributionDialog({ open, onOpenChange, goal, onSav
           </div>
           {error && <p role="alert" className="text-base text-danger-text">{error}</p>}
           <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={closeAndDiscard}>Cancel</Button>
-            <Button type="submit" disabled={saving}>Log contribution</Button>
+            <Button className="min-h-11 rounded-xl" type="button" variant="outline" onClick={closeAndDiscard}>Cancel</Button>
+            <Button className="min-h-11 rounded-xl" type="submit" disabled={saving}>Log contribution</Button>
           </DialogFooter>
         </form>
       </DialogContent>

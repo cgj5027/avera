@@ -31,7 +31,7 @@ function entity(name,service=false) {
 }
 beforeEach(()=>{
   user={id:'a'}; rows={};pages=[page([txn('t')])];
-  const entities={};for(const name of ['PlaidItem','Account','Transaction','Bill','BudgetCategory','Goal','IncomeSource','Property','MortgageRecord','HouseholdProfile','JobProfile'])entities[name]=entity(name);
+  const entities={};for(const name of ['PlaidItem','Account','Transaction','Bill','BudgetCategory','Goal','GoalContribution','IncomeSource','Property','MortgageRecord','HouseholdProfile','JobProfile'])entities[name]=entity(name);
   fixture.client={auth:{me:vi.fn(async()=>user)},entities,asServiceRole:{entities:{PlaidCredential:entity('PlaidCredential',true)},integrations:{Core:{InvokeLLM:vi.fn(async()=>({answer:'Fixture response'}))}}}};
   rows.PlaidItem=[{id:'item-record',item_id:'item',created_by_id:'a',institution_name:'Fixture bank',sync_cursor:'start',status:'active'}];
   rows.PlaidCredential=[{id:'vault',owner_id:'a',item_id:'item',access_token:'access-sandbox-fixture',credential_key:'a:item',sync_cursor:'start'}];
@@ -68,6 +68,15 @@ describe('actual backend handlers with SDK/Plaid fixtures; NOT real Sandbox requ
     expect(response.status).toBe(200);const body=await response.json();expect(body.institution_name).toBe('Actual fixture institution');
     expect(body).not.toHaveProperty('access_token');expect(rows.PlaidItem.at(-1)).not.toHaveProperty('access_token');
     expect(rows.PlaidCredential.at(-1).owner_id).toBe('a');expect(rows.Account.at(-1).balance).toBe(90);
+  });
+  it.each([sync,disconnect])('first legacy sync/disconnect completes using the persisted private credential',async handler=>{
+    fixture.client.asServiceRole.entities.PlaidItem=entity('PlaidItem',true);
+    rows.PlaidCredential=[];rows.PlaidItem[0].access_token='access-sandbox-legacy-fixture';
+    expect((await handler(req({item_id:'item'}))).status).toBe(200);
+    if(handler===sync) {
+      expect(rows.PlaidCredential[0]).toMatchObject({owner_id:'a',item_id:'item',sync_cursor:'end'});
+      expect(rows.PlaidCredential[0].id).toBeTruthy();expect(rows.PlaidItem[0].access_token).toBe('');
+    } else {expect(rows.PlaidCredential).toHaveLength(0);expect(rows.PlaidItem).toHaveLength(0);}
   });
   it('maps credit liabilities to negative balances, and rejects unknown balances',async()=>{
     fetchMock.mockImplementationOnce(async()=>Response.json({accounts:[{...account,type:'credit',balances:{current:50,available:null}}]}));

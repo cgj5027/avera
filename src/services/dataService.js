@@ -4,6 +4,7 @@
  * scoped to the signed-in user by row-level security (every financial entity
  * anchors on created_by_id). Source labels travel with every record.
  */
+import { withGoalContributions } from '../../base44/shared/goalSavings';
 import { base44 } from '@/api/base44Client';
 import { setModeOwner, getDataMode, getDemoWorkspace } from '@/lib/mode';
 
@@ -18,6 +19,7 @@ export const DATA_ENTITIES = {
   billSuggestionDismissal: 'BillSuggestionDismissal',
   budgetCategory: 'BudgetCategory',
   goal: 'Goal',
+  goalContribution: 'GoalContribution',
   property: 'Property',
   mortgageRecord: 'MortgageRecord',
   forecastRecord: 'ForecastRecord',
@@ -72,7 +74,7 @@ export async function listRecords(key, query = {}, { allDatasets = false } = {})
   do {
     const page = await ent(key).filter(scoped, { limit: 100, ...(cursor ? { cursor } : {}) });
     items.push(...page.items);
-    if (!page.has_more) return items;
+    if (!page.has_more) return key === 'goal' ? withGoalContributions(items, await listRecords('goalContribution', {}, {allDatasets})) : items;
     if (!page.next_cursor || cursors.has(page.next_cursor)) throw new Error('Invalid pagination response');
     cursor = page.next_cursor;
     cursors.add(cursor);
@@ -122,6 +124,7 @@ export async function updateRecord(key, id, data) {
 }
 export async function deleteRecord(key, id) {
   await owned(key, id);
+  if (key === 'goal') await deleteRecordsWhere('goalContribution', {goal_id:id});
   return ent(key).delete(id);
 }
 
@@ -166,4 +169,12 @@ export async function getJobProfile() {
     return Number.isFinite(date) ? date : 0;
   };
   return profiles.sort((a,b) => timestamp(b)-timestamp(a))[0] ?? null;
+}
+
+/** Each request writes an independent idempotent row, never a stale total. */
+export async function logGoalContribution(goalId, amount, requestId) {
+  await owned('goal',goalId);
+  const dataset=getDataMode()==='demo'?{mode:'demo',profile:getDemoWorkspace()?.profile}:{mode:'ordinary'};
+  const response=await base44.functions.invoke('logGoalContribution',{goal_id:goalId,amount,request_id:requestId,dataset});
+  if (response.data?.saved!==true) throw new Error('Contribution was not saved.');
 }

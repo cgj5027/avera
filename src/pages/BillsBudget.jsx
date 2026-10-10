@@ -24,7 +24,7 @@ import LinkedTransactionsDialog from '@/components/budget/LinkedTransactionsDial
 import CategoryDialog from '@/components/budget/CategoryDialog';
 import LogSpendingDialog from '@/components/budget/LogSpendingDialog';
 import GoalsSection from '@/components/goals/GoalsSection';
-import { listRecords, createRecord, updateRecord, deleteRecord } from '@/services/dataService';
+import { listRecords, createRecord, updateRecord, deleteRecord, logGoalContribution } from '@/services/dataService';
 import * as calc from '@/services/financialCalculations';
 import { importedTransactions, estimateBillCandidates, normalizeName } from '@/services/plaidEstimates';
 import { formatCurrency, monthLabel, todayISO } from '@/utils/format';
@@ -166,13 +166,8 @@ export default function BillsBudget() {
       goal ? 'Goal updated' : 'Goal added'
     );
 
-  const applyContribution = (goalId, amount) => {
-    const goal = goals.find((g) => g.id === goalId);
-    return run(
-      () => updateRecord('goal', goalId, { saved_amount: calc.round2((Number(goal?.saved_amount) || 0) + amount) }),
-      'Contribution logged'
-    );
-  };
+  const applyContribution = (goalId, amount, requestId) =>
+    run(() => logGoalContribution(goalId, amount, requestId), 'Contribution logged');
 
   const markNotRecurring = (transaction) =>
     run(

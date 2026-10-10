@@ -4,14 +4,9 @@
 Tagline: **Your finances. Your rules. Your control.**
 Visual specification: *Avera Alternative — Design System v2.0* (`avera_design_system.md`, authoritative).
 
-**Status: Stages 0–2 shipped.** The design system, navigation shell, and onboarding
-(Stage 0) are live, manual money entry with real calculations (Stage 1) is live —
-including auth, accounts, income, bills, budgets, transactions, and an audit trail
-(`docs/STAGE1_AUDIT.md`) — and Stage 2 work (goal/property dialog draft persistence,
-manual-entry source-label fixes) is merged. Ask Avera and opportunity search have
-frontend function-call interfaces, but their backend functions are absent from
-this checkout. Stage 2 AI grounding and employment integration are not verified;
-see `docs/STAGE2_AUDIT.md`. Plaid connection is still ahead.
+**Current status:** manual financial workflows, three private demo scenarios, Plaid Sandbox backend functions, grounded assistant context, and web-assisted opportunity discovery are implemented. Hosted acceptance is still blocked pending real Link, two-user platform authorization, persistence and actual AI-output verification. The follow-up fixes add retry-safe goal contributions, consistent category-inclusive planning, explicit income basis and private feedback.
+
+See [acceptance repairs](docs/ACCEPTANCE_FIXES.md) and the [isolated testing runbook](docs/ISOLATED_ACCEPTANCE_TESTING.md). The original [final review](docs/FINAL_ACCEPTANCE_REVIEW.md) records the pre-repair 65/100 assessment. Some stage/roadmap descriptions below are historical; they are not a current integration certificate.
 
 ---
 

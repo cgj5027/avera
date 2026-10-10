@@ -5,6 +5,7 @@ import SettingSection from '@/components/settings/SettingSection';
 import ThemeSelect from '@/components/settings/ThemeSelect';
 import HouseholdForm from '@/components/settings/HouseholdForm';
 import BankConnections from '@/components/settings/BankConnections';
+import FeedbackForm from '@/components/settings/FeedbackForm';
 import ModeIndicator from '@/components/layout/ModeIndicator';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/AuthContext';
@@ -52,7 +53,7 @@ export default function Settings() {
         <SettingSection title="Demo controls" description="Data mode for this session.">
           <ModeIndicator variant="inline" />
           <p className="mt-3 text-base text-muted-foreground">
-            Your current mode is set on this device only — nothing is saved to your account yet.{' '}
+            The selected mode is remembered on this device. Your financial records and private demo workspaces are saved to your account.{' '}
             <Link to="/welcome" className="font-medium text-primary underline underline-offset-2">
               View mode options
             </Link>
@@ -62,14 +63,17 @@ export default function Settings() {
         <SettingSection title="Privacy" description="You stay in control of your information.">
           <p className="flex items-start gap-2 text-base text-muted-foreground">
             <Info className="mt-0.5 h-4 w-4 shrink-0 text-info" aria-hidden="true" />
-            Avera never executes payments or authorizes transfers. Detailed privacy controls arrive with data services.
+            Avera never executes payments or authorizes transfers. Demo reset removes only your demo workspace; it does not delete your account or ordinary records. Contact the app team for account deletion and retention details.
           </p>
         </SettingSection>
 
         <SettingSection title="Notifications" description="Reminders about upcoming bills and goals.">
           <p className="text-base text-muted-foreground">
-            Notification preferences arrive in a later stage, alongside bill and goal data.
+            Bill reminders are shown in the app. Email and push notification delivery are not available.
           </p>
+        </SettingSection>
+        <SettingSection title="App feedback" description="Share your testing experience.">
+          <FeedbackForm />
         </SettingSection>
       </div>
     </div>

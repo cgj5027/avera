@@ -6,11 +6,16 @@ const input={incomes:[{amount:3000,frequency:'monthly'}],bills:[{name:'Rent',amo
 const insight=changes=>assistantInsights({...input,...changes},today);
 describe('grounded assistant planning context',()=>{
  it('distinguishes planning surplus from actual savings and unknown net income',()=>{const result=insight({});expect(result.planning_surplus).toBe(2000);expect(result.warnings.join(' ')).toContain('gross versus net');expect(result.warnings.join(' ')).toContain('Available cash is unknown');});
+ it('distinguishes user-entered net, gross and mixed income without tax conversion',()=>{
+  expect(insight({incomes:[{amount:3000,income_basis:'net'}]}).income_basis).toBe('net');
+  const gross=insight({incomes:[{amount:3000,income_basis:'gross'}]});expect(gross.income_basis).toBe('gross');expect(gross.warnings.join(' ')).toContain('Never call');
+  expect(insight({incomes:[{amount:100,income_basis:'net'},{amount:100,income_basis:'gross'}]}).income_basis).toBe('mixed_or_unknown');
+ });
  it('does not interpret missing income and expenses as verified zero',()=>{expect(insight({incomes:[]}).planning_surplus).toBeNull();expect(insight({bills:[]}).planning_surplus).toBeNull();});
  it.each([null,NaN,-1,'100',true])('treats invalid %s income as unknown',amount=>expect(insight({incomes:[{amount}]}).planning_surplus).toBeNull());
  it('rejects unknown planning frequencies',()=>{expect(insight({bills:[{amount:100,frequency:'daily'}]}).planning_surplus).toBeNull();});
  it('flags stale and undated balances rather than calling them current',()=>{const result=insight({accounts:[{name:'Fresh',balance:500,balance_as_of:'2026-10-10T00:00:00Z'},{name:'Old',balance:100,balance_as_of:'2026-01-01'},{name:'Unknown',balance:50}]});expect(result.stale_or_undated_accounts).toEqual(['Old','Unknown']);});
- it('flags category/bill overlap without rewriting financial totals',()=>{const result=insight({bills:[{name:'Electricity',category:' utilities ',amount:100}],categories:[{name:'Utilities',monthly_limit:200}]});expect(result.budget_bill_overlap).toEqual(['Electricity']);expect(result.planning_surplus).toBe(2000);expect(result.warnings.join(' ')).toContain('Overview');});
+ it('flags category/bill overlap without rewriting financial totals',()=>{const result=insight({bills:[{name:'Electricity',category:' utilities ',amount:100}],categories:[{name:'Utilities',monthly_limit:200}]});expect(result.budget_bill_overlap).toEqual(['Electricity']);expect(result.planning_surplus).toBe(2000);expect(result.warnings.join(' ')).toContain('count within');});
  it('uses the same monthly goal and allocated income gap math as the app',()=>{
   const goals=[{id:'one',name:'Emergency fund',target_amount:5000,saved_amount:500,target_date:'2027-01-10'},{id:'two',name:'Car',target_amount:2000,saved_amount:0,target_date:'2026-12-10'}];
   for(const capacity of [2000,100,-200]) {

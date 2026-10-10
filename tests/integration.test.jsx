@@ -4,8 +4,10 @@ import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { readFileSync, readdirSync } from 'node:fs';
-const sdk = vi.hoisted(() => ({ auth: { me: vi.fn(), logout: vi.fn(), loginViaEmailPassword: vi.fn(), register: vi.fn(), verifyOtp: vi.fn(), setToken: vi.fn(), resendOtp: vi.fn(), loginWithProvider: vi.fn() }, app: { getPublicSettings: vi.fn() }, entities: {} }));
+const sdk = vi.hoisted(() => ({ auth: { me: vi.fn(), logout: vi.fn(), loginViaEmailPassword: vi.fn(), register: vi.fn(), verifyOtp: vi.fn(), setToken: vi.fn(), resendOtp: vi.fn(), loginWithProvider: vi.fn() }, app: { getPublicSettings: vi.fn() }, entities: {}, functions:{invoke:vi.fn()} }));
 vi.mock('@/api/base44Client', () => ({ base44: sdk }));
+vi.mock('npm:@base44/sdk@0.8.52',()=>({createClientFromRequest:()=>sdk}));
+import contributionHandler from '../base44/functions/logGoalContribution/entry.ts';
 vi.mock('@/lib/app-params', () => ({ appParams: { token: 'test-token' } }));
 import { appParams } from '@/lib/app-params';
 import { AuthProvider, useAuth } from '../src/lib/AuthContext';
@@ -40,7 +42,9 @@ beforeEach(() => {
       update: vi.fn(async (id,payload) => {const x=rows[name].find(x=>x.id===id);Object.assign(x,payload);return x;}),
       delete: vi.fn(async id => {rows[name]=rows[name].filter(x=>x.id!==id);}),
     };
+    sdk.entities[name].upsert=vi.fn(async(values,{key})=>{for(const payload of values){const old=rows[name].find(r=>r[key]===payload[key]);if(old)await sdk.entities[name].update(old.id,payload);else await sdk.entities[name].create(payload);}});
   }
+  sdk.functions.invoke.mockImplementation(async(name,body)=>{if(name!=='logGoalContribution')throw new Error('Unexpected function');const response=await contributionHandler(new Request('https://fixture.test',{method:'POST',body:JSON.stringify(body)}));if(response.status!==200)throw new Error('Request failed');return {data:await response.json()};});
 });
 describe('owner-scoped persistence with mocked SDK (not deployed RLS)', () => {
   it('isolates two users, strips forged ownership, persists CRUD', async () => {
@@ -174,7 +178,8 @@ describe('primary manual workflows with SDK fixtures', () => {
     fireEvent.click(screen.getByRole('button',{name:'Log contribution'}));
     fireEvent.change(screen.getByLabelText('Contribution amount'),{target:{value:'100'}});
     const logs=screen.getAllByRole('button',{name:'Log contribution'});fireEvent.click(logs[logs.length-1]);
-    await waitFor(()=>expect(rows.Goal[0].saved_amount).toBe(100));
+    await waitFor(()=>expect(rows.GoalContribution).toHaveLength(1));
+    expect((await data.listRecords('goal'))[0].saved_amount).toBe(100);
     await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
     fireEvent.click(screen.getByRole('button',{name:'Edit goal'}));
     fireEvent.change(screen.getByLabelText('Target amount'),{target:{value:'1500'}});
@@ -199,16 +204,20 @@ describe('primary manual workflows with SDK fixtures', () => {
   });
 });
 
-it.fails('concurrent goal contributions retain both persisted updates (known defect)', async () => {
-  const goal = await data.createRecord('goal', {name:'Savings',target_amount:1000,saved_amount:100});
-  // Two sessions read before either writes, as applyContribution currently does.
-  const first = { ...(await data.listRecords('goal'))[0] };
-  const second = { ...(await data.listRecords('goal'))[0] };
+it('concurrent goal contributions and retries retain both independent updates', async () => {
+  const goal=await data.createRecord('goal',{name:'Savings',target_amount:1000,saved_amount:100});
   await Promise.all([
-    data.updateRecord('goal', goal.id, {saved_amount:first.saved_amount+10}),
-    data.updateRecord('goal', goal.id, {saved_amount:second.saved_amount+20}),
+    data.logGoalContribution(goal.id,10,'request-first-0001'),
+    data.logGoalContribution(goal.id,20,'request-second-0002'),
   ]);
+  await data.logGoalContribution(goal.id,10,'request-first-0001');
   expect((await data.listRecords('goal'))[0].saved_amount).toBe(130);
+  expect(rows.GoalContribution).toHaveLength(2);
+  expect(rows.Goal[0].saved_amount).toBe(100);
+  await data.updateRecord('goal',goal.id,{name:'Updated',target_amount:1500,saved_amount:100});
+  expect((await data.listRecords('goal'))[0].saved_amount).toBe(130);
+  await data.deleteRecord('goal',goal.id);
+  expect(rows.GoalContribution).toHaveLength(0);
 });
 
 it('edits and deletes logged spending through the budget UI', async () => {
