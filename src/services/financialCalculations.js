@@ -289,16 +289,26 @@ export function projectYearlyPlan({
   accounts = [],
   months = 12,
   startingFrom = new Date(),
+  estimate = { income: 0, expenses: 0 },
 } = {}) {
-  const monthlyIncome = monthlyIncomeTotal(incomes);
   const budgetTotal = budgetLimitsTotal(budgetCategories);
   const propertyCosts = propertyMonthlyCostsTotal(properties, mortgages);
   const billsBreakdown = bills.map((b) => ({ name: b.name, monthly: monthlyFromFrequency(b.amount, b.frequency) }));
-  const monthlyExpenses = round2(
+  const manualMonthlyIncome = monthlyIncomeTotal(incomes);
+  const manualMonthlyExpenses = round2(
     billsBreakdown.reduce((s, b) => s + b.monthly, 0) + budgetTotal + propertyCosts
   );
-  const annualIncome = round2(incomes.filter(i => i.active !== false).reduce((s, i) => s + num(i.amount) * (FREQUENCIES[i.frequency] ?? FREQUENCIES.monthly).perYear, 0));
-  const annualExpenses = round2(bills.reduce((s, b) => s + num(b.amount) * (FREQUENCIES[b.frequency] ?? FREQUENCIES.monthly).perYear, 0) + (budgetTotal + propertyCosts) * 12);
+  // Linked-account estimates fill only the gaps manual records leave.
+  const estimateIncome = incomes.length === 0 ? round2(num(estimate.income)) : 0;
+  const estimateExpenses = manualMonthlyExpenses === 0 ? round2(num(estimate.expenses)) : 0;
+  const monthlyIncome = manualMonthlyIncome || estimateIncome;
+  const monthlyExpenses = manualMonthlyExpenses || estimateExpenses;
+  const annualIncome = estimateIncome
+    ? round2(estimateIncome * 12)
+    : round2(incomes.filter(i => i.active !== false).reduce((s, i) => s + num(i.amount) * (FREQUENCIES[i.frequency] ?? FREQUENCIES.monthly).perYear, 0));
+  const annualExpenses = estimateExpenses
+    ? round2(estimateExpenses * 12)
+    : round2(bills.reduce((s, b) => s + num(b.amount) * (FREQUENCIES[b.frequency] ?? FREQUENCIES.monthly).perYear, 0) + (budgetTotal + propertyCosts) * 12);
   const annualSavings = round2(annualIncome - annualExpenses);
   const start = new Date(startingFrom.getFullYear(), startingFrom.getMonth(), 1);
   const rows = [];
@@ -327,6 +337,7 @@ export function projectYearlyPlan({
     annualIncome,
     annualExpenses,
     annualSavings,
+    estimateUsed: { income: estimateIncome, expenses: estimateExpenses },
     yearEndCash: round2(availableCash(accounts) + annualSavings),
   };
 }

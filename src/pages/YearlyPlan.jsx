@@ -15,6 +15,7 @@ import IncomeCard from '@/components/income/IncomeCard';
 import IncomeDialog from '@/components/income/IncomeDialog';
 import { listRecords, createRecord, updateRecord, deleteRecord, getHouseholdProfile } from '@/services/dataService';
 import * as calc from '@/services/financialCalculations';
+import { estimateFromTransactions } from '@/services/plaidEstimates';
 import { formatCurrency, formatDate } from '@/utils/format';
 
 /** Yearly Plan: live projection from income, bills, budget limits, and property costs. */
@@ -44,10 +45,11 @@ export default function YearlyPlan() {
       listRecords('property'),
       listRecords('mortgageRecord'),
       listRecords('account'),
+      listRecords('transaction'),
       listRecords('forecastRecord'),
     ])
-      .then(([incomes, bills, budgetCategories, properties, mortgages, accounts, forecasts]) => {
-        if (!cancelled) setData({ incomes, bills, budgetCategories, properties, mortgages, accounts, forecasts });
+      .then(([incomes, bills, budgetCategories, properties, mortgages, accounts, transactions, forecasts]) => {
+        if (!cancelled) setData({ incomes, bills, budgetCategories, properties, mortgages, accounts, transactions, forecasts });
       })
       .catch((e) => {
         if (!cancelled) setError(e);
@@ -89,9 +91,22 @@ export default function YearlyPlan() {
     );
   }
 
-  const { incomes, bills, budgetCategories, properties, mortgages, accounts, forecasts } = data;
-  const projection = calc.projectYearlyPlan({ incomes, bills, budgetCategories, properties, mortgages, accounts, months: 12 });
-  const hasInputs = incomes.length || bills.length || budgetCategories.length || properties.length;
+  const { incomes, bills, budgetCategories, properties, mortgages, accounts, transactions, forecasts } = data;
+  const est = estimateFromTransactions(transactions);
+  const projection = calc.projectYearlyPlan({
+    incomes,
+    bills,
+    budgetCategories,
+    properties,
+    mortgages,
+    accounts,
+    months: 12,
+    estimate: { income: est.hasData ? est.monthlyIncome : 0, expenses: est.hasData ? est.monthlyExpenses : 0 },
+  });
+  const hasInputs =
+    incomes.length || bills.length || budgetCategories.length || properties.length
+      ? true
+      : Boolean(projection.estimateUsed.income || projection.estimateUsed.expenses);
   const year = new Date().getFullYear();
 
   const saveIncome = (payload) =>
@@ -109,7 +124,12 @@ export default function YearlyPlan() {
         projected_expenses: projection.annualExpenses,
         projected_savings: projection.annualSavings,
         year_end_cash: projection.yearEndCash,
-        assumptions: `Rolling 12-month plan from ${projection.rows[0].key} through ${projection.rows[11].key}. Monthly income ${projection.monthlyIncome}; monthly expenses ${projection.monthlyExpenses} (bills averaged by frequency, budget limits ${projection.budgetTotal}, property costs ${projection.propertyCosts}); starting cash ${calc.availableCash(accounts)}.`,
+        assumptions: [
+          `Rolling 12-month plan from ${projection.rows[0].key} through ${projection.rows[11].key}. Monthly income ${projection.monthlyIncome}; monthly expenses ${projection.monthlyExpenses} (bills averaged by frequency, budget limits ${projection.budgetTotal}, property costs ${projection.propertyCosts}); starting cash ${calc.availableCash(accounts)}.`,
+          projection.estimateUsed.income || projection.estimateUsed.expenses
+            ? `Linked-account estimates applied: income ${projection.estimateUsed.income}/mo, expenses ${projection.estimateUsed.expenses}/mo, averaged from ${est.months} months of imported transactions.`
+            : '',
+        ].filter(Boolean).join(' '),
       })
     ).then(() => toast({ title: 'Snapshot saved to your forecast history' }));
 
@@ -137,8 +157,30 @@ export default function YearlyPlan() {
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard label="Projected annual income" value={formatCurrency(projection.annualIncome)} source="Estimated" note="Income sources normalized to a month." />
-        <SummaryCard label="Projected annual expenses" value={formatCurrency(projection.annualExpenses)} source="Estimated" note="Bills, budget limits, and property costs." />
+        <SummaryCard
+          label="Projected annual income"
+          value={formatCurrency(projection.annualIncome)}
+          source={incomes.length ? 'Estimated' : projection.estimateUsed.income ? 'Plaid Sandbox' : 'Estimated'}
+          note={
+            incomes.length
+              ? 'Income sources normalized to a month.'
+              : projection.estimateUsed.income
+                ? `From ${est.months} months of linked transactions.`
+                : 'Income sources normalized to a month.'
+          }
+        />
+        <SummaryCard
+          label="Projected annual expenses"
+          value={formatCurrency(projection.annualExpenses)}
+          source={bills.length || budgetCategories.length || properties.length ? 'Estimated' : projection.estimateUsed.expenses ? 'Plaid Sandbox' : 'Estimated'}
+          note={
+            bills.length || budgetCategories.length || properties.length
+              ? 'Bills, budget limits, and property costs.'
+              : projection.estimateUsed.expenses
+                ? `From ${est.months} months of linked transactions.`
+                : 'Bills, budget limits, and property costs.'
+          }
+        />
         <SummaryCard label="Projected annual savings" value={formatCurrency(projection.annualSavings)} source="Estimated" note="Income minus expenses." />
         <SummaryCard label="Cash after 12 months" value={formatCurrency(projection.yearEndCash)} source="Estimated" note={`Starting from ${formatCurrency(calc.availableCash(accounts))} in saved balances.`} />
       </div>
@@ -177,7 +219,12 @@ export default function YearlyPlan() {
       )}
 
       <div className="mt-6">
-        <AssumptionsPanel projection={projection} incomes={incomes} bills={bills} />
+        <AssumptionsPanel
+          projection={projection}
+          incomes={incomes}
+          bills={bills}
+          estimate={{ income: projection.estimateUsed.income, expenses: projection.estimateUsed.expenses, months: est.months }}
+        />
       </div>
 
       <section className="mt-6 rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">

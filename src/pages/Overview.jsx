@@ -16,11 +16,13 @@ import BudgetProgress from '@/components/overview/BudgetProgress';
 import UpcomingBillsList from '@/components/overview/UpcomingBillsList';
 import FinancialHealthCard from '@/components/overview/FinancialHealthCard';
 import OverviewAccounts from '@/components/overview/OverviewAccounts';
+import SuggestedBills from '@/components/overview/SuggestedBills';
 import AccountDialog from '@/components/accounts/AccountDialog';
 import AskAveraDrawer from '@/components/askavera/AskAveraDrawer';
 import { hasChosenMode } from '@/lib/mode';
 import { listRecords, createRecord, updateRecord, deleteRecord } from '@/services/dataService';
 import * as calc from '@/services/financialCalculations';
+import { estimateFromTransactions, pendingCandidates } from '@/services/plaidEstimates';
 import { formatCurrency } from '@/utils/format';
 
 /** Overview dashboard — every figure is calculated from the user's saved records. */
@@ -100,6 +102,28 @@ export default function Overview() {
     }
   };
 
+  const addSuggestedBill = async (candidate) => {
+    setBusy(true);
+    try {
+      await createRecord('bill', {
+        name: candidate.name,
+        amount: candidate.amount,
+        frequency: candidate.frequency,
+        next_due_date: candidate.next_due_date,
+        category: candidate.category,
+        source: 'Plaid Sandbox',
+        notes: `Estimated from ${candidate.months_seen} months of linked transactions.`,
+      });
+      toast({ title: 'Bill added from linked transactions' });
+      reload();
+    } catch (err) {
+      toast({ title: 'Could not add the bill', description: 'Please try again.', variant: 'destructive' });
+      throw err;
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleDrawerChange = useCallback((open) => {
     setDrawerOpen(open);
     if (!open) requestAnimationFrame(() => launcherRef.current?.focus());
@@ -121,10 +145,15 @@ export default function Overview() {
   }
 
   const { accounts, incomes, bills, budgetCategories, transactions, properties, mortgages } = data;
+  const est = estimateFromTransactions(transactions);
+  // Linked accounts fill only the gaps manual records leave.
+  const linkedIncome = !incomes.length && est.hasData ? est.monthlyIncome : 0;
+  const linkedExpenses = !(bills.length || budgetCategories.length || properties.length) && est.hasData ? est.monthlyExpenses : 0;
   const monthlyIncome = calc.monthlyIncomeTotal(incomes);
   const monthlyExpenses = calc.totalMonthlyExpenses({ bills, budgetCategories, properties, mortgages });
   const cash = calc.availableCash(accounts);
-  const remaining = calc.calculateProjectedRemaining(monthlyIncome, monthlyExpenses);
+  const remaining = calc.calculateProjectedRemaining(monthlyIncome + linkedIncome, monthlyExpenses + linkedExpenses);
+  const suggestions = est.hasData ? pendingCandidates(est.billCandidates, bills) : [];
   const upcoming = calc.upcomingBills(bills, 30);
   const projection = calc.projectYearlyPlan({ incomes, bills, budgetCategories, properties, mortgages, accounts, months: 6 });
   const hasData = accounts.length || incomes.length || bills.length || budgetCategories.length || properties.length;
@@ -138,21 +167,29 @@ export default function Overview() {
     },
     {
       label: 'Monthly income',
-      value: incomes.length ? formatCurrency(monthlyIncome) : '—',
-      source: 'Manual',
-      note: incomes.length ? 'Income sources normalized to a month.' : 'Add income sources in Yearly Plan.',
+      value: incomes.length || linkedIncome ? formatCurrency(monthlyIncome + linkedIncome) : '—',
+      source: incomes.length ? 'Manual' : linkedIncome ? 'Plaid Sandbox' : 'Manual',
+      note: incomes.length
+        ? 'Income sources normalized to a month.'
+        : linkedIncome
+          ? `Estimated from ${est.months} months of linked transactions.`
+          : 'Add income sources in Yearly Plan.',
     },
     {
       label: 'Monthly expenses',
-      value: bills.length || budgetCategories.length || properties.length ? formatCurrency(monthlyExpenses) : '—',
-      source: 'Manual',
-      note: 'Bills, budget limits, and property costs.',
+      value: bills.length || budgetCategories.length || properties.length || linkedExpenses ? formatCurrency(monthlyExpenses + linkedExpenses) : '—',
+      source: bills.length || budgetCategories.length || properties.length ? 'Manual' : linkedExpenses ? 'Plaid Sandbox' : 'Manual',
+      note: bills.length || budgetCategories.length || properties.length
+        ? 'Bills, budget limits, and property costs.'
+        : linkedExpenses
+          ? `Estimated from ${est.months} months of linked transactions.`
+          : 'Bills, budget limits, and property costs.',
     },
     {
       label: 'Projected remaining',
-      value: incomes.length || bills.length || budgetCategories.length ? formatCurrency(remaining) : '—',
+      value: incomes.length || bills.length || budgetCategories.length || linkedIncome || linkedExpenses ? formatCurrency(remaining) : '—',
       source: 'Estimated',
-      note: 'Monthly income minus monthly expenses.',
+      note: linkedIncome || linkedExpenses ? 'Includes estimates from your linked accounts.' : 'Monthly income minus monthly expenses.',
     },
     {
       label: 'Upcoming bills',
@@ -229,6 +266,7 @@ export default function Overview() {
       <div className="mt-6">
         <UpcomingBillsList bills={upcoming} />
       </div>
+      {suggestions.length > 0 && <SuggestedBills candidates={suggestions} busy={busy} onAdd={addSuggestedBill} />}
       {!hasData && (
         <div className="mt-6">
           <NextSteps />

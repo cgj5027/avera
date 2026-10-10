@@ -6,9 +6,11 @@ import { formatCurrency } from '@/utils/format';
  * Assumptions panel: every input behind the projection is listed with its
  * source, so figures are never opaque (design system §18).
  */
-export default function AssumptionsPanel({ projection, incomes, bills }) {
+export default function AssumptionsPanel({ projection, incomes, bills, estimate = null }) {
   const { billsBreakdown, budgetTotal, propertyCosts } = projection;
-  const isEmpty = incomes.length === 0 && bills.length === 0 && budgetTotal === 0 && propertyCosts === 0;
+  const est = estimate ?? { income: 0, expenses: 0, months: 0 };
+  const hasEstimates = est.income > 0 || est.expenses > 0;
+  const isEmpty = incomes.length === 0 && bills.length === 0 && budgetTotal === 0 && propertyCosts === 0 && !hasEstimates;
 
   return (
     <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
@@ -69,6 +71,34 @@ export default function AssumptionsPanel({ projection, incomes, bills }) {
               <dd className="flex items-center gap-2 text-sm text-muted-foreground tabular-nums">
                 {formatCurrency(propertyCosts)}/mo
                 <SourceChip source="Manual" />
+              </dd>
+            </div>
+          )}
+          {hasEstimates && (
+            <div>
+              <dt className="text-sm font-medium text-foreground">Linked-account estimates</dt>
+              <dd className="mt-2 space-y-2">
+                {est.income > 0 && (
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-base text-foreground">Income</span>
+                    <span className="flex items-center gap-2 text-sm text-muted-foreground tabular-nums">
+                      {formatCurrency(est.income)}/mo
+                      <SourceChip source="Plaid Sandbox" />
+                    </span>
+                  </div>
+                )}
+                {est.expenses > 0 && (
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-base text-foreground">Expenses</span>
+                    <span className="flex items-center gap-2 text-sm text-muted-foreground tabular-nums">
+                      {formatCurrency(est.expenses)}/mo
+                      <SourceChip source="Plaid Sandbox" />
+                    </span>
+                  </div>
+                )}
+                <p className="text-sm text-muted-foreground">
+                  Averaged from {est.months} month{est.months === 1 ? '' : 's'} of imported transactions.
+                </p>
               </dd>
             </div>
           )}
