@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Repeat, Check, Pencil, BellOff, Download, Sparkles, RefreshCw, Keyboard, Plus } from 'lucide-react';
+import { Search, Repeat, Check, Pencil, BellOff, Download, Sparkles, RefreshCw, Keyboard, Plus, Columns3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   Dialog,
@@ -24,6 +26,24 @@ const CUSTOM_CATEGORY = '__custom__';
 const isSynced = (t) => Boolean(t.plaid_item_id) || t.source === 'Plaid Sandbox';
 
 const csvCell = (value) => '"' + String(value ?? '').replace(/"/g, '""') + '"';
+
+/* User-selectable table columns; the choice persists between visits. */
+const COLUMN_DEFS = [
+  { key: 'date', label: 'Date' },
+  { key: 'name', label: 'Name' },
+  { key: 'account', label: 'Account' },
+  { key: 'category', label: 'Category' },
+  { key: 'source', label: 'Source' },
+  { key: 'amount', label: 'Amount' },
+  { key: 'status', label: 'Status' },
+];
+const DEFAULT_COLUMNS = ['date', 'name', 'category', 'source', 'amount', 'status'];
+const COLUMNS_STORAGE_KEY = 'transactions-table-columns';
+const loadColumns = () => {
+  const saved = localStorage.getItem(COLUMNS_STORAGE_KEY);
+  const list = saved ? saved.split(',').filter((key) => COLUMN_DEFS.some((c) => c.key === key)) : [];
+  return list.length > 0 ? list : DEFAULT_COLUMNS;
+};
 
 /**
  * Combined table of every transaction: imported from linked Plaid accounts and
@@ -74,12 +94,23 @@ export default function TransactionsTable({
 
   const savedNames = useMemo(() => new Set(bills.map((b) => normalizeName(b.name))), [bills]);
 
-  /* Every category worth offering on edit: budget categories plus any category already used on a transaction. */
-  const categoryOptions = useMemo(() => {
-    const defined = categories.map((c) => c.name);
-    const used = rows.map((t) => t.category).filter(Boolean);
-    return [...new Set([...defined, ...used])];
-  }, [categories, rows]);
+  /* Budget categories first (they count toward the Budget tab), then other categories used before. */
+  const budgetNames = useMemo(() => new Set(categories.map((c) => c.name)), [categories]);
+  const otherCategoryOptions = useMemo(
+    () => [...new Set(rows.map((t) => t.category).filter(Boolean))].filter((name) => !budgetNames.has(name)),
+    [rows, budgetNames]
+  );
+
+  /* Which columns the user has chosen to show. */
+  const [visibleCols, setVisibleCols] = useState(loadColumns);
+  const show = Object.fromEntries(COLUMN_DEFS.map((c) => [c.key, visibleCols.includes(c.key)]));
+  const toggleColumn = (key) =>
+    setVisibleCols((cols) => {
+      const next = cols.includes(key) ? cols.filter((c) => c !== key) : [...cols, key];
+      const ordered = COLUMN_DEFS.filter((c) => next.includes(c.key)).map((c) => c.key);
+      localStorage.setItem(COLUMNS_STORAGE_KEY, ordered.join(','));
+      return ordered;
+    });
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -123,22 +154,26 @@ export default function TransactionsTable({
     }
   };
 
+  const csvColumns = {
+    date: (t) => t.date ?? '',
+    name: (t) => t.description ?? '',
+    account: (t) => accountNames.find((a) => a.id === t.plaid_account_id)?.name ?? '',
+    category: (t) => t.category ?? '',
+    source: (t) => (isSynced(t) ? 'Synced' : 'Manual'),
+    amount: (t) => String(t.amount ?? ''),
+    status: (t) => {
+      if (t.type === 'income') return '';
+      const candidate = recurringByName.get(normalizeName(t.description || t.category));
+      if (!candidate) return '';
+      return savedNames.has(normalizeName(t.description || t.category)) ? 'Tracked' : 'Recurring';
+    },
+  };
+
+  /* Exports exactly the columns currently shown. */
   const exportCsv = () => {
     const lines = [
-      ['Date', 'Name', 'Account', 'Transaction category', 'Type', 'Amount', 'Source'].join(','),
-      ...visible.map((t) =>
-        [
-          t.date ?? '',
-          t.description ?? '',
-          accountNames.find((a) => a.id === t.plaid_account_id)?.name ?? '',
-          t.category ?? '',
-          t.type ?? '',
-          String(t.amount ?? ''),
-          isSynced(t) ? 'Synced' : 'Manual',
-        ]
-          .map(csvCell)
-          .join(',')
-      ),
+      visibleCols.map((key) => COLUMN_DEFS.find((c) => c.key === key).label).map(csvCell).join(','),
+      ...visible.map((t) => visibleCols.map((key) => csvCell(csvColumns[key](t))).join(',')),
     ];
     const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -190,6 +225,34 @@ export default function TransactionsTable({
           >
             <Download className="h-4 w-4" aria-hidden="true" />
           </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="min-h-11 w-11 shrink-0 rounded-xl"
+                aria-label="Choose columns"
+                title="Choose columns"
+              >
+                <Columns3 className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-56">
+              <p className="text-sm font-medium text-foreground">Columns shown</p>
+              <div className="mt-2 space-y-2">
+                {COLUMN_DEFS.map((col) => (
+                  <Label key={col.key} htmlFor={`col-${col.key}`} className="flex items-center gap-2 font-normal">
+                    <Checkbox
+                      id={`col-${col.key}`}
+                      checked={visibleCols.includes(col.key)}
+                      onCheckedChange={() => toggleColumn(col.key)}
+                    />
+                    {col.label}
+                  </Label>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
@@ -273,13 +336,13 @@ export default function TransactionsTable({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead className="hidden md:table-cell">Account</TableHead>
-                <TableHead>Transaction category</TableHead>
-                <TableHead className="hidden md:table-cell">Source</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="text-right">Status</TableHead>
+                {show.date && <TableHead>Date</TableHead>}
+                {show.name && <TableHead>Name</TableHead>}
+                {show.account && <TableHead>Account</TableHead>}
+                {show.category && <TableHead>Category</TableHead>}
+                {show.source && <TableHead>Source</TableHead>}
+                {show.amount && <TableHead className="text-right">Amount</TableHead>}
+                {show.status && <TableHead className="text-right">Status</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -291,15 +354,22 @@ export default function TransactionsTable({
                 const synced = isSynced(t);
                 return (
                   <TableRow key={t.id} className={isRecurring ? 'bg-warning-surface' : undefined}>
-                    <TableCell className="whitespace-nowrap text-sm tabular-nums text-muted-foreground">{t.date}</TableCell>
-                    <TableCell className="font-medium text-foreground">
-                      {t.description || 'Unnamed'}
-                    </TableCell>
-                    <TableCell className="hidden whitespace-nowrap text-sm text-muted-foreground md:table-cell">
-                      {accountNames.find((a) => a.id === t.plaid_account_id)?.name || '—'}
-                    </TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center gap-1">
+                    {show.date && (
+                      <TableCell className="whitespace-nowrap text-sm tabular-nums text-muted-foreground">{t.date}</TableCell>
+                    )}
+                    {show.name && (
+                      <TableCell className="font-medium text-foreground">
+                        {t.description || 'Unnamed'}
+                      </TableCell>
+                    )}
+                    {show.account && (
+                      <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                        {accountNames.find((a) => a.id === t.plaid_account_id)?.name || '—'}
+                      </TableCell>
+                    )}
+                    {show.category && (
+                      <TableCell>
+                        <span className="inline-flex items-center gap-1">
                         <span className="inline-flex items-center rounded-full bg-surface-subtle px-2 py-0.5 text-xs font-medium text-muted-foreground">
                           {t.category || 'Uncategorized'}
                         </span>
@@ -315,11 +385,13 @@ export default function TransactionsTable({
                           className="h-7 w-7"
                         >
                           <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                        </Button>
-                      </span>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {synced ? (
+                          </Button>
+                        </span>
+                      </TableCell>
+                    )}
+                    {show.source && (
+                      <TableCell>
+                        {synced ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-info-surface px-2 py-0.5 text-xs font-medium text-info">
                           <RefreshCw className="h-3 w-3" aria-hidden="true" />
                           Synced
@@ -330,13 +402,17 @@ export default function TransactionsTable({
                           Manual
                         </span>
                       )}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums text-foreground">
-                      {isIncome ? '+' : '-'}
-                      {formatCurrency(t.amount)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {isRecurring ? (
+                      </TableCell>
+                    )}
+                    {show.amount && (
+                      <TableCell className="text-right tabular-nums text-foreground">
+                        {isIncome ? '+' : '-'}
+                        {formatCurrency(t.amount)}
+                      </TableCell>
+                    )}
+                    {show.status && (
+                      <TableCell className="text-right">
+                        {isRecurring ? (
                         <span className="inline-flex items-center gap-2">
                           <span className="inline-flex items-center gap-1 text-xs font-medium text-warning">
                             <Repeat className="h-3.5 w-3.5" aria-hidden="true" />
@@ -369,8 +445,9 @@ export default function TransactionsTable({
                         </span>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                 );
               })}
@@ -418,14 +495,14 @@ export default function TransactionsTable({
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit transaction category</DialogTitle>
+            <DialogTitle>Link to budget category</DialogTitle>
             <DialogDescription>
               {editing?.transaction?.description || 'Unnamed'} · {editing?.transaction?.date || ''}
             </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={submitEdit}>
             <div className="space-y-1.5">
-              <Label htmlFor="txn-category">Transaction category</Label>
+              <Label htmlFor="txn-category">Budget category</Label>
               <Select
                 value={
                   editing?.custom
@@ -445,15 +522,26 @@ export default function TransactionsTable({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={UNCATEGORIZED}>Uncategorized</SelectItem>
-                  {categoryOptions.map((name) => (
-                    <SelectItem key={name} value={name}>
-                      {name}
-                      {categoryRemaining[name] !== undefined
-                        ? ` · ${formatCurrency(categoryRemaining[name])} left`
-                        : ''}
-                    </SelectItem>
-                  ))}
+                  <SelectGroup>
+                    <SelectLabel>Budget categories</SelectLabel>
+                    <SelectItem value={UNCATEGORIZED}>Not linked</SelectItem>
+                    {categories.map((c) => (
+                      <SelectItem key={c.id} value={c.name}>
+                        {c.name}
+                        {categoryRemaining[c.name] !== undefined
+                          ? ` · ${formatCurrency(categoryRemaining[c.name])} left`
+                          : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                  {otherCategoryOptions.length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel>Other categories used before</SelectLabel>
+                      {otherCategoryOptions.map((name) => (
+                        <SelectItem key={name} value={name}>{name}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
                   <SelectItem value={CUSTOM_CATEGORY}>Other (type a category)</SelectItem>
                 </SelectContent>
               </Select>
@@ -468,13 +556,13 @@ export default function TransactionsTable({
                 />
               )}
               <p className="text-xs text-muted-foreground">
-                Assigning a budget category counts this transaction toward that category's monthly spending.
+                Budget categories count this transaction toward that category's monthly spending in the Budget tab.
               </p>
             </div>
             {saveError && <p role="alert" className="text-base text-danger-text">{saveError}</p>}
             <DialogFooter className="gap-2">
               <Button type="button" variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
-              <Button type="submit" disabled={busy}>Save category</Button>
+              <Button type="submit" disabled={busy}>Save link</Button>
             </DialogFooter>
           </form>
         </DialogContent>

@@ -16,6 +16,7 @@ import TransactionsTable from '@/components/bills/TransactionsTable';
 import ManualTransactionDialog from '@/components/bills/ManualTransactionDialog';
 import SuggestedBudgetCategories from '@/components/budget/SuggestedBudgetCategories';
 import CategoryCard from '@/components/budget/CategoryCard';
+import LinkedTransactionsDialog from '@/components/budget/LinkedTransactionsDialog';
 import CategoryDialog from '@/components/budget/CategoryDialog';
 import LogSpendingDialog from '@/components/budget/LogSpendingDialog';
 import { listRecords, createRecord, updateRecord, deleteRecord } from '@/services/dataService';
@@ -37,6 +38,7 @@ export default function BillsBudget() {
   const [logDialog, setLogDialog] = useState(null);
   const [addTxnOpen, setAddTxnOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [linkedDialog, setLinkedDialog] = useState(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -195,6 +197,12 @@ export default function BillsBudget() {
     remainingByCategory[c.name] = (Number(c.monthly_limit) || 0) - calc.spentInMonth(transactions, c.name, range);
   }
 
+  /* Transactions linked to a budget category (by name) within the current month, newest first. */
+  const linkedForCategory = (name) =>
+    transactions
+      .filter((t) => t.type !== 'income' && t.category === name && t.date >= range.start && t.date <= range.end)
+      .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
+
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
       <PageHeader title="Bills & Budget" subtitle="Due dates, recurring bills, and category budgets." />
@@ -273,6 +281,8 @@ export default function BillsBudget() {
                   onEdit={(c) => setCategoryDialog({ open: true, category: c })}
                   onDelete={(c) => setDeleteTarget({ kind: 'category', record: c })}
                   onLogSpending={(c) => setLogDialog(c)}
+                  onViewTransactions={(c) => setLinkedDialog(c)}
+                  transactionCount={linkedForCategory(category.name).length}
                 />
               ))}
             </div>
@@ -327,6 +337,16 @@ export default function BillsBudget() {
         categories={categories}
         onSave={addManualTransaction}
       />
+      {linkedDialog && (
+        <LinkedTransactionsDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setLinkedDialog(null);
+          }}
+          category={linkedDialog}
+          transactions={linkedForCategory(linkedDialog.name)}
+        />
+      )}
       <ConfirmDeleteDialog
         open={Boolean(deleteTarget)}
         onOpenChange={(open) => {

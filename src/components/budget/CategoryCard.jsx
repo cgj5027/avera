@@ -1,4 +1,4 @@
-import { Pencil, Trash2, CircleDollarSign, ArrowRight } from 'lucide-react';
+import { Pencil, Trash2, CircleDollarSign, ArrowRight, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ProgressBar from '@/components/finance/ProgressBar';
 import StatusPill from '@/components/states/StatusPill';
@@ -6,7 +6,7 @@ import SourceChip from '@/components/states/SourceChip';
 import { formatCurrency } from '@/utils/format';
 
 /** One budget category: limit, spent this month, remaining, progress with text label. */
-export default function CategoryCard({ category, spent, onEdit, onDelete, onLogSpending, busy }) {
+export default function CategoryCard({ category, spent, onEdit, onDelete, onLogSpending, onViewTransactions, transactionCount = 0, busy }) {
   const limit = Number(category.monthly_limit) || 0;
   const remaining = limit - spent;
   const percent = limit > 0 ? (spent / limit) * 100 : spent > 0 ? 100 : 0;
@@ -36,6 +36,10 @@ export default function CategoryCard({ category, spent, onEdit, onDelete, onLogS
         {remaining < 0 && <StatusPill tone="danger" icon={CircleDollarSign}>Over limit</StatusPill>}
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
+        <Button size="sm" variant="outline" onClick={() => onViewTransactions(category)} disabled={busy}>
+          <Receipt className="mr-2 h-4 w-4" aria-hidden="true" />
+          View transactions{transactionCount > 0 ? ` (${transactionCount})` : ''}
+        </Button>
         <Button size="sm" variant="outline" onClick={() => onLogSpending(category)} disabled={busy}>
           <ArrowRight className="mr-2 h-4 w-4" aria-hidden="true" />
           Log spending
