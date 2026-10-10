@@ -33,9 +33,19 @@ export async function storeConnection(base44, user, exchanged, metadata) {
 }
 export async function credentialFor(base44, user, item) {
   if (item.created_by_id !== user.id) throw new Error('Item ownership failed');
-  const rows = await allRecords(base44.asServiceRole.entities.PlaidCredential,{owner_id:user.id,item_id:item.item_id});
-  if (rows.length !== 1 || !rows[0].access_token?.startsWith('access-sandbox-')) throw new Error('Reconnect this Sandbox Item');
-  return rows[0];
+  const vault = base44.asServiceRole.entities.PlaidCredential;
+  const rows = await allRecords(vault,{owner_id:user.id,item_id:item.item_id});
+  if (rows.length === 1 && rows[0].access_token?.startsWith('access-sandbox-')) return rows[0];
+  // Legacy Item adoption: its access_token sits on the PlaidItem record itself.
+  // Move it into the private credential store so sync works without a reconnect.
+  const legacy = await allRecords(base44.asServiceRole.entities.PlaidItem,{id:item.id});
+  const token = legacy[0]?.access_token;
+  if (typeof token !== 'string' || !token.startsWith('access-sandbox-')) throw new Error('Reconnect this Sandbox Item');
+  const credential = { owner_id:user.id, item_id:item.item_id, access_token:token,
+    credential_key:`${user.id}:${item.item_id}`, sync_cursor: typeof item.sync_cursor === 'string' ? item.sync_cursor : '',
+    ...(item.demo_profile ? {demo_profile:item.demo_profile} : {}) };
+  await vault.upsert([credential],{key:'credential_key'});
+  return credential;
 }
 export async function persistImported(entity, rows, owner, itemId, idField, prune = false) {
   const existing=await allRecords(entity,{created_by_id:owner,plaid_item_id:itemId,source:'Plaid Sandbox'});
