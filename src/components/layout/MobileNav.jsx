@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Receipt, Sparkles, Target, MoreHorizontal, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { PRIMARY_NAV, SETTINGS_NAV } from '@/config/navigation';
 import ModeIndicator from './ModeIndicator';
 
@@ -51,6 +51,7 @@ export default function MobileNav() {
             </NavLink>
           ))}
           <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+            <SheetTrigger asChild>
             <button
               onClick={() => setMoreOpen(true)}
               aria-expanded={moreOpen}
@@ -59,9 +60,11 @@ export default function MobileNav() {
               <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
               More
             </button>
+            </SheetTrigger>
             <SheetContent side="bottom" className="rounded-t-2xl p-0">
               <SheetHeader className="p-4 pb-0 text-left">
                 <SheetTitle>More destinations</SheetTitle>
+                <SheetDescription>Navigate to your plan, properties, or settings.</SheetDescription>
               </SheetHeader>
               <div className="p-2 pb-6">
                 {MORE_ITEMS.map((item) => (

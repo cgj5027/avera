@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { round2 } from '@/services/financialCalculations';
-import { todayISO } from '@/utils/format';
 
 const EMPTY = { name: '', target_amount: '', saved_amount: '', target_date: '' };
 
@@ -19,6 +18,7 @@ const EMPTY = { name: '', target_amount: '', saved_amount: '', target_date: '' }
 export default function GoalDialog({ open, onOpenChange, goal, onSave }) {
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -35,22 +35,30 @@ export default function GoalDialog({ open, onOpenChange, goal, onSave }) {
     setError('');
   }, [open, goal]);
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
+    if (saving) return;
     const name = form.name.trim();
     const target = Number(form.target_amount);
     const saved = Number(form.saved_amount) || 0;
     if (!name) return setError('Enter a goal name.');
     if (!Number.isFinite(target) || target <= 0) return setError('Enter a target greater than zero.');
     if (saved < 0) return setError('Saved amount cannot be negative.');
-    onSave({
+    setSaving(true);
+    try {
+      await onSave({
       name,
       target_amount: round2(target),
       saved_amount: round2(Math.min(saved, target)),
       target_date: form.target_date || undefined,
       source: 'Manual',
     });
-    onOpenChange(false);
+      onOpenChange(false);
+    } catch {
+      setError('Unable to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -79,10 +87,10 @@ export default function GoalDialog({ open, onOpenChange, goal, onSave }) {
             <Label htmlFor="goal-date">Target date (optional)</Label>
             <Input id="goal-date" type="date" value={form.target_date} onChange={(e) => setForm((f) => ({ ...f, target_date: e.target.value }))} className="min-h-11 rounded-xl" />
           </div>
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {error && <p role="alert" className="text-base text-danger-text">{error}</p>}
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit">{goal ? 'Save changes' : 'Add goal'}</Button>
+            <Button type="submit" disabled={saving}>{goal ? 'Save changes' : 'Add goal'}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

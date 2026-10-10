@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 
 /** Page header. Titles match the navigation labels (design system §17). */
-export default function PageHeader({ title, subtitle, actions, className }) {
+export default function PageHeader({ title, subtitle, actions = undefined, className = '' }) {
   return (
     <header
       className={cn(

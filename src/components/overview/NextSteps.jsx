@@ -5,7 +5,7 @@ const STEPS = [
   { label: 'Explore Demo Mode', path: '/welcome' },
   { label: 'Add your first bill', path: '/bills-budget' },
   { label: 'Create a savings goal', path: '/goals-opportunities' },
-  { label: 'Connect a test bank', path: '/settings' },
+  { label: 'View bank connection status', path: '/settings' },
 ];
 
 /** Suggested next steps, each routing one step deeper. */

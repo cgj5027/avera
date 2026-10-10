@@ -19,8 +19,7 @@ import OverviewAccounts from '@/components/overview/OverviewAccounts';
 import AccountDialog from '@/components/accounts/AccountDialog';
 import AskAveraDrawer from '@/components/askavera/AskAveraDrawer';
 import { hasChosenMode } from '@/lib/mode';
-import { base44 } from '@/api/base44Client';
-import { createRecord, updateRecord, deleteRecord } from '@/services/dataService';
+import { listRecords, createRecord, updateRecord, deleteRecord } from '@/services/dataService';
 import * as calc from '@/services/financialCalculations';
 import { formatCurrency } from '@/utils/format';
 
@@ -47,13 +46,13 @@ export default function Overview() {
     setData(null);
     setError(null);
     Promise.all([
-      base44.entities.Account.filter({}),
-      base44.entities.IncomeSource.filter({}),
-      base44.entities.Bill.filter({}),
-      base44.entities.BudgetCategory.filter({}),
-      base44.entities.Transaction.filter({}),
-      base44.entities.Property.filter({}),
-      base44.entities.MortgageRecord.filter({}),
+      listRecords('account'),
+      listRecords('incomeSource'),
+      listRecords('bill'),
+      listRecords('budgetCategory'),
+      listRecords('transaction'),
+      listRecords('property'),
+      listRecords('mortgageRecord'),
     ])
       .then(([accounts, incomes, bills, budgetCategories, transactions, properties, mortgages]) => {
         if (!cancelled) setData({ accounts, incomes, bills, budgetCategories, transactions, properties, mortgages });
@@ -76,6 +75,10 @@ export default function Overview() {
       toast({ title: accountDialog.account ? 'Account updated' : 'Account added' });
       setAccountDialog({ open: false, account: null });
       reload();
+    } catch (err) {
+      toast({ title: 'Changes could not be saved', description: 'Please try again. Some changes may have completed.', variant: 'destructive' });
+      reload();
+      throw err;
     } finally {
       setBusy(false);
     }
@@ -88,6 +91,10 @@ export default function Overview() {
       setDeleteTarget(null);
       toast({ title: 'Account deleted' });
       reload();
+    } catch (err) {
+      toast({ title: 'Changes could not be saved', description: 'Please try again. Some changes may have completed.', variant: 'destructive' });
+      reload();
+      throw err;
     } finally {
       setBusy(false);
     }

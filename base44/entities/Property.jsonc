@@ -20,7 +20,8 @@
       "default": "primary_residence"
     },
     "estimated_value": {
-      "type": "number"
+      "type": "number",
+      "minimum": 0
     },
     "valuation_source": {
       "type": "string",
@@ -39,19 +40,23 @@
     },
     "taxes_monthly": {
       "type": "number",
-      "default": 0
+      "default": 0,
+      "minimum": 0
     },
     "insurance_monthly": {
       "type": "number",
-      "default": 0
+      "default": 0,
+      "minimum": 0
     },
     "hoa_monthly": {
       "type": "number",
-      "default": 0
+      "default": 0,
+      "minimum": 0
     },
     "maintenance_monthly": {
       "type": "number",
-      "default": 0
+      "default": 0,
+      "minimum": 0
     },
     "notes": {
       "type": "string"
@@ -63,43 +68,18 @@
   ],
   "rls": {
     "read": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    },
-    "create": {
       "created_by_id": "{{user.id}}"
     },
+    "create": {
+      "user_condition": {
+        "id": "{{user.id}}"
+      }
+    },
     "update": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
+      "created_by_id": "{{user.id}}"
     },
     "delete": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
+      "created_by_id": "{{user.id}}"
     }
   }
 }

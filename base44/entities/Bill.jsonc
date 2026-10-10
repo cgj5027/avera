@@ -6,7 +6,8 @@
       "type": "string"
     },
     "amount": {
-      "type": "number"
+      "type": "number",
+      "minimum": 0
     },
     "frequency": {
       "type": "string",
@@ -30,7 +31,8 @@
     },
     "reminder_days": {
       "type": "number",
-      "default": 3
+      "default": 3,
+      "minimum": 0
     },
     "paid_this_cycle": {
       "type": "boolean",
@@ -42,6 +44,12 @@
     },
     "notes": {
       "type": "string"
+    },
+    "recurrence_day": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 31,
+      "description": "Original day of month for clamped calendar recurrences."
     }
   },
   "required": [
@@ -50,43 +58,18 @@
   ],
   "rls": {
     "read": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    },
-    "create": {
       "created_by_id": "{{user.id}}"
     },
+    "create": {
+      "user_condition": {
+        "id": "{{user.id}}"
+      }
+    },
     "update": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
+      "created_by_id": "{{user.id}}"
     },
     "delete": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
+      "created_by_id": "{{user.id}}"
     }
   }
 }

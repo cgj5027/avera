@@ -79,12 +79,13 @@ export default function Register() {
         subtitle={`We sent a code to ${email}`}
       >
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+          <div role="alert" className="mb-4 p-3 rounded-xl bg-danger-surface text-danger text-base">
             {error}
           </div>
         )}
         <div className="flex justify-center mb-6">
           <InputOTP
+            aria-label="Email verification code"
             maxLength={6}
             value={otpCode}
             onChange={setOtpCode}
@@ -117,7 +118,7 @@ export default function Register() {
         </Button>
         <p className="text-center text-sm text-muted-foreground mt-4">
           Didn't receive the code?{" "}
-          <button onClick={handleResend} className="text-primary font-medium hover:underline">
+          <button onClick={handleResend} className="min-h-11 px-2 text-primary font-medium hover:underline">
             Resend
           </button>
         </p>
@@ -161,7 +162,7 @@ export default function Register() {
       </div>
 
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+        <div role="alert" className="mb-4 p-3 rounded-xl bg-danger-surface text-danger text-base">
           {error}
         </div>
       )}
@@ -201,7 +202,7 @@ export default function Register() {
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="confirm">Confirm Password</Label>
+          <Label htmlFor="confirm">Confirm password</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input

@@ -17,7 +17,7 @@ const STATES = [
  * error states with zero data logic. The preview control lets reviewers
  * see each designed state; it disappears once real data services arrive.
  */
-export default function DestinationShell({ title, subtitle, intro, highlights }) {
+export default function DestinationShell({ title, subtitle, intro = undefined, highlights }) {
   const [state, setState] = useState('empty');
 
   return (
@@ -62,7 +62,7 @@ export default function DestinationShell({ title, subtitle, intro, highlights })
                 <ul className="mt-3 space-y-2">
                   {highlights.map((item) => (
                     <li key={item} className="flex items-start gap-2 text-base text-muted-foreground">
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success-text" aria-hidden="true" />
                       <span>{item}</span>
                     </li>
                   ))}

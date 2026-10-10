@@ -1,3 +1,4 @@
+import SourceChip from '@/components/states/SourceChip';
 import { Pencil, Trash2, CheckCircle2, Repeat, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import StatusPill from '@/components/states/StatusPill';
@@ -28,9 +29,10 @@ export default function BillCard({ bill, onEdit, onDelete, onMarkPaid, busy }) {
           Reminder {bill.reminder_days ?? 3} days before
         </span>
       </div>
+      <div className="mt-3"><SourceChip source="Manual" /></div>
       <div className="mt-4 flex flex-wrap gap-2">
-        {!bill.paid_this_cycle && (
-          <Button size="sm" variant="outline" onClick={() => onMarkPaid(bill)} disabled={busy}>
+        {status.key !== 'paid' && (
+          <Button size="sm" variant="outline" onClick={() => { void onMarkPaid(bill).catch(() => {}); }} disabled={busy}>
             <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden="true" />
             Mark paid
           </Button>
@@ -39,7 +41,7 @@ export default function BillCard({ bill, onEdit, onDelete, onMarkPaid, busy }) {
           <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
           Edit bill
         </Button>
-        <Button size="sm" variant="outline" className="text-danger hover:bg-danger-surface" onClick={() => onDelete(bill)} disabled={busy}>
+        <Button size="sm" variant="outline" className="text-danger-text hover:bg-danger-surface" onClick={() => onDelete(bill)} disabled={busy}>
           <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
           Delete bill
         </Button>

@@ -98,7 +98,7 @@ Components must consume semantic tokens instead of core palette values.
 | `surface-subtle` | `#EEF1EC` | Grouped content, table headers, secondary panels |
 | `surface-selected` | `#E3ECE7` | Selected rows, filters, and navigation |
 | `text-primary` | `#182421` | Primary text and financial values |
-| `text-secondary` | `#66736E` | Supporting copy and metadata |
+| `text-secondary` | `#5C6863` | Supporting copy and metadata |
 | `text-inverse` | `#FFFFFF` | Text on dark brand and semantic backgrounds |
 | `border-default` | `#D6DED9` | Card and input borders |
 | `border-strong` | `#A7B6AF` | Focus-adjacent structure and emphasized dividers |
@@ -565,3 +565,7 @@ This is a design system, not a mandate to replace Base44's supported application
 ## 26. Coding Agent Directive
 
 Use **this `design_system.md`** as the authoritative design reference for Avera Alternative and preserve existing established branding. Implement Stage 0 tokens and reusable components first, then extend this system during Stages 1–5. Do not regress existing functionality, rename Demo Mode, or introduce autonomous payment capabilities. Where source document tokens conflict with accessibility, document and validate the minimum necessary semantic-token adjustment. Return a design compliance checklist with each stage review.
+
+## Audit accessibility clarification
+
+Supporting text uses `#5C6863` in light mode so small labels meet 4.5:1 contrast on background, subtle and selected surfaces. Quiet Stone remains a brand palette color, not small body text. For standalone status text on application surfaces, use `success-text` (`#26734D` light / `#8FC1B2` dark) and `danger-text` (`#A64040` light / `#F0A6A6` dark). Status badges retain their existing foreground/tinted-surface pairs.

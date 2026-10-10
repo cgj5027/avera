@@ -30,13 +30,13 @@ export default function PropertyCard({ property, mortgage, onEdit, onDelete, bus
               {formatCurrency(valuation.value)}
             </span>
             <SourceChip source="Manual" />
-          </dd>
           <p className="mt-0.5 text-sm text-muted-foreground">
             User-provided estimate{valuation.asOf ? `, as of ${formatDate(valuation.asOf)}` : ''}
           </p>
+          </dd>
         </div>
         <div>
-          <dt className="text-sm text-muted-foreground">Equity (value − debt)</dt>
+          <dt className="text-sm text-muted-foreground">Equity (value − debt) · Estimated</dt>
           <dd className="mt-0.5 font-heading text-lg font-semibold tabular-nums text-foreground">{formatCurrency(equity)}</dd>
         </div>
         {hasDebt && (
@@ -45,10 +45,10 @@ export default function PropertyCard({ property, mortgage, onEdit, onDelete, bus
               <dt className="text-sm text-muted-foreground">Mortgage balance</dt>
               <dd className="mt-0.5 font-heading text-lg font-semibold tabular-nums text-foreground">
                 {formatCurrency(mortgage.outstanding_balance)}
-              </dd>
               {mortgage.interest_rate != null && (
                 <p className="mt-0.5 text-sm text-muted-foreground tabular-nums">{mortgage.interest_rate}% APR{mortgage.lender ? ` · ${mortgage.lender}` : ''}</p>
               )}
+              </dd>
             </div>
             <div>
               <dt className="text-sm text-muted-foreground">Monthly payment</dt>
@@ -68,7 +68,7 @@ export default function PropertyCard({ property, mortgage, onEdit, onDelete, bus
           <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
           Edit property
         </Button>
-        <Button size="sm" variant="outline" className="text-danger hover:bg-danger-surface" onClick={() => onDelete(property)} disabled={busy}>
+        <Button size="sm" variant="outline" className="text-danger-text hover:bg-danger-surface" onClick={() => onDelete(property)} disabled={busy}>
           <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
           Delete property
         </Button>

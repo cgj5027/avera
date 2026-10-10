@@ -19,6 +19,7 @@ const EMPTY = { name: '', type: 'checking', balance: '', institution: '' };
 export default function AccountDialog({ open, onOpenChange, account, onSave }) {
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -35,14 +36,22 @@ export default function AccountDialog({ open, onOpenChange, account, onSave }) {
     setError('');
   }, [open, account]);
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
+    if (saving) return;
     const name = form.name.trim();
     if (!name) return setError('Enter an account name.');
     const balance = Number(form.balance);
     if (!Number.isFinite(balance)) return setError('Enter a balance (negative is allowed for credit cards).');
-    onSave({ name, type: form.type, balance: round2(balance), institution: form.institution.trim() || undefined, source: 'Manual' });
-    onOpenChange(false);
+    setSaving(true);
+    try {
+      await onSave({ name, type: form.type, balance: round2(balance), institution: form.institution.trim() || undefined, source: 'Manual' });
+      onOpenChange(false);
+    } catch {
+      setError('Unable to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -59,9 +68,9 @@ export default function AccountDialog({ open, onOpenChange, account, onSave }) {
               <Input id="account-name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Everyday checking" className="min-h-11 rounded-xl" />
             </div>
             <div className="space-y-1.5">
-              <Label>Type</Label>
+              <Label htmlFor="AccountDialog-select-1">Type</Label>
               <Select value={form.type} onValueChange={(v) => setForm((f) => ({ ...f, type: v }))}>
-                <SelectTrigger className="min-h-11 rounded-xl"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="AccountDialog-select-1" className="min-h-11 rounded-xl"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(ACCOUNT_TYPES).map(([key, label]) => (
                     <SelectItem key={key} value={key}>{label}</SelectItem>
@@ -80,10 +89,10 @@ export default function AccountDialog({ open, onOpenChange, account, onSave }) {
               <Input id="account-institution" value={form.institution} onChange={(e) => setForm((f) => ({ ...f, institution: e.target.value }))} placeholder="Local credit union" className="min-h-11 rounded-xl" />
             </div>
           </div>
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {error && <p role="alert" className="text-base text-danger-text">{error}</p>}
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit">{account ? 'Save changes' : 'Add account'}</Button>
+            <Button type="submit" disabled={saving}>{account ? 'Save changes' : 'Add account'}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

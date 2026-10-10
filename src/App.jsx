@@ -16,34 +16,33 @@ import Properties from '@/pages/Properties';
 import AskAveraPage from '@/pages/AskAveraPage';
 import Settings from '@/pages/Settings';
 import ModeEntry from '@/pages/ModeEntry';
+import Login from '@/pages/Login';
+import Register from '@/pages/Register';
+import ForgotPassword from '@/pages/ForgotPassword';
+import ResetPassword from '@/pages/ResetPassword';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import { Navigate, useLocation } from 'react-router-dom';
+import LoadingState from '@/components/states/LoadingState';
+import ErrorState from '@/components/states/ErrorState';
 import { ThemeProvider } from 'next-themes';
 
-const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
-
-  // Show loading spinner while checking app public settings or auth
-  if (isLoadingPublicSettings || isLoadingAuth) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
-      </div>
-    );
+export const AuthenticatedApp = () => {
+  const { isLoadingAuth, isLoadingPublicSettings, authError, checkAppState } = useAuth();
+  const location = useLocation();
+  const publicRoute = ['/login', '/register', '/forgot-password', '/reset-password'].includes(location.pathname);
+  const loginPath = '/login?returnTo=' + encodeURIComponent(location.pathname + location.search);
+  if (!publicRoute && (isLoadingPublicSettings || isLoadingAuth)) return <LoadingState label="Checking your account" />;
+  if (!publicRoute && authError && authError.type !== 'auth_required') {
+    if (authError.type === 'user_not_registered') return <UserNotRegisteredError />;
+    return <ErrorState message="We couldn't verify your account. Please try again." onRetry={checkAppState} />;
   }
-
-  // Handle authentication errors
-  if (authError) {
-    if (authError.type === 'user_not_registered') {
-      return <UserNotRegisteredError />;
-    } else if (authError.type === 'auth_required') {
-      // Redirect to login automatically
-      navigateToLogin();
-      return null;
-    }
-  }
-
-  // Render the main app
   return (
     <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to={loginPath} replace />} />}>
       <Route element={<AppLayout />}>
         <Route path="/" element={<Overview />} />
         <Route path="/bills-budget" element={<BillsBudget />} />
@@ -54,16 +53,16 @@ const AuthenticatedApp = () => {
         <Route path="/settings" element={<Settings />} />
       </Route>
       <Route path="/welcome" element={<ModeEntry />} />
+      </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
 };
 
-
 function App() {
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <Router>

@@ -14,7 +14,7 @@ export const VALUATION_STAGE = 'manual-only';
 /* Registered providers — empty until an external API is configured. */
 export const PROVIDERS = [];
 
-export async function getValuation(property) {
+export function getValuation(property) {
   const hasProvider = PROVIDERS.length > 0 && property?.valuation_source === 'external_provider';
   return {
     value: property?.estimated_value ?? null,

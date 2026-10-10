@@ -21,14 +21,14 @@ export default function CategoryCard({ category, spent, onEdit, onDelete, onLogS
           <span className="ml-1 text-sm font-normal text-muted-foreground">/mo</span>
         </p>
       </div>
-      <ProgressBar className="mt-3" percent={percent} tone={tone} />
+      <ProgressBar label={`${category.name} budget used`} className="mt-3" percent={percent} tone={tone} />
       <p className="mt-2 text-sm text-muted-foreground">
         Spent <span className="tabular-nums text-foreground">{formatCurrency(spent)}</span> of {formatCurrency(limit)} ·{' '}
         {Math.round(percent)}% of limit used ·{' '}
         {remaining >= 0 ? (
-          <span className="tabular-nums text-success">{formatCurrency(remaining)} remaining</span>
+          <span className="tabular-nums text-success-text">{formatCurrency(remaining)} remaining</span>
         ) : (
-          <span className="tabular-nums text-danger">{formatCurrency(-remaining)} over</span>
+          <span className="tabular-nums text-danger-text">{formatCurrency(-remaining)} over</span>
         )}
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -44,7 +44,7 @@ export default function CategoryCard({ category, spent, onEdit, onDelete, onLogS
           <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
           Edit category
         </Button>
-        <Button size="sm" variant="outline" className="text-danger hover:bg-danger-surface" onClick={() => onDelete(category)} disabled={busy}>
+        <Button size="sm" variant="outline" className="text-danger-text hover:bg-danger-surface" onClick={() => onDelete(category)} disabled={busy}>
           <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
           Delete category
         </Button>

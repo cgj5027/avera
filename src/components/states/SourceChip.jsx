@@ -6,7 +6,7 @@
 import StatusPill from './StatusPill';
 import { Info } from 'lucide-react';
 
-export default function SourceChip({ source = 'Manual', className }) {
+export default function SourceChip({ source = 'Manual', className = '' }) {
   const tone = source === 'Plaid Sandbox' ? 'info' : 'neutral';
   return (
     <StatusPill tone={tone} icon={Info} className={className}>

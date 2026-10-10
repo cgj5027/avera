@@ -43,9 +43,13 @@ export const PROPERTY_TYPES = {
   other: 'Other',
 };
 
-export const round2 = (v) => Math.round((Number(v) || 0) * 100) / 100;
+export const round2 = (v) => {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0;
+  return Math.sign(n) * Math.round((Math.abs(n) + Number.EPSILON * Math.abs(n)) * 100) / 100;
+};
 
-const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+const num = (v) => (typeof v !== 'boolean' && Number.isFinite(Number(v)) ? Number(v) : 0);
 
 /** Normalize any pay frequency to a monthly-equivalent amount. */
 export function monthlyFromFrequency(amount, frequency) {
@@ -130,8 +134,15 @@ export function spentInMonth(transactions = [], category, range = monthRange()) 
 const DAY_MS = 86400000;
 
 /** Next occurrence shifted forward by one bill frequency. */
-export function addFrequency(dateStr, frequency) {
+export function addFrequency(dateStr, frequency, anchorDay) {
   const d = new Date(`${dateStr}T00:00:00`);
+  if (!Number.isFinite(d.getTime())) throw new Error('Invalid recurrence date');
+  const day = anchorDay ?? d.getDate();
+  const shiftMonths = (count) => {
+    d.setDate(1);
+    d.setMonth(d.getMonth() + count);
+    d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
+  };
   switch (frequency) {
     case 'weekly':
       d.setDate(d.getDate() + 7);
@@ -140,19 +151,22 @@ export function addFrequency(dateStr, frequency) {
       d.setDate(d.getDate() + 14);
       break;
     case 'semimonthly':
-      d.setDate(d.getDate() + 15);
+      // Twice monthly means the 15th and last calendar day, not every 15 days.
+      if (d.getDate() < 15) d.setDate(15);
+      else if (d.getDate() === 15) d.setDate(new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate());
+      else { d.setDate(15); d.setMonth(d.getMonth() + 1); }
       break;
     case 'quarterly':
-      d.setMonth(d.getMonth() + 3);
+      shiftMonths(3);
       break;
     case 'semiannual':
-      d.setMonth(d.getMonth() + 6);
+      shiftMonths(6);
       break;
     case 'annual':
-      d.setFullYear(d.getFullYear() + 1);
+      shiftMonths(12);
       break;
     default:
-      d.setMonth(d.getMonth() + 1);
+      shiftMonths(1);
   }
   const pad = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -160,10 +174,11 @@ export function addFrequency(dateStr, frequency) {
 
 /** Status of a bill relative to today. Color is never the sole indicator — a label always travels with the tone. */
 export function billStatus(bill, today = new Date()) {
-  if (bill.paid_this_cycle) return { key: 'paid', label: 'Paid this cycle', tone: 'success' };
+  if (bill.paid_this_cycle && (!bill.next_due_date || bill.next_due_date <= (bill.last_paid_date ?? ''))) return { key: 'paid', label: 'Paid this cycle', tone: 'success' };
   if (!bill.next_due_date) return { key: 'unscheduled', label: 'No due date set', tone: 'neutral' };
   const due = new Date(`${bill.next_due_date}T00:00:00`);
-  const days = Math.ceil((due - today) / DAY_MS);
+  if (!Number.isFinite(due.getTime())) return { key: 'unscheduled', label: 'Invalid due date', tone: 'neutral' };
+  const days = Math.round((Date.UTC(due.getFullYear(), due.getMonth(), due.getDate()) - Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())) / DAY_MS);
   if (days < 0) return { key: 'overdue', label: `Overdue by ${-days} day${days === -1 ? '' : 's'}`, tone: 'danger' };
   const reminderDays = num(bill.reminder_days ?? 3);
   if (days <= reminderDays)
@@ -173,17 +188,21 @@ export function billStatus(bill, today = new Date()) {
 
 /** Bills due within `withinDays` of today, soonest first. */
 export function upcomingBills(bills = [], withinDays = 30, today = new Date()) {
-  const horizon = new Date(today.getTime() + withinDays * DAY_MS).toISOString().slice(0, 10);
-  const todayISO = today.toISOString().slice(0, 10);
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const end = new Date(today);
+  end.setDate(end.getDate() + withinDays);
+  const horizon = iso(end);
+  const todayISO = iso(today);
   return bills
-    .filter((b) => !b.paid_this_cycle && b.next_due_date && b.next_due_date <= horizon && b.next_due_date >= todayISO)
+    .filter((b) => billStatus(b, today).key !== 'paid' && b.next_due_date && b.next_due_date <= horizon && b.next_due_date >= todayISO)
     .sort((a, b) => a.next_due_date.localeCompare(b.next_due_date));
 }
 
 export function goalMonthsRemaining(targetDate, today = new Date()) {
   if (!targetDate) return null;
   const t = new Date(`${targetDate}T00:00:00`);
-  const months = Math.ceil((t - today) / (DAY_MS * 30.44));
+  if (!Number.isFinite(t.getTime())) return null;
+  const months = Math.ceil((t.getTime() - today.getTime()) / (DAY_MS * 30.44));
   return Math.max(0, months);
 }
 
@@ -192,6 +211,7 @@ export function goalRequiredMonthly(goal, today = new Date()) {
   if (!goal.target_date) return null;
   const remaining = Math.max(0, num(goal.target_amount) - num(goal.saved_amount));
   const months = goalMonthsRemaining(goal.target_date, today);
+  if (months === null) return null;
   return round2(remaining / Math.max(1, months ?? 1));
 }
 
@@ -200,6 +220,7 @@ export function goalPace(goal, monthlyCapacity, today = new Date()) {
   if (num(goal.saved_amount) >= num(goal.target_amount))
     return { key: 'reached', label: 'Goal reached', tone: 'success' };
   const required = goalRequiredMonthly(goal, today);
+  if (goalMonthsRemaining(goal.target_date, today) === 0) return { key: 'behind', label: 'Deadline reached — review goal', tone: 'danger' };
   if (required === null) return { key: 'open', label: 'No deadline set', tone: 'neutral' };
   if (required <= num(monthlyCapacity)) return { key: 'on-track', label: 'On track', tone: 'success' };
   if (required <= num(monthlyCapacity) * 1.25)
@@ -220,7 +241,9 @@ export function calculateIncomeGap(goal, { monthlyIncome = 0, monthlyExpenses = 
 }
 
 export function propertyEquity(property, mortgage) {
-  return round2(num(property?.estimated_value) - num(mortgage?.outstanding_balance));
+  if (property?.estimated_value == null || !Number.isFinite(Number(property.estimated_value))) return null;
+  if (mortgage && (mortgage.outstanding_balance == null || !Number.isFinite(Number(mortgage.outstanding_balance)))) return null;
+  return round2(num(property.estimated_value) - num(mortgage?.outstanding_balance));
 }
 
 /**
@@ -245,22 +268,26 @@ export function projectYearlyPlan({
   const monthlyExpenses = round2(
     billsBreakdown.reduce((s, b) => s + b.monthly, 0) + budgetTotal + propertyCosts
   );
+  const annualIncome = round2(incomes.filter(i => i.active !== false).reduce((s, i) => s + num(i.amount) * (FREQUENCIES[i.frequency] ?? FREQUENCIES.monthly).perYear, 0));
+  const annualExpenses = round2(bills.reduce((s, b) => s + num(b.amount) * (FREQUENCIES[b.frequency] ?? FREQUENCIES.monthly).perYear, 0) + (budgetTotal + propertyCosts) * 12);
+  const annualSavings = round2(annualIncome - annualExpenses);
   const start = new Date(startingFrom.getFullYear(), startingFrom.getMonth(), 1);
   const rows = [];
   let cumulative = availableCash(accounts);
   for (let i = 0; i < months; i++) {
     const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
-    cumulative = round2(cumulative + monthlyIncome - monthlyExpenses);
+    const income = round2(round2(annualIncome * (i + 1) / 12) - round2(annualIncome * i / 12));
+    const expenses = round2(round2(annualExpenses * (i + 1) / 12) - round2(annualExpenses * i / 12));
+    cumulative = round2(cumulative + income - expenses);
     rows.push({
-      key: d.toISOString().slice(0, 7),
+      key: monthRange(d).key,
       month: d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-      income: monthlyIncome,
-      expenses: monthlyExpenses,
-      net: round2(monthlyIncome - monthlyExpenses),
+      income,
+      expenses,
+      net: round2(income - expenses),
       cumulative,
     });
   }
-  const netMonthly = round2(monthlyIncome - monthlyExpenses);
   return {
     monthlyIncome,
     monthlyExpenses,
@@ -268,10 +295,10 @@ export function projectYearlyPlan({
     propertyCosts,
     billsBreakdown,
     rows,
-    annualIncome: round2(monthlyIncome * 12),
-    annualExpenses: round2(monthlyExpenses * 12),
-    annualSavings: round2(netMonthly * 12),
-    yearEndCash: round2(availableCash(accounts) + netMonthly * 12),
+    annualIncome,
+    annualExpenses,
+    annualSavings,
+    yearEndCash: round2(availableCash(accounts) + annualSavings),
   };
 }
 

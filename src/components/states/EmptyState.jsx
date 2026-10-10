@@ -1,7 +1,7 @@
 import { Inbox } from 'lucide-react';
 
 /** Designed empty state (design system §18: every analytic card needs one). */
-export default function EmptyState({ icon: Icon = Inbox, heading, description, action }) {
+export default function EmptyState({ icon: Icon = Inbox, heading, description, action = undefined }) {
   return (
     <div className="rounded-2xl border border-border bg-surface p-8 text-center sm:p-10">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-surface-selected">

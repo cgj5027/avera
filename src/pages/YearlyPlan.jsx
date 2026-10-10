@@ -13,8 +13,7 @@ import MonthlyPlanChart from '@/components/yearlyplan/MonthlyPlanChart';
 import AssumptionsPanel from '@/components/yearlyplan/AssumptionsPanel';
 import IncomeCard from '@/components/income/IncomeCard';
 import IncomeDialog from '@/components/income/IncomeDialog';
-import { base44 } from '@/api/base44Client';
-import { createRecord, updateRecord, deleteRecord, getHouseholdProfile } from '@/services/dataService';
+import { listRecords, createRecord, updateRecord, deleteRecord, getHouseholdProfile } from '@/services/dataService';
 import * as calc from '@/services/financialCalculations';
 import { formatCurrency, formatDate } from '@/utils/format';
 
@@ -39,13 +38,13 @@ export default function YearlyPlan() {
       })
       .catch(() => {});
     Promise.all([
-      base44.entities.IncomeSource.filter({}),
-      base44.entities.Bill.filter({}),
-      base44.entities.BudgetCategory.filter({}),
-      base44.entities.Property.filter({}),
-      base44.entities.MortgageRecord.filter({}),
-      base44.entities.Account.filter({}),
-      base44.entities.ForecastRecord.filter({}),
+      listRecords('incomeSource'),
+      listRecords('bill'),
+      listRecords('budgetCategory'),
+      listRecords('property'),
+      listRecords('mortgageRecord'),
+      listRecords('account'),
+      listRecords('forecastRecord'),
     ])
       .then(([incomes, bills, budgetCategories, properties, mortgages, accounts, forecasts]) => {
         if (!cancelled) setData({ incomes, bills, budgetCategories, properties, mortgages, accounts, forecasts });
@@ -66,6 +65,10 @@ export default function YearlyPlan() {
       await fn();
       if (message) toast({ title: message });
       reload();
+    } catch (err) {
+      toast({ title: 'Changes could not be saved', description: 'Please try again. Some changes may have completed.', variant: 'destructive' });
+      reload();
+      throw err;
     } finally {
       setBusy(false);
     }
@@ -101,11 +104,12 @@ export default function YearlyPlan() {
     run(() =>
       createRecord('forecastRecord', {
         year,
+        plan_start_month: projection.rows[0].key,
         projected_income: projection.annualIncome,
         projected_expenses: projection.annualExpenses,
         projected_savings: projection.annualSavings,
         year_end_cash: projection.yearEndCash,
-        assumptions: `Monthly income ${projection.monthlyIncome}; monthly expenses ${projection.monthlyExpenses} (bills averaged by frequency, budget limits ${projection.budgetTotal}, property costs ${projection.propertyCosts}); starting cash ${calc.availableCash(accounts)}.`,
+        assumptions: `Rolling 12-month plan from ${projection.rows[0].key} through ${projection.rows[11].key}. Monthly income ${projection.monthlyIncome}; monthly expenses ${projection.monthlyExpenses} (bills averaged by frequency, budget limits ${projection.budgetTotal}, property costs ${projection.propertyCosts}); starting cash ${calc.availableCash(accounts)}.`,
       })
     ).then(() => toast({ title: 'Snapshot saved to your forecast history' }));
 
@@ -121,10 +125,10 @@ export default function YearlyPlan() {
     <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
       <PageHeader
         title="Yearly Plan"
-        subtitle="Projected income, spending, savings, and monthly trends."
+        subtitle="A rolling 12-month estimate of income, spending, savings, and monthly trends."
         actions={
           hasInputs ? (
-            <Button onClick={saveSnapshot} disabled={busy} className="min-h-11 rounded-xl px-4">
+            <Button onClick={() => { void saveSnapshot().catch(() => {}); }} disabled={busy} className="min-h-11 rounded-xl px-4">
               <Save className="mr-2 h-4 w-4" aria-hidden="true" />
               Save snapshot
             </Button>
@@ -136,7 +140,7 @@ export default function YearlyPlan() {
         <SummaryCard label="Projected annual income" value={formatCurrency(projection.annualIncome)} source="Estimated" note="Income sources normalized to a month." />
         <SummaryCard label="Projected annual expenses" value={formatCurrency(projection.annualExpenses)} source="Estimated" note="Bills, budget limits, and property costs." />
         <SummaryCard label="Projected annual savings" value={formatCurrency(projection.annualSavings)} source="Estimated" note="Income minus expenses." />
-        <SummaryCard label="Year-end cash" value={formatCurrency(projection.yearEndCash)} source="Estimated" note={`Starting from ${formatCurrency(calc.availableCash(accounts))} in saved balances.`} />
+        <SummaryCard label="Cash after 12 months" value={formatCurrency(projection.yearEndCash)} source="Estimated" note={`Starting from ${formatCurrency(calc.availableCash(accounts))} in saved balances.`} />
       </div>
 
       <div className="mt-6">
@@ -161,7 +165,7 @@ export default function YearlyPlan() {
                   <TableCell className="font-medium">{row.month}</TableCell>
                   <TableCell className="text-right tabular-nums">{formatCurrency(row.income)}</TableCell>
                   <TableCell className="text-right tabular-nums">{formatCurrency(row.expenses)}</TableCell>
-                  <TableCell className={`text-right tabular-nums ${row.net >= 0 ? 'text-success' : 'text-danger'}`}>
+                  <TableCell className={`text-right tabular-nums ${row.net >= 0 ? 'text-success-text' : 'text-danger-text'}`}>
                     {formatCurrency(row.net)}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{formatCurrency(row.cumulative)}</TableCell>
@@ -218,7 +222,7 @@ export default function YearlyPlan() {
             {forecasts.map((f) => (
               <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
                 <div>
-                  <p className="text-base font-medium text-foreground">{f.year} snapshot</p>
+                  <p className="text-base font-medium text-foreground">{f.plan_start_month ? `12-month plan from ${f.plan_start_month}` : `${f.year} snapshot`}</p>
                   <p className="text-sm text-muted-foreground tabular-nums">
                     Income {formatCurrency(f.projected_income)} · Expenses {formatCurrency(f.projected_expenses)} · Savings{' '}
                     {formatCurrency(f.projected_savings)} · Cash {formatCurrency(f.year_end_cash)}
@@ -228,7 +232,7 @@ export default function YearlyPlan() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="text-danger hover:bg-danger-surface"
+                  className="text-danger-text hover:bg-danger-surface"
                   onClick={() => setDeleteForecast(f)}
                   disabled={busy}
                 >

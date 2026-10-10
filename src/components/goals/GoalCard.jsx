@@ -20,7 +20,7 @@ export default function GoalCard({ goal, monthlyCapacity, onEdit, onDelete, onLo
         <h3 className="font-heading text-base font-semibold text-foreground">{goal.name}</h3>
         <StatusPill tone={pace.tone}>{pace.label}</StatusPill>
       </div>
-      <ProgressBar className="mt-3" percent={percent} />
+      <ProgressBar label={`Savings toward ${goal.name}`} className="mt-3" percent={percent} />
       <p className="mt-2 text-sm text-muted-foreground">
         <span className="tabular-nums text-foreground">{formatCurrency(saved)}</span> of{' '}
         <span className="tabular-nums text-foreground">{formatCurrency(target)}</span> · {Math.round(percent)}% saved
@@ -43,7 +43,7 @@ export default function GoalCard({ goal, monthlyCapacity, onEdit, onDelete, onLo
           <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
           Edit goal
         </Button>
-        <Button size="sm" variant="outline" className="text-danger hover:bg-danger-surface" onClick={() => onDelete(goal)} disabled={busy}>
+        <Button size="sm" variant="outline" className="text-danger-text hover:bg-danger-surface" onClick={() => onDelete(goal)} disabled={busy}>
           <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
           Delete goal
         </Button>

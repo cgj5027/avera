@@ -39,6 +39,7 @@ const EMPTY = {
 export default function PropertyDialog({ open, onOpenChange, property, mortgage, onSave }) {
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -65,13 +66,18 @@ export default function PropertyDialog({ open, onOpenChange, property, mortgage,
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
   const numOrNull = (v) => (v === '' ? undefined : round2(Number(v)));
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
+    if (saving) return;
     const nickname = form.nickname.trim();
     const value = Number(form.estimated_value);
     if (!nickname) return setError('Enter a nickname for the property.');
     if (!Number.isFinite(value) || value <= 0) return setError('Enter an estimated value greater than zero.');
-    onSave({
+    const numbers = ['taxes_monthly','insurance_monthly','hoa_monthly','maintenance_monthly','outstanding_balance','monthly_payment','interest_rate'];
+    if (numbers.some(key => form[key] !== '' && (!Number.isFinite(Number(form[key])) || Number(form[key]) < 0))) return setError('Costs and mortgage values must be valid non-negative numbers.');
+    setSaving(true);
+    try {
+      await onSave({
       property: {
         nickname,
         address: form.address.trim() || undefined,
@@ -93,7 +99,12 @@ export default function PropertyDialog({ open, onOpenChange, property, mortgage,
         interest_rate: form.interest_rate === '' ? null : Number(form.interest_rate),
       },
     });
-    onOpenChange(false);
+      onOpenChange(false);
+    } catch {
+      setError('Unable to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const money = (id, label, key, { min = 0 } = {}) => (
@@ -117,9 +128,9 @@ export default function PropertyDialog({ open, onOpenChange, property, mortgage,
               <Input id="prop-nickname" value={form.nickname} onChange={set('nickname')} placeholder="Maple Street" className="min-h-11 rounded-xl" />
             </div>
             <div className="space-y-1.5">
-              <Label>Type</Label>
+              <Label htmlFor="PropertyDialog-select-1">Type</Label>
               <Select value={form.property_type} onValueChange={(v) => setForm((f) => ({ ...f, property_type: v }))}>
-                <SelectTrigger className="min-h-11 rounded-xl"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="PropertyDialog-select-1" className="min-h-11 rounded-xl"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(PROPERTY_TYPES).map(([key, label]) => (
                     <SelectItem key={key} value={key}>{label}</SelectItem>
@@ -164,10 +175,10 @@ export default function PropertyDialog({ open, onOpenChange, property, mortgage,
               </div>
             </div>
           </div>
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {error && <p role="alert" className="text-base text-danger-text">{error}</p>}
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit">{property ? 'Save changes' : 'Add property'}</Button>
+            <Button type="submit" disabled={saving}>{property ? 'Save changes' : 'Add property'}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

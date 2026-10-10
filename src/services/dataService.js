@@ -27,26 +27,72 @@ const ent = (key) => {
   return base44.entities[name];
 };
 
-/** All of the signed-in user's records matching the query. */
-export const listRecords = (key, query = {}) => ent(key).filter(query);
-
-/** One page of records: { items, next_cursor, has_more }. */
-export const listPage = (key, query = {}, opts = {}) => ent(key).filter(query, { limit: 50, ...opts });
-
-export const createRecord = (key, data) => ent(key).create(data);
-
-export const updateRecord = (key, id, data) => ent(key).update(id, data);
-
-export const deleteRecord = (key, id) => ent(key).delete(id);
-
-/** The user's household profile (single record), or null when none is saved yet. */
-export async function getHouseholdProfile() {
-  const items = await ent('householdProfile').filter({});
-  return items[0] ?? null;
+async function currentUser() {
+  const user = await base44.auth.me();
+  if (!user?.id) throw new Error('Sign in to access your financial records.');
+  return user;
 }
 
+/** Explicit owner filtering complements, and never replaces, server RLS. */
+export async function listPage(key, query = {}, opts = {}) {
+  const user = await currentUser();
+  return ent(key).filter({ ...query, created_by_id: user.id }, { limit: 100, ...opts });
+}
+
+export async function listRecords(key, query = {}) {
+  const user = await currentUser();
+  const scoped = { ...query, created_by_id: user.id };
+  const items = [];
+  const cursors = new Set();
+  let cursor;
+  do {
+    const page = await ent(key).filter(scoped, { limit: 100, ...(cursor ? { cursor } : {}) });
+    items.push(...page.items);
+    if (!page.has_more) return items;
+    if (!page.next_cursor || cursors.has(page.next_cursor)) throw new Error('Invalid pagination response');
+    cursor = page.next_cursor;
+    cursors.add(cursor);
+  } while (cursor);
+  return items;
+}
+
+function writable(data) {
+  const { id, created_by_id, created_by, created_date, updated_date, ...fields } = data;
+  return fields;
+}
+
+async function owned(key, id) {
+  const user = await currentUser();
+  const record = await ent(key).get(id);
+  if (record.created_by_id !== user.id) throw new Error('You cannot access this record.');
+  return record;
+}
+
+export async function createRecord(key, data) {
+  await currentUser();
+  if (key === 'budgetCategory' && (await listRecords(key, { name: data.name })).length) throw new Error('A category with this name already exists.');
+  return ent(key).create(writable(data));
+}
+export async function updateRecord(key, id, data) {
+  const before = await owned(key, id);
+  if (key === 'budgetCategory' && data.name && data.name !== before.name) {
+    const matches = await listRecords('budgetCategory', { name: data.name });
+    if (matches.some(item => item.id !== id)) throw new Error('A category with this name already exists.');
+    for (const transaction of await listRecords('transaction', { category: before.name })) {
+      await ent('transaction').update(transaction.id, { category: data.name });
+    }
+  }
+  return ent(key).update(id, writable(data));
+}
+export async function deleteRecord(key, id) {
+  await owned(key, id);
+  return ent(key).delete(id);
+}
+
+export async function getHouseholdProfile() {
+  return (await listRecords('householdProfile'))[0] ?? null;
+}
 export async function saveHouseholdProfile(data) {
-  const items = await ent('householdProfile').filter({});
-  if (items[0]) return ent('householdProfile').update(items[0].id, data);
-  return ent('householdProfile').create(data);
+  const profile = await getHouseholdProfile();
+  return profile ? updateRecord('householdProfile', profile.id, data) : createRecord('householdProfile', data);
 }

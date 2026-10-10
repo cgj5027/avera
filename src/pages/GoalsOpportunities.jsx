@@ -11,8 +11,7 @@ import GoalCard from '@/components/goals/GoalCard';
 import GoalDialog from '@/components/goals/GoalDialog';
 import GoalContributionDialog from '@/components/goals/GoalContributionDialog';
 import IncomeGapPanel from '@/components/goals/IncomeGapPanel';
-import { base44 } from '@/api/base44Client';
-import { createRecord, updateRecord, deleteRecord } from '@/services/dataService';
+import { listRecords, createRecord, updateRecord, deleteRecord } from '@/services/dataService';
 import * as calc from '@/services/financialCalculations';
 import { round2 } from '@/services/financialCalculations';
 
@@ -32,12 +31,12 @@ export default function GoalsOpportunities() {
     let cancelled = false;
     setError(null);
     Promise.all([
-      base44.entities.Goal.filter({}),
-      base44.entities.IncomeSource.filter({}),
-      base44.entities.Bill.filter({}),
-      base44.entities.BudgetCategory.filter({}),
-      base44.entities.Property.filter({}),
-      base44.entities.MortgageRecord.filter({}),
+      listRecords('goal'),
+      listRecords('incomeSource'),
+      listRecords('bill'),
+      listRecords('budgetCategory'),
+      listRecords('property'),
+      listRecords('mortgageRecord'),
     ])
       .then(([g, incomes, bills, budgetCategories, properties, mortgages]) => {
         if (!cancelled) {
@@ -61,6 +60,10 @@ export default function GoalsOpportunities() {
       await fn();
       if (message) toast({ title: message });
       reload();
+    } catch (err) {
+      toast({ title: 'Changes could not be saved', description: 'Please try again. Some changes may have completed.', variant: 'destructive' });
+      reload();
+      throw err;
     } finally {
       setBusy(false);
     }
@@ -119,6 +122,7 @@ export default function GoalsOpportunities() {
         }
       />
 
+      <p className="mb-4 text-base text-muted-foreground">Each goal is compared against your full monthly savings capacity independently. Funds are not allocated between goals.</p>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {goals.length === 0 ? (
           <EmptyState

@@ -16,22 +16,26 @@ import { todayISO } from '@/utils/format';
 const EMPTY = { amount: '', description: '', date: '' };
 
 /** Log a spending transaction against a budget category. */
-export default function LogSpendingDialog({ open, onOpenChange, category, onSave }) {
+export default function LogSpendingDialog({ open, onOpenChange, category, transaction, onSave }) {
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setForm({ ...EMPTY, date: todayISO() });
+    setForm(transaction ? { amount: String(transaction.amount), description: transaction.description ?? '', date: transaction.date } : { ...EMPTY, date: todayISO() });
     setError('');
-  }, [open, category]);
+  }, [open, category, transaction]);
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
+    if (saving) return;
     const amount = Number(form.amount);
     if (!Number.isFinite(amount) || amount <= 0) return setError('Enter an amount greater than zero.');
     if (!form.date) return setError('Choose the spending date.');
-    onSave({
+    setSaving(true);
+    try {
+      await onSave({
       description: form.description.trim() || `Spending — ${category.name}`,
       amount: round2(amount),
       type: 'expense',
@@ -39,14 +43,19 @@ export default function LogSpendingDialog({ open, onOpenChange, category, onSave
       date: form.date,
       source: 'Manual',
     });
-    onOpenChange(false);
+      onOpenChange(false);
+    } catch {
+      setError('Unable to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Log spending — {category.name}</DialogTitle>
+          <DialogTitle>{transaction ? 'Edit spending' : 'Log spending'} — {category.name}</DialogTitle>
           <DialogDescription>Recorded against this month's budget. Manual source.</DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={submit}>
@@ -64,10 +73,10 @@ export default function LogSpendingDialog({ open, onOpenChange, category, onSave
             <Label htmlFor="spend-note">Description (optional)</Label>
             <Input id="spend-note" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Weekly groceries" className="min-h-11 rounded-xl" />
           </div>
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {error && <p role="alert" className="text-base text-danger-text">{error}</p>}
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit">Log spending</Button>
+            <Button type="submit" disabled={saving}>{transaction ? 'Save changes' : 'Log spending'}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -7,7 +7,7 @@ const OPTIONS = [
     mode: 'demo',
     icon: Sparkles,
     title: 'Explore Demo Mode',
-    description: 'Look around with sample data. Nothing touches real finances.',
+    description: 'Preview the app shell. Sample data arrives in a later stage.',
     destination: '/',
     cta: 'Explore',
   },
@@ -15,9 +15,9 @@ const OPTIONS = [
     mode: 'sandbox',
     icon: Building2,
     title: 'Connect a Test Bank',
-    description: 'Use the Plaid Sandbox to link a simulated institution — never a real account.',
+    description: 'View connection information. Plaid Sandbox linking arrives in a later stage.',
     destination: '/settings',
-    cta: 'Connect',
+    cta: 'View connection status',
   },
   {
     mode: 'manual',
@@ -48,7 +48,7 @@ export default function ModeEntry() {
           Get started with Avera
         </h1>
         <p className="mt-3 max-w-xl text-base text-muted-foreground">
-          Experience Avera using simulated financial data. No real banking credentials are required.
+          Enter your finances manually to get started. Demo data and test-bank connections arrive in later stages.
         </p>
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {OPTIONS.map((o) => (
@@ -70,7 +70,7 @@ export default function ModeEntry() {
           ))}
         </div>
         <p className="mt-8 flex items-center gap-2 text-sm text-muted-foreground">
-          <ShieldCheck className="h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+          <ShieldCheck className="h-4 w-4 shrink-0 text-success-text" aria-hidden="true" />
           No payment execution, transfers, or banking authorization — Avera never moves your money.
         </p>
       </main>

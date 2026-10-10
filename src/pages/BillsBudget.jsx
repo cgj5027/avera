@@ -14,8 +14,7 @@ import BillDialog from '@/components/bills/BillDialog';
 import CategoryCard from '@/components/budget/CategoryCard';
 import CategoryDialog from '@/components/budget/CategoryDialog';
 import LogSpendingDialog from '@/components/budget/LogSpendingDialog';
-import { base44 } from '@/api/base44Client';
-import { createRecord, updateRecord, deleteRecord } from '@/services/dataService';
+import { listRecords, createRecord, updateRecord, deleteRecord } from '@/services/dataService';
 import * as calc from '@/services/financialCalculations';
 import { formatCurrency, todayISO } from '@/utils/format';
 
@@ -37,9 +36,9 @@ export default function BillsBudget() {
     let cancelled = false;
     setError(null);
     Promise.all([
-      base44.entities.Bill.filter({}),
-      base44.entities.BudgetCategory.filter({}),
-      base44.entities.Transaction.filter({}),
+      listRecords('bill'),
+      listRecords('budgetCategory'),
+      listRecords('transaction'),
     ])
       .then(([b, c, t]) => {
         if (!cancelled) {
@@ -64,6 +63,10 @@ export default function BillsBudget() {
       await fn();
       if (message) toast({ title: message });
       reload();
+    } catch (err) {
+      toast({ title: 'Changes could not be saved', description: 'Please try again. Some changes may have completed.', variant: 'destructive' });
+      reload();
+      throw err;
     } finally {
       setBusy(false);
     }
@@ -79,9 +82,10 @@ export default function BillsBudget() {
     run(
       () =>
         updateRecord('bill', bill.id, {
-          paid_this_cycle: true,
+          paid_this_cycle: false,
+          recurrence_day: bill.recurrence_day ?? Number(bill.next_due_date?.slice(-2)),
           last_paid_date: todayISO(),
-          next_due_date: bill.next_due_date ? calc.addFrequency(bill.next_due_date, bill.frequency) : bill.next_due_date,
+          next_due_date: bill.next_due_date ? calc.addFrequency(bill.next_due_date, bill.frequency, bill.recurrence_day) : bill.next_due_date,
         }),
       'Bill marked paid — next due date scheduled'
     );
@@ -95,12 +99,13 @@ export default function BillsBudget() {
       categoryDialog.category ? 'Category updated' : 'Category added'
     );
 
-  const logSpending = (category, payload) => run(() => createRecord('transaction', payload), 'Spending logged');
+  const logSpending = (category, payload) => run(() => category._transaction ? updateRecord('transaction', category._transaction.id, payload) : createRecord('transaction', payload), category._transaction ? 'Spending updated' : 'Spending logged');
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     const { kind, record } = deleteTarget;
     if (kind === 'bill') await run(() => deleteRecord('bill', record.id), 'Bill deleted');
+    else if (kind === 'transaction') await run(() => deleteRecord('transaction', record.id), 'Spending deleted');
     else await run(() => deleteRecord('budgetCategory', record.id), 'Category deleted');
     setDeleteTarget(null);
   };
@@ -205,6 +210,23 @@ export default function BillsBudget() {
               ))}
             </div>
           )}
+          <section className="rounded-2xl border border-border bg-surface p-5">
+            <h2 className="font-heading text-base font-semibold text-foreground">Spending history</h2>
+            <p className="mt-1 text-base text-muted-foreground">Manual entries. Editing or deleting an entry updates budget totals.</p>
+            {transactions.length === 0 ? <p className="mt-3 text-base text-muted-foreground">No spending logged yet.</p> : (
+              <ul className="mt-3 divide-y divide-border">
+                {transactions.filter(t => t.type !== 'income').map(t => (
+                  <li key={t.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                    <div><p className="text-base font-medium text-foreground">{t.description || t.category || 'Spending'}</p><p className="text-sm text-muted-foreground">{t.category || 'Uncategorized'} · {t.date}</p></div>
+                    <div className="flex flex-wrap items-center gap-2"><span className="tabular-nums text-foreground">{formatCurrency(t.amount)}</span>
+                      <Button variant="outline" aria-label={`Edit spending ${t.description || t.category || ''}`} onClick={() => setLogDialog({ name: t.category || 'Uncategorized', _transaction: t })} disabled={busy}>Edit</Button>
+                      <Button variant="outline" className="text-danger-text" aria-label={`Delete spending ${t.description || t.category || ''}`} onClick={() => setDeleteTarget({ kind: 'transaction', record: t })} disabled={busy}>Delete</Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         </TabsContent>
       </Tabs>
 
@@ -227,6 +249,7 @@ export default function BillsBudget() {
             if (!open) setLogDialog(null);
           }}
           category={logDialog}
+          transaction={logDialog._transaction}
           onSave={(payload) => logSpending(logDialog, payload)}
         />
       )}
@@ -235,9 +258,11 @@ export default function BillsBudget() {
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
         }}
-        title={`Delete ${deleteTarget?.record?.name ?? 'record'}?`}
+        title={`Delete ${deleteTarget?.record?.name ?? deleteTarget?.record?.description ?? 'record'}?`}
         description={
-          deleteTarget?.kind === 'bill'
+          deleteTarget?.kind === 'transaction'
+            ? 'This removes the spending entry and recalculates budget totals. This cannot be undone.'
+            : deleteTarget?.kind === 'bill'
             ? 'This removes the bill and its schedule. This cannot be undone.'
             : 'This removes the category and its limit. Logged spending stays in your history. This cannot be undone.'
         }

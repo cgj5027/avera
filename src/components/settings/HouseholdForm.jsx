@@ -20,6 +20,7 @@ export default function HouseholdForm() {
   const [form, setForm] = useState(EMPTY);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -36,6 +37,7 @@ export default function HouseholdForm() {
           });
         }
       })
+      .catch(() => { if (!cancelled) setError('Unable to load your household profile. Reload before editing.'); })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
@@ -46,6 +48,7 @@ export default function HouseholdForm() {
 
   const submit = async (e) => {
     e.preventDefault();
+    setError('');
     setSaving(true);
     try {
       await saveHouseholdProfile({
@@ -56,24 +59,28 @@ export default function HouseholdForm() {
         emergency_fund_months: form.emergency_fund_months === '' ? undefined : Number(form.emergency_fund_months),
       });
       toast({ title: 'Household preferences saved' });
+    } catch {
+      setError('Unable to save household preferences. Please try again.');
     } finally {
       setSaving(false);
     }
   };
 
+  if (error && !form.household_name) return <p role="alert" className="text-base text-danger-text">{error}</p>;
   if (loading) return <p className="text-base text-muted-foreground">Loading your household profile…</p>;
 
   return (
     <form className="space-y-4" onSubmit={submit}>
+      {error && <p role="alert" className="text-base text-danger-text">{error}</p>}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="hh-name">Household name</Label>
           <Input id="hh-name" value={form.household_name} onChange={(e) => setForm((f) => ({ ...f, household_name: e.target.value }))} placeholder="The Alvarez household" className="min-h-11 rounded-xl" />
         </div>
         <div className="space-y-1.5">
-          <Label>Household type</Label>
+          <Label htmlFor="household-select-1">Household type</Label>
           <Select value={form.household_type} onValueChange={(v) => setForm((f) => ({ ...f, household_type: v }))}>
-            <SelectTrigger className="min-h-11 rounded-xl"><SelectValue /></SelectTrigger>
+            <SelectTrigger id="household-select-1" className="min-h-11 rounded-xl"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="single_income">Single income</SelectItem>
               <SelectItem value="multi_income">Multiple incomes</SelectItem>
@@ -81,9 +88,9 @@ export default function HouseholdForm() {
           </Select>
         </div>
         <div className="space-y-1.5">
-          <Label>Default pay frequency</Label>
+          <Label htmlFor="household-select-2">Default pay frequency</Label>
           <Select value={form.default_pay_frequency} onValueChange={(v) => setForm((f) => ({ ...f, default_pay_frequency: v }))}>
-            <SelectTrigger className="min-h-11 rounded-xl"><SelectValue /></SelectTrigger>
+            <SelectTrigger id="household-select-2" className="min-h-11 rounded-xl"><SelectValue /></SelectTrigger>
             <SelectContent>
               {Object.entries(FREQUENCIES).map(([key, f]) => (
                 <SelectItem key={key} value={key}>{f.label}</SelectItem>
@@ -92,9 +99,9 @@ export default function HouseholdForm() {
           </Select>
         </div>
         <div className="space-y-1.5">
-          <Label>Budget style</Label>
+          <Label htmlFor="household-select-3">Budget style</Label>
           <Select value={form.budget_style} onValueChange={(v) => setForm((f) => ({ ...f, budget_style: v }))}>
-            <SelectTrigger className="min-h-11 rounded-xl"><SelectValue /></SelectTrigger>
+            <SelectTrigger id="household-select-3" className="min-h-11 rounded-xl"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="category_caps">Category caps</SelectItem>
               <SelectItem value="zero_based">Zero-based</SelectItem>

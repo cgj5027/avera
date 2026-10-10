@@ -3,7 +3,7 @@
  * Currency presentation lives here so no component formats ad hoc.
  */
 export function formatCurrency(value, { currency = 'USD' } = {}) {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
+  if (value === null || value === undefined || typeof value === 'boolean' || String(value).trim() === '' || !Number.isFinite(Number(value))) return '—';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
@@ -20,7 +20,9 @@ export function todayISO() {
 
 export function formatDate(value) {
   if (!value) return '—';
-  return new Date(value).toLocaleDateString('en-US', {
+  const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00` : value);
+  if (!Number.isFinite(date.getTime())) return '—';
+  return date.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',

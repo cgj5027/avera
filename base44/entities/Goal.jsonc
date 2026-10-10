@@ -6,11 +6,13 @@
       "type": "string"
     },
     "target_amount": {
-      "type": "number"
+      "type": "number",
+      "minimum": 0
     },
     "saved_amount": {
       "type": "number",
-      "default": 0
+      "default": 0,
+      "minimum": 0
     },
     "target_date": {
       "type": "string",
@@ -26,43 +28,18 @@
   ],
   "rls": {
     "read": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    },
-    "create": {
       "created_by_id": "{{user.id}}"
     },
+    "create": {
+      "user_condition": {
+        "id": "{{user.id}}"
+      }
+    },
     "update": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
+      "created_by_id": "{{user.id}}"
     },
     "delete": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
+      "created_by_id": "{{user.id}}"
     }
   }
 }

@@ -8,7 +8,7 @@ const ICONS = { demo: Info, sandbox: Link2, manual: PencilLine };
  * Persistent, neutral-tint data-mode indicator (design system §21):
  * "Demo data", "Plaid Sandbox — Test account", or "Manual".
  */
-export default function ModeIndicator({ variant = 'inline', className }) {
+export default function ModeIndicator({ variant = 'inline', className = '' }) {
   const mode = getDataMode();
   if (!mode) return null;
   const Icon = ICONS[mode] ?? Info;

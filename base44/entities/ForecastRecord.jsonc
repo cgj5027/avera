@@ -3,13 +3,16 @@
   "type": "object",
   "properties": {
     "year": {
-      "type": "number"
+      "type": "number",
+      "minimum": 0
     },
     "projected_income": {
-      "type": "number"
+      "type": "number",
+      "minimum": 0
     },
     "projected_expenses": {
-      "type": "number"
+      "type": "number",
+      "minimum": 0
     },
     "projected_savings": {
       "type": "number"
@@ -19,6 +22,11 @@
     },
     "assumptions": {
       "type": "string"
+    },
+    "plan_start_month": {
+      "type": "string",
+      "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+      "description": "First month in the rolling twelve-month projection."
     }
   },
   "required": [
@@ -26,43 +34,18 @@
   ],
   "rls": {
     "read": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    },
-    "create": {
       "created_by_id": "{{user.id}}"
     },
+    "create": {
+      "user_condition": {
+        "id": "{{user.id}}"
+      }
+    },
     "update": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
+      "created_by_id": "{{user.id}}"
     },
     "delete": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
+      "created_by_id": "{{user.id}}"
     }
   }
 }

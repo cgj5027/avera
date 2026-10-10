@@ -1,7 +1,6 @@
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PageHeader from '@/components/layout/PageHeader';
-import EmptyState from '@/components/states/EmptyState';
 import { ACCOUNT_TYPES } from '@/services/financialCalculations';
 import { formatCurrency } from '@/utils/format';
 
@@ -35,10 +34,10 @@ export default function OverviewAccounts({ accounts, onDelete, dialog, onOpenDia
               </div>
               <div className="flex items-center gap-2">
                 <p className="font-heading text-base font-semibold tabular-nums text-foreground">{formatCurrency(a.balance)}</p>
-                <Button size="icon" variant="ghost" aria-label={`Edit ${a.name}`} onClick={() => onOpenDialog(a)} disabled={busy} className="h-9 w-9">
+                <Button size="icon" variant="ghost" aria-label={`Edit ${a.name}`} onClick={() => onOpenDialog(a)} disabled={busy} className="h-11 w-11">
                   <Pencil className="h-4 w-4" aria-hidden="true" />
                 </Button>
-                <Button size="icon" variant="ghost" aria-label={`Delete ${a.name}`} onClick={() => onDelete(a)} disabled={busy} className="h-9 w-9 text-danger hover:bg-danger-surface">
+                <Button size="icon" variant="ghost" aria-label={`Delete ${a.name}`} onClick={() => onDelete(a)} disabled={busy} className="h-11 w-11 text-danger-text hover:bg-danger-surface">
                   <Trash2 className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>

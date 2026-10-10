@@ -16,6 +16,7 @@ import { round2 } from '@/services/financialCalculations';
 export default function GoalContributionDialog({ open, onOpenChange, goal, onSave }) {
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -24,12 +25,20 @@ export default function GoalContributionDialog({ open, onOpenChange, goal, onSav
     }
   }, [open, goal]);
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
+    if (saving) return;
     const value = Number(amount);
     if (!Number.isFinite(value) || value <= 0) return setError('Enter a contribution greater than zero.');
-    onSave(round2(value));
-    onOpenChange(false);
+    setSaving(true);
+    try {
+      await onSave(round2(value));
+      onOpenChange(false);
+    } catch {
+      setError('Unable to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -44,10 +53,10 @@ export default function GoalContributionDialog({ open, onOpenChange, goal, onSav
             <Label htmlFor="contribution-amount">Contribution amount</Label>
             <Input id="contribution-amount" type="number" step="0.01" min="0" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="min-h-11 rounded-xl tabular-nums" />
           </div>
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {error && <p role="alert" className="text-base text-danger-text">{error}</p>}
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit">Log contribution</Button>
+            <Button type="submit" disabled={saving}>Log contribution</Button>
           </DialogFooter>
         </form>
       </DialogContent>

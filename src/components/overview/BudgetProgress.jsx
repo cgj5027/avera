@@ -33,7 +33,7 @@ export default function BudgetProgress({ categories, transactions }) {
                     {formatCurrency(spent)} of {formatCurrency(limit)} · {remaining >= 0 ? `${formatCurrency(remaining)} left` : `${formatCurrency(-remaining)} over`}
                   </p>
                 </div>
-                <ProgressBar className="mt-2" percent={percent} tone={tone} />
+                <ProgressBar label={`${c.name} budget used`} className="mt-2" percent={percent} tone={tone} />
                 <p className="mt-1 text-xs text-muted-foreground">{Math.round(percent)}% of limit used</p>
               </li>
             );

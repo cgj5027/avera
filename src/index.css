@@ -17,7 +17,7 @@
     --surface: 5 100% 99%;           /* Soft Porcelain */
     --surface-subtle: 96 15% 93%;    /* #EEF1EC */
     --surface-selected: 147 19% 91%; /* #E3ECE7 */
-    --text-secondary: 157 6% 43%;    /* Quiet Stone #66736E */
+    --text-secondary: 155 6.122% 38.431%;    /* Quiet Stone #66736E */
     --text-inverse: 0 0% 100%;
     --primary: 175 41% 22%;          /* Avera Forest #214E4A */
     --primary-hover: 177 48% 16%;    /* Deep Evergreen #163C3A */
@@ -25,7 +25,7 @@
     --secondary: 147 19% 91%;        /* pale sage action-secondary */
     --secondary-foreground: 165 20% 12%;
     --muted: 96 15% 93%;
-    --muted-foreground: 157 6% 43%;
+    --muted-foreground: 155 6.122% 38.431%;
     --accent: 147 19% 91%;
     --accent-foreground: 165 20% 12%;
     --clay: 13 47% 49%;              /* Hearth Clay #B85C43 */
@@ -35,6 +35,8 @@
     --border-strong: 152 9% 68%;     /* #A7B6AF */
     --input: 143 11% 86%;
     --ring: 204 46% 36%;             /* Focus Blue #326B86 */
+    --success-text: 150 50% 30%;
+    --danger-text: 0 44% 45%;
     --success: 158 50% 30%;          /* #267256 */
     --success-surface: 144 32% 94%;  /* #EAF4EE */
     --info: 204 46% 36%;             /* #326B86 */
@@ -94,6 +96,8 @@
     --input: 165 16% 24%;
     --ring: 198 50% 65%;             /* #78B7D2 */
     /* Status pairs keep their light tinted surfaces in dark mode so labels stay readable */
+    --success-text: 162 19% 66%;
+    --danger-text: 0 71.2% 79.6%;
     --success: 158 50% 30%;
     --success-surface: 144 32% 94%;
     --info: 204 46% 36%;
@@ -141,4 +145,7 @@
       transition-duration: 0.01ms !important;
     }
   }
+}
+@layer base {
+  :focus-visible { outline: 3px solid hsl(var(--ring)); outline-offset: 3px; }
 }

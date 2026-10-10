@@ -1,3 +1,4 @@
+import SourceChip from '@/components/states/SourceChip';
 import { TrendingUp, TrendingDown, Scale } from 'lucide-react';
 import StatusPill from '@/components/states/StatusPill';
 import { round2 } from '@/services/financialCalculations';
@@ -19,6 +20,7 @@ export default function FinancialHealthCard({ monthlyIncome, monthlyExpenses }) 
           {hasInputs ? formatCurrency(net) : '—'}
         </span>
         <StatusPill tone={tone} icon={Icon}>{label}</StatusPill>
+        <SourceChip source="Estimated" />
       </div>
       <p className="mt-2 text-sm text-muted-foreground">
         {hasInputs

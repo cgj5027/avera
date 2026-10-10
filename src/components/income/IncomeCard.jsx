@@ -1,3 +1,4 @@
+import SourceChip from '@/components/states/SourceChip';
 import { Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { INCOME_TYPES, FREQUENCIES, monthlyFromFrequency } from '@/services/financialCalculations';
@@ -21,12 +22,13 @@ export default function IncomeCard({ income, onEdit, onDelete, busy }) {
           </p>
         </div>
       </div>
+      <div className="mt-3"><SourceChip source="Manual" /></div>
       <div className="mt-4 flex flex-wrap gap-2">
         <Button size="sm" variant="outline" onClick={() => onEdit(income)} disabled={busy}>
           <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
           Edit source
         </Button>
-        <Button size="sm" variant="outline" className="text-danger hover:bg-danger-surface" onClick={() => onDelete(income)} disabled={busy}>
+        <Button size="sm" variant="outline" className="text-danger-text hover:bg-danger-surface" onClick={() => onDelete(income)} disabled={busy}>
           <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
           Delete source
         </Button>

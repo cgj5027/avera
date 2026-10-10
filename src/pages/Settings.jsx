@@ -8,10 +8,9 @@ import StatusPill from '@/components/states/StatusPill';
 import ModeIndicator from '@/components/layout/ModeIndicator';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/AuthContext';
-import { base44 } from '@/api/base44Client';
 
 export default function Settings() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
       <PageHeader title="Settings" subtitle="Profile, household, connections, and appearance." />
@@ -32,7 +31,7 @@ export default function Settings() {
             <p className="text-base text-muted-foreground">Loading your profile…</p>
           )}
           {user && (
-            <Button variant="outline" className="mt-4 min-h-11 rounded-xl" onClick={() => base44.auth.logout('/login')}>
+            <Button variant="outline" className="mt-4 min-h-11 rounded-xl" onClick={() => logout()}>
               Sign out
             </Button>
           )}

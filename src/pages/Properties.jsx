@@ -9,8 +9,7 @@ import ErrorState from '@/components/states/ErrorState';
 import EmptyState from '@/components/states/EmptyState';
 import PropertyCard from '@/components/properties/PropertyCard';
 import PropertyDialog from '@/components/properties/PropertyDialog';
-import { base44 } from '@/api/base44Client';
-import { createRecord, updateRecord, deleteRecord } from '@/services/dataService';
+import { listRecords, createRecord, updateRecord, deleteRecord } from '@/services/dataService';
 import { propertyMonthlyCostsTotal } from '@/services/financialCalculations';
 import { formatCurrency } from '@/utils/format';
 
@@ -28,7 +27,7 @@ export default function Properties() {
   useEffect(() => {
     let cancelled = false;
     setError(null);
-    Promise.all([base44.entities.Property.filter({}), base44.entities.MortgageRecord.filter({})])
+    Promise.all([listRecords('property'), listRecords('mortgageRecord')])
       .then(([p, m]) => {
         if (!cancelled) {
           setProperties(p);
@@ -66,6 +65,10 @@ export default function Properties() {
       toast({ title: dialog.property ? 'Property updated' : 'Property added' });
       setDialog({ open: false, property: null });
       reload();
+    } catch (err) {
+      toast({ title: 'Changes could not be saved', description: 'Please try again. Some changes may have completed.', variant: 'destructive' });
+      reload();
+      throw err;
     } finally {
       setBusy(false);
     }
@@ -75,12 +78,17 @@ export default function Properties() {
     if (!deleteProperty) return;
     setBusy(true);
     try {
-      const mortgage = mortgages.find((m) => m.property_id === deleteProperty.id);
-      if (mortgage) await deleteRecord('mortgageRecord', mortgage.id);
+      for (const mortgage of mortgages.filter((m) => m.property_id === deleteProperty.id)) {
+        await deleteRecord('mortgageRecord', mortgage.id);
+      }
       await deleteRecord('property', deleteProperty.id);
       setDeleteProperty(null);
       toast({ title: 'Property deleted' });
       reload();
+    } catch (err) {
+      toast({ title: 'Changes could not be saved', description: 'Please try again. Some changes may have completed.', variant: 'destructive' });
+      reload();
+      throw err;
     } finally {
       setBusy(false);
     }
