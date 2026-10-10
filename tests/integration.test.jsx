@@ -13,6 +13,7 @@ import { AuthenticatedApp } from '../src/App';
 import BillDialog from '../src/components/bills/BillDialog';
 import CategoryDialog from '../src/components/budget/CategoryDialog';
 import GoalDialog from '../src/components/goals/GoalDialog';
+import PropertyDialog from '../src/components/properties/PropertyDialog';
 import GoalContributionDialog from '../src/components/goals/GoalContributionDialog';
 import PropertyCard from '../src/components/properties/PropertyCard';
 import BillsBudget from '../src/pages/BillsBudget';
@@ -296,6 +297,24 @@ it('an accidentally dismissed add-goal draft survives reopening and clears after
   view.rerender(<GoalDialog open={false} goal={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
   view.rerender(<GoalDialog open goal={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
   expect(screen.getByLabelText('Goal name').value).toBe('');
+});
+
+it('an accidentally dismissed add-property draft survives reopening and clears after cancel', async () => {
+  const close = vi.fn();
+  const view = render(<PropertyDialog open property={null} mortgage={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  fireEvent.change(screen.getByLabelText('Nickname'),{target:{value:'Maple Street'}});
+  fireEvent.change(screen.getByLabelText('Estimated value'),{target:{value:'320000'}});
+  fireEvent.change(screen.getByLabelText('Maintenance /mo'),{target:{value:'250'}});
+  view.rerender(<PropertyDialog open={false} property={null} mortgage={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  view.rerender(<PropertyDialog open property={null} mortgage={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  expect(screen.getByLabelText('Nickname').value).toBe('Maple Street');
+  expect(screen.getByLabelText('Estimated value').value).toBe('320000');
+  expect(screen.getByLabelText('Maintenance /mo').value).toBe('250');
+  fireEvent.click(screen.getByRole('button',{name:'Cancel'}));
+  expect(close).toHaveBeenCalledWith(false);
+  view.rerender(<PropertyDialog open={false} property={null} mortgage={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  view.rerender(<PropertyDialog open property={null} mortgage={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  expect(screen.getByLabelText('Nickname').value).toBe('');
 });
 
 it('a dismissed contribution draft survives reopening for the same goal and clears after cancel', async () => {

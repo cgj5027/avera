@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -35,15 +35,23 @@ const EMPTY = {
  * Add-or-edit dialog for a property, its manual valuation, and its mortgage.
  * The valuation is always stored as a user-provided estimate (Manual source);
  * no external provider is contacted.
+ * For a new property, typed values survive an accidental dismissal (outside
+ * click, Escape); the draft clears on Cancel or a successful save.
  */
 export default function PropertyDialog({ open, onOpenChange, property, mortgage, onSave }) {
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const draftRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
-    const p = property ?? {};
+    if (!property) {
+      setForm(draftRef.current ?? { ...EMPTY });
+      setError('');
+      return;
+    }
+    const p = property;
     setForm({
       nickname: p.nickname ?? '',
       address: p.address ?? '',
@@ -62,6 +70,16 @@ export default function PropertyDialog({ open, onOpenChange, property, mortgage,
     });
     setError('');
   }, [open, property, mortgage]);
+
+  /* Keep the newest typed values as the draft while adding. */
+  useEffect(() => {
+    if (open && !property) draftRef.current = form;
+  }, [open, property, form]);
+
+  const closeAndDiscard = () => {
+    draftRef.current = null;
+    onOpenChange(false);
+  };
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
   const numOrNull = (v) => (v === '' ? undefined : round2(Number(v)));
@@ -99,7 +117,7 @@ export default function PropertyDialog({ open, onOpenChange, property, mortgage,
         interest_rate: form.interest_rate === '' ? null : Number(form.interest_rate),
       },
     });
-      onOpenChange(false);
+      closeAndDiscard();
     } catch {
       setError('Unable to save. Please try again.');
     } finally {
@@ -177,7 +195,7 @@ export default function PropertyDialog({ open, onOpenChange, property, mortgage,
           </div>
           {error && <p role="alert" className="text-base text-danger-text">{error}</p>}
           <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={closeAndDiscard}>Cancel</Button>
             <Button type="submit" disabled={saving}>{property ? 'Save changes' : 'Add property'}</Button>
           </DialogFooter>
         </form>
