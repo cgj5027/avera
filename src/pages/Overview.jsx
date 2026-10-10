@@ -14,7 +14,7 @@ import NextSteps from '@/components/overview/NextSteps';
 import OverviewChart from '@/components/overview/OverviewChart';
 import BudgetProgress from '@/components/overview/BudgetProgress';
 import UpcomingBillsList from '@/components/overview/UpcomingBillsList';
-import FinancialHealthCard from '@/components/overview/FinancialHealthCard';
+import MonthlyFlowCards from '@/components/overview/MonthlyFlowCards';
 import OverviewAccounts from '@/components/overview/OverviewAccounts';
 import AccountDialog from '@/components/accounts/AccountDialog';
 import AskAveraDrawer from '@/components/askavera/AskAveraDrawer';
@@ -138,9 +138,6 @@ export default function Overview() {
 
   const { accounts, incomes, bills, budgetCategories, transactions, properties, mortgages } = data;
   const est = estimateFromTransactions(transactions);
-  // Linked accounts fill only the gaps manual records leave.
-  const linkedIncome = !incomes.length && est.hasData ? est.monthlyIncome : 0;
-  const linkedExpenses = !(bills.length || budgetCategories.length || properties.length) && est.hasData ? est.monthlyExpenses : 0;
   const monthlyIncome = calc.monthlyIncomeTotal(incomes);
   const monthlyExpenses = calc.totalMonthlyExpenses({ bills, budgetCategories, properties, mortgages });
   const cash = calc.availableCash(accounts);
@@ -150,8 +147,14 @@ export default function Overview() {
   const currentMonth = calc.monthRange();
   const monthTxIncome = calc.incomeInMonth(transactions, currentMonth);
   const monthTxExpenses = calc.spentInMonth(transactions, null, currentMonth);
-  const plaidThisMonth = transactions.some((t) => t.plaid_item_id && t.date >= currentMonth.start && t.date <= currentMonth.end);
-  const txSource = plaidThisMonth ? 'Plaid Sandbox' : 'Manual';
+  /* Expenses this month matched to tracked bills count as recurring paid; the rest is additional spending. */
+  const recurringPaid = calc.recurringPaidInMonth(transactions, bills, currentMonth);
+  const additionalSpent = calc.round2(monthTxExpenses - recurringPaid);
+  const creditCards = accounts.filter((a) => a.type === 'credit_card');
+  const debts = calc.round2(
+    mortgages.reduce((s, m) => s + (Number(m.outstanding_balance) || 0), 0) +
+      creditCards.reduce((s, a) => s + (Number(a.balance) || 0), 0)
+  );
   const projection = calc.projectYearlyPlan({
     incomes,
     bills,
@@ -164,38 +167,37 @@ export default function Overview() {
   });
   const hasData = accounts.length || incomes.length || bills.length || budgetCategories.length || properties.length;
 
-  const SUMMARY = [
-    {
-      label: 'Available cash',
-      value: accounts.length ? formatCurrency(cash) : '—',
-      source: 'Manual',
-      note: accounts.length ? 'Across your saved accounts.' : 'Add an account in the Accounts card below.',
+  /* Row two: monthly income, recurring expenses, and additional (non-recurring) expenses. */
+  const flow = {
+    income: {
+      projected: incomes.length
+        ? { value: formatCurrency(monthlyIncome), note: 'From income sources in Yearly Plan.' }
+        : est.hasData
+          ? { value: formatCurrency(est.monthlyIncome), note: `Estimated from ${est.months} months of linked transactions.` }
+          : { value: '—', note: 'Add income sources in Yearly Plan.' },
+      tracked: {
+        value: formatCurrency(monthTxIncome),
+        note: 'From income transactions tracked in the Transactions tab.',
+      },
     },
-    {
-      label: 'Income this month',
-      value: monthTxIncome || incomes.length || linkedIncome ? formatCurrency(monthTxIncome || monthlyIncome + linkedIncome) : '—',
-      source: monthTxIncome ? txSource : incomes.length ? 'Manual' : linkedIncome ? 'Plaid Sandbox' : 'Manual',
-      note: monthTxIncome
-        ? "From this month's income transactions."
-        : incomes.length
-          ? 'Income sources normalized to a month.'
-          : linkedIncome
-            ? `Estimated from ${est.months} months of linked transactions.`
-            : 'Add income sources in Yearly Plan.',
+    recurring: {
+      projected: monthlyExpenses > 0
+        ? { value: formatCurrency(monthlyExpenses), note: 'From bills, budget limits, and property costs.' }
+        : est.hasData
+          ? { value: formatCurrency(est.monthlyExpenses), note: `Estimated from ${est.months} months of linked transactions.` }
+          : { value: '—', note: 'Add bills in Bills & Budget.' },
+      tracked: {
+        value: formatCurrency(recurringPaid),
+        note: 'Paid this month, matched to your tracked bills.',
+      },
     },
-    {
-      label: 'Expenses this month',
-      value: monthTxExpenses || bills.length || budgetCategories.length || properties.length || linkedExpenses ? formatCurrency(monthTxExpenses || monthlyExpenses + linkedExpenses) : '—',
-      source: monthTxExpenses ? txSource : bills.length || budgetCategories.length || properties.length ? 'Manual' : linkedExpenses ? 'Plaid Sandbox' : 'Manual',
-      note: monthTxExpenses
-        ? "From this month's transactions."
-        : bills.length || budgetCategories.length || properties.length
-          ? 'Bills, budget limits, and property costs.'
-          : linkedExpenses
-            ? `Estimated from ${est.months} months of linked transactions.`
-            : 'Bills, budget limits, and property costs.',
+    additional: {
+      projected: {
+        value: formatCurrency(additionalSpent),
+        note: 'Spending this month outside your tracked recurring bills.',
+      },
     },
-  ];
+  };
 
   const accountDialogNode = (
     <>
@@ -233,11 +235,24 @@ export default function Overview() {
           </>
         }
       />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {SUMMARY.map((card) => (
-          <SummaryCard key={card.label} label={card.label} value={card.value} source={card.source} note={card.note} />
-        ))}
-        <FinancialHealthCard monthlyIncome={monthlyIncome} monthlyExpenses={monthlyExpenses} />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <SummaryCard
+          label="Available cash"
+          value={accounts.length ? formatCurrency(cash) : '—'}
+          note={accounts.length ? 'Across your saved accounts.' : 'Add an account in the Accounts card below.'}
+        />
+        <SummaryCard
+          label="Total debts"
+          value={mortgages.length || creditCards.length ? formatCurrency(debts) : '—'}
+          note={
+            mortgages.length || creditCards.length
+              ? 'Outstanding mortgage balances plus credit card balances owed.'
+              : 'Add a mortgage in Properties or a credit card in Accounts.'
+          }
+        />
+      </div>
+      <div className="mt-4">
+        <MonthlyFlowCards flow={flow} />
       </div>
       {!hasData && (
         <div className="mt-6">

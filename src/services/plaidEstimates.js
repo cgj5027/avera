@@ -6,7 +6,7 @@
  * income, monthly expenses, and recurring bills. Nothing here writes data;
  * a suggestion becomes a tracked bill only when the user adds it.
  */
-import { addFrequency, monthlyFromFrequency, round2 } from './financialCalculations';
+import { addFrequency, monthlyFromFrequency, round2, normalizeName } from './financialCalculations';
 
 export const PLAID_SOURCE_LABEL = 'Plaid Sandbox';
 
@@ -19,7 +19,7 @@ const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
 const monthKey = (date) => String(date ?? '').slice(0, 7);
 
-export const normalizeName = (raw) => String(raw ?? '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+export { normalizeName };
 
 function mostCommon(values) {
   const counts = new Map();

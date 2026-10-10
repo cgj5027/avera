@@ -140,6 +140,26 @@ export function incomeInMonth(transactions = [], range = monthRange()) {
   );
 }
 
+/** Normalized merchant/description text: uppercase, alphanumeric words only. */
+export const normalizeName = (raw) => String(raw ?? '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+
+/** Expenses within a month range that match a tracked bill by normalized name or shared category. */
+export function recurringPaidInMonth(transactions = [], bills = [], range = monthRange()) {
+  const names = new Set(bills.map((b) => normalizeName(b.name)));
+  const categories = new Set(bills.map((b) => b.category).filter(Boolean));
+  return round2(
+    transactions
+      .filter(
+        (t) =>
+          t.type !== 'income' &&
+          t.date >= range.start &&
+          t.date <= range.end &&
+          (names.has(normalizeName(t.description || t.category)) || categories.has(t.category))
+      )
+      .reduce((s, t) => s + num(t.amount), 0)
+  );
+}
+
 const DAY_MS = 86400000;
 
 /** Next occurrence shifted forward by one bill frequency. */
