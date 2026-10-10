@@ -63,11 +63,22 @@ export default async function(req) {
           cursor = sync.next_cursor || cursor;
           if (!sync.has_more) break;
         }
-        const rows = added.map((t) => ({
+        // Categories the user edited between syncs win over the Plaid mapping.
+        const existingPage = await base44.entities.Transaction.filter(
+          { created_by_id: user.id, plaid_item_id: item.item_id },
+          { limit: 1000, fields: ['plaid_transaction_id', 'category'] }
+        );
+        const existingCategories = new Map(
+          (existingPage.items || []).map((r) => [r.plaid_transaction_id, r.category ?? ''])
+        );
+        const rows = added.map((t) => {
+          const isIncome = (t.amount || 0) <= 0;
+          const plaidCategory = isIncome ? 'Income' : (Array.isArray(t.category) ? (t.category[0] || '') : '');
+          return {
           description: t.name || t.merchant_name || 'Plaid transaction',
           amount: Math.abs(t.amount || 0),
-          type: (t.amount || 0) > 0 ? 'expense' : 'income',
-          category: Array.isArray(t.category) ? (t.category[0] || '') : '',
+          type: isIncome ? 'income' : 'expense',
+          category: existingCategories.has(t.transaction_id) ? (existingCategories.get(t.transaction_id) || '') : plaidCategory,
           date: (t.date || '').slice(0, 10),
           source: 'Plaid Sandbox',
           notes: '',
@@ -75,7 +86,8 @@ export default async function(req) {
           plaid_account_id: t.account_id || '',
           plaid_transaction_id: t.transaction_id,
           created_by_id: user.id
-        })).filter((r) => r.date);
+          };
+        }).filter((r) => r.date);
         for (const batch of chunk(rows, 200)) {
           await base44.entities.Transaction.upsert(batch, { key: 'plaid_transaction_id' });
         }

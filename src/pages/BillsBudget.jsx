@@ -12,6 +12,7 @@ import EmptyState from '@/components/states/EmptyState';
 import BillCard from '@/components/bills/BillCard';
 import BillDialog from '@/components/bills/BillDialog';
 import TransactionsTable from '@/components/bills/TransactionsTable';
+import SuggestedBudgetCategories from '@/components/budget/SuggestedBudgetCategories';
 import CategoryCard from '@/components/budget/CategoryCard';
 import CategoryDialog from '@/components/budget/CategoryDialog';
 import LogSpendingDialog from '@/components/budget/LogSpendingDialog';
@@ -25,6 +26,7 @@ export default function BillsBudget() {
   const [bills, setBills] = useState(null);
   const [categories, setCategories] = useState(null);
   const [transactions, setTransactions] = useState(null);
+  const [accounts, setAccounts] = useState(null);
   const [error, setError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -41,12 +43,14 @@ export default function BillsBudget() {
       listRecords('bill'),
       listRecords('budgetCategory'),
       listRecords('transaction'),
+      listRecords('account'),
     ])
-      .then(([b, c, t]) => {
+      .then(([b, c, t, a]) => {
         if (!cancelled) {
           setBills(b);
           setCategories(c);
           setTransactions(t);
+          setAccounts(a);
         }
       })
       .catch((e) => {
@@ -116,6 +120,12 @@ export default function BillsBudget() {
       categoryDialog.category ? 'Category updated' : 'Category added'
     );
 
+  const confirmSuggestedCategory = (name, monthly_limit) =>
+    run(() => createRecord('budgetCategory', { name, monthly_limit }), 'Category added');
+
+  const saveTransactionCategory = (transaction, category) =>
+    run(() => updateRecord('transaction', transaction.id, { category }), 'Category updated');
+
   const logSpending = (category, payload) => run(() => category._transaction ? updateRecord('transaction', category._transaction.id, payload) : createRecord('transaction', payload), category._transaction ? 'Spending updated' : 'Spending logged');
 
   const confirmDelete = async () => {
@@ -134,7 +144,7 @@ export default function BillsBudget() {
       </div>
     );
   }
-  if (!bills || !categories || !transactions) {
+  if (!bills || !categories || !transactions || !accounts) {
     return (
       <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
         <LoadingState label="Loading Bills & Budget" />
@@ -223,6 +233,7 @@ export default function BillsBudget() {
               Add budget category
             </Button>
           </div>
+          <SuggestedBudgetCategories categories={categories} busy={busy} onConfirm={confirmSuggestedCategory} />
           {categories.length === 0 ? (
             <EmptyState
               heading="No budget categories yet"
@@ -245,15 +256,21 @@ export default function BillsBudget() {
           )}
           <section className="rounded-2xl border border-border bg-surface p-5">
             <h2 className="font-heading text-base font-semibold text-foreground">Spending history</h2>
-            <p className="mt-1 text-base text-muted-foreground">Manual entries. Editing or deleting an entry updates budget totals.</p>
+            <p className="mt-1 text-base text-muted-foreground">Every logged expense — manual entries plus imported linked charges. Add new spending with Log spending on a category card.</p>
             {transactions.length === 0 ? <p className="mt-3 text-base text-muted-foreground">No spending logged yet.</p> : (
               <ul className="mt-3 divide-y divide-border">
                 {transactions.filter(t => t.type !== 'income').map(t => (
                   <li key={t.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                     <div><p className="text-base font-medium text-foreground">{t.description || t.category || 'Spending'}</p><p className="text-sm text-muted-foreground">{t.category || 'Uncategorized'} · {t.date}</p></div>
                     <div className="flex flex-wrap items-center gap-2"><span className="tabular-nums text-foreground">{formatCurrency(t.amount)}</span>
-                      <Button variant="outline" aria-label={`Edit spending ${t.description || t.category || ''}`} onClick={() => setLogDialog({ name: t.category || 'Uncategorized', _transaction: t })} disabled={busy}>Edit</Button>
-                      <Button variant="outline" className="text-danger-text" aria-label={`Delete spending ${t.description || t.category || ''}`} onClick={() => setDeleteTarget({ kind: 'transaction', record: t })} disabled={busy}>Delete</Button>
+                      {t.plaid_item_id ? (
+                        <span className="text-xs text-muted-foreground">Imported — manage in the Transactions tab</span>
+                      ) : (
+                        <>
+                          <Button variant="outline" aria-label={`Edit spending ${t.description || t.category || ''}`} onClick={() => setLogDialog({ name: t.category || 'Uncategorized', _transaction: t })} disabled={busy}>Edit</Button>
+                          <Button variant="outline" className="text-danger-text" aria-label={`Delete spending ${t.description || t.category || ''}`} onClick={() => setDeleteTarget({ kind: 'transaction', record: t })} disabled={busy}>Delete</Button>
+                        </>
+                      )}
                     </div>
                   </li>
                 ))}
@@ -267,8 +284,10 @@ export default function BillsBudget() {
             <TransactionsTable
               transactions={transactions}
               bills={bills}
+              accounts={accounts.filter((a) => a.plaid_item_id)}
               busy={busy}
               onAddBill={addBillFromCandidate}
+              onSaveCategory={saveTransactionCategory}
             />
           </TabsContent>
         )}
