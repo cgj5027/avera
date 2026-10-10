@@ -21,6 +21,11 @@ export async function storeConnection(base44, user, exchanged, metadata) {
   const vault = base44.asServiceRole.entities.PlaidCredential;
   await vault.upsert([{ owner_id:user.id, item_id:exchanged.item_id, access_token:exchanged.access_token, sync_cursor:'',
     credential_key:`${user.id}:${exchanged.item_id}`, ...(metadata.demo_profile ? {demo_profile:metadata.demo_profile}: {}) }], {key:'credential_key'});
+  // Generate the Item's mock transaction history at connection time so the
+  // first sync has data. Sandbox-only; a failed fire never blocks connecting.
+  try {
+    await plaidRequest('/sandbox/item/fire_webhook', { access_token:exchanged.access_token, webhook_type:'TRANSACTIONS', webhook_code:'INITIAL_UPDATE' });
+  } catch { /* Item stays usable; sync simply finds no history yet */ }
   const item = { ...metadata, item_id:exchanged.item_id, products:['transactions'], sync_cursor:'', status:'error', last_synced_at:'', last_sync_error:'' };
   await base44.entities.PlaidItem.upsert([item], {key:'item_id'});
   const res = await plaidRequest('/accounts/get', {access_token:exchanged.access_token});
