@@ -189,33 +189,47 @@ export default function YearlyPlan() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard
           label="Projected annual income"
           value={formatCurrency(projection.annualIncome)}
           source={incomes.length ? 'Estimated' : projection.estimateUsed.income ? 'Plaid Sandbox' : 'Estimated'}
-          note={
+          note={incomes.length ? 'From saved income sources.' : 'From recurring deposit patterns.'}
+          hint={
             incomes.length
-              ? 'Income sources normalized to a month.'
+              ? 'Each income source is normalized to a monthly amount using its pay frequency, then multiplied by 12.'
               : projection.estimateUsed.income
-                ? `From recurring deposits across ${est.months} months of linked transactions.`
-                : 'Income sources normalized to a month.'
+                ? `Projected from recurring deposit patterns across ${est.months} months of linked transactions, then multiplied by 12.`
+                : 'Add income sources below to project annual income.'
           }
         />
         <SummaryCard
           label="Projected annual expenses"
           value={formatCurrency(projection.annualExpenses)}
           source={bills.length || budgetCategories.length || properties.length ? 'Estimated' : projection.estimateUsed.expenses ? 'Plaid Sandbox' : 'Estimated'}
-          note={
+          note="From bills, budget limits, and property costs."
+          hint={
             bills.length || budgetCategories.length || properties.length
-              ? 'Bills, budget limits, and property costs.'
+              ? 'Bills are averaged by pay frequency. Budget category limits and property costs (taxes, insurance, HOA, maintenance) are added monthly.'
               : projection.estimateUsed.expenses
-                ? `From ${est.months} months of linked transactions.`
-                : 'Bills, budget limits, and property costs.'
+                ? `With no saved inputs, monthly expenses are averaged from ${est.months} months of linked transactions.`
+                : 'Add bills, budgets, or properties to project annual expenses.'
           }
         />
-        <SummaryCard label="Projected annual savings" value={formatCurrency(projection.annualSavings)} source="Estimated" note="Income minus expenses." />
-        <SummaryCard label="Cash after 12 months" value={formatCurrency(projection.yearEndCash)} source="Estimated" note={`Starting from ${formatCurrency(calc.availableCash(accounts))} in saved balances.`} />
+        <SummaryCard
+          label="Projected annual savings"
+          value={formatCurrency(projection.annualSavings)}
+          source="Estimated"
+          note="Income minus expenses."
+          hint="Projected income minus projected expenses for the 12-month plan. Figures are estimates, not guarantees."
+        />
+        <SummaryCard
+          label="Cash after 12 months"
+          value={formatCurrency(projection.yearEndCash)}
+          source="Estimated"
+          note={`Starting from ${formatCurrency(calc.availableCash(accounts))} in saved balances.`}
+          hint="Your saved account balances today, plus each month's projected net cash flow across the 12-month plan."
+        />
       </div>
 
       <section className="mt-6 rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">

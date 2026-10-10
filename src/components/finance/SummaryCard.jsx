@@ -15,7 +15,7 @@ export default function SummaryCard({ label, value = '—', source = null, note 
         <InfoHint text={hint} />
       </dt>
       <dd className="mt-1.5 flex min-w-0 flex-wrap items-center gap-2">
-        <span className="font-heading text-2xl font-semibold tabular-nums text-foreground [overflow-wrap:anywhere]">{value}</span>
+        <span className="font-heading text-[clamp(1.25rem,1.5vw,1.5rem)] font-semibold tabular-nums leading-tight text-foreground [overflow-wrap:anywhere]">{value}</span>
         {source != null && <SourceChip source={source} />}
       </dd>
       </dl>
