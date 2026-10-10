@@ -17,7 +17,8 @@ export async function plaidRequest(path, body, timeoutMs = 20000) {
       body: JSON.stringify({ ...body, client_id: clientId, secret: clientSecret }),
       signal: AbortSignal.timeout(timeoutMs),
     });
-    if (res.status >= 300) throw new PlaidFailure('PLAID_UNAVAILABLE');
+    // 3xx under redirect:'manual' is a redirect we refuse; 4xx/5xx carry Plaid's error_code.
+    if (res.status >= 300 && res.status < 400) throw new PlaidFailure('PLAID_UNAVAILABLE');
     const data = await res.json();
     if (!res.ok) throw new PlaidFailure(typeof data.error_code === 'string' ? data.error_code : 'PLAID_UNAVAILABLE');
     return data;
