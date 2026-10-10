@@ -19,7 +19,7 @@ export default async function(req) {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const service = base44.asServiceRole;
-    const itemsPage = await base44.entities.PlaidItem.filter({}, { limit: 50 });
+    const itemsPage = await service.entities.PlaidItem.filter({ created_by_id: user.id }, { limit: 50 });
     const items = itemsPage.items || [];
 
     const results = [];
