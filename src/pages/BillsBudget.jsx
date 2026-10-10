@@ -268,13 +268,12 @@ export default function BillsBudget() {
         </TabsList>
 
         <TabsContent value="bills" className="mt-0 space-y-4">
-          <BillSuggestions onAdded={reload} />
-          <div className="flex justify-end">
-            <Button onClick={() => setBillDialog({ open: true, bill: null })} className="min-h-11 rounded-xl px-4">
-              <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+          <BillSuggestions onAdded={reload}>
+            <Button onClick={() => setBillDialog({ open: true, bill: null })} className="min-h-11 rounded-xl gap-1 px-3">
+              <Plus className="h-4 w-4" aria-hidden="true" />
               Add bill
             </Button>
-          </div>
+          </BillSuggestions>
           {bills.length === 0 ? (
             <EmptyState
               heading="No bills yet"

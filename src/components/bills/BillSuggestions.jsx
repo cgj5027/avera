@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { Sparkles, Check, X } from 'lucide-react';
+import { Sparkles, Check, X, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { billSuggestionRequest } from '@/services/billSuggestions';
 import { FREQUENCIES } from '@/services/financialCalculations';
 import { formatCurrency } from '@/utils/format';
 
-export default function BillSuggestions({ onAdded }) {
+export default function BillSuggestions({ onAdded, children = null }) {
   const [rows,setRows]=useState(null);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
@@ -40,8 +41,27 @@ export default function BillSuggestions({ onAdded }) {
     } catch(e){setError(`${added?`${added} bills were added. `:''}${e.message} Remaining suggestions have not been added.`);}
     finally{if(added)onAdded();setBusy(false);}
   };
-  return <section aria-labelledby="bill-suggestions-title" aria-busy={busy} className="rounded-2xl border border-border bg-card p-4 sm:p-6 space-y-4">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 id="bill-suggestions-title" className="text-lg font-semibold">AI bill suggestions</h2><p className="text-base text-muted-foreground">Review recurring payments from your active transaction history. You decide what to include.</p></div><Button variant="outline" className="min-h-11 rounded-xl" disabled={busy} onClick={scan}><Sparkles className="mr-2 h-4 w-4" aria-hidden="true"/>{busy?'Working…':'Suggest bills'}</Button></div>
+  return <>
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="outline" className="min-h-11 rounded-xl gap-1 px-3" disabled={busy} onClick={scan}>
+              <Sparkles className="h-4 w-4" aria-hidden="true" />
+              {busy ? 'Working…' : 'Suggest bills'}
+              <Info className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-[min(20rem,calc(100vw-2rem))] rounded-xl text-base">
+            Find potential recurring bills in your transactions, checking existing bills and mortgages. Review estimated amounts and dates, then choose which to add.
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      {children}
+    </div>
+    {(busy || rows !== null || error) && <section aria-labelledby="bill-suggestions-title" aria-busy={busy} className="rounded-2xl border border-border bg-card p-4 sm:p-6 space-y-4">
+    <h2 id="bill-suggestions-title" className="text-lg font-semibold">Review bill suggestions</h2>
+    {busy && <p role="status" className="text-base">Working on bill suggestions…</p>}
     <p className="text-base text-muted-foreground">Amounts and next payment dates are estimates, not confirmed bills or contractual due dates. Regular shopping and one-off purchases are excluded.</p>
     {message && <p role="status" className="text-base">{message}</p>}
     {error && <p role="alert" className="text-base text-danger-text">{error}</p>}
@@ -57,5 +77,6 @@ export default function BillSuggestions({ onAdded }) {
       <div className="flex flex-wrap gap-3"><Button variant={row.keep?'default':'outline'} aria-pressed={row.keep} disabled={busy} className="min-h-11 rounded-xl" onClick={()=>update(row.fingerprint,{keep:!row.keep})}><Check className="mr-2 h-4 w-4" aria-hidden="true"/>{row.keep?'Selected to keep':'Keep'}</Button><Button variant="outline" className="min-h-11 rounded-xl" disabled={busy} onClick={()=>dismiss(row)}><X className="mr-2 h-4 w-4" aria-hidden="true"/>Dismiss</Button></div>
     </article>)}
     {rows?.length>0 && <Button className="min-h-11 rounded-xl" disabled={busy || !rows.some(r=>r.keep)} onClick={add}>Add selected bills ({rows.filter(r=>r.keep).length})</Button>}
-  </section>;
+  </section>}
+  </>;
 }

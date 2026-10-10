@@ -4,7 +4,7 @@ Implemented on `stage3.1-codex-chart-updates`. No automatic bill creation or tra
 
 ## Behavior and evidence
 
-The Bills tab has an AI bill suggestions panel. All suggestions start unselected. Users can edit each name, amount, frequency, category and estimated date, independently Keep or Dismiss, and Add selected bills. Successful saves disappear immediately; partial failures leave remaining suggestions visible. Dismissal persists server-side for the authenticated user and dataset until newer matching payment evidence changes the fingerprint. Demo reset removes only owned, demo-tagged dismissals.
+The Bills tab places Suggest bills inline beside Add bill. An info icon inside Suggest bills exposes a brief explanation on hover or keyboard focus. The review panel appears only after requesting suggestions, including loading and error states. All suggestions start unselected. Users can edit each name, amount, frequency, category and estimated date, independently Keep or Dismiss, and Add selected bills. Successful saves disappear immediately; partial failures leave remaining suggestions visible. Dismissal persists server-side for the authenticated user and dataset until newer matching payment evidence changes the fingerprint. Demo reset removes only owned, demo-tagged dismissals.
 
 `base44/functions/suggestBills/entry.ts` authenticates before reading, ignores browser-supplied financial context, and uses the existing datasetQuery and paginated allRecords helpers. Transaction, Bill, MortgageRecord and BillSuggestionDismissal queries use user ownership and ordinary/demo filters. User-client writes retain RLS. AI receives only candidate merchant/category/frequency and an index; no balances, account identifiers, mortgage liabilities or credentials. Input strings are explicitly untrusted data. Returned indexes are validated; model-created amounts, dates and candidates are never accepted. Provider errors return an unavailable state and no recommendations.
 
@@ -18,7 +18,7 @@ Accepted bills retain a normalized suggestion merchant even when renamed, avoidi
 
 Reviewed against `avera_design_system.md`: existing card/control primitives, semantic colors, rounded-2xl panels, rounded-xl controls, 16px descriptions, 44px actions, labeled fields, text confidence and Estimated labels, disclosure of supporting sources, status announcements, alert errors and responsive one/two-column forms. Reuses the current Bills tab, persistence/auth helpers and UI primitives; no duplicated app shell or modified business calculation rules.
 
-Browser fixture checks cover light/dark at 320, 390, 768 and 1440 pixels, unselected defaults, editing amounts, individual keep/dismiss, saving only selected bills, horizontal overflow and automated WCAG A/AA accessibility. These are local built-app tests with HTTP fixtures, not hosted-cloud or live model certification.
+Browser fixture checks cover light/dark at 320, 390, 768 and 1440 pixels, inline actions at every width, an initially hidden review panel, keyboard-focus tooltip access, unselected defaults, editing amounts, individual keep/dismiss, saving only selected bills, horizontal overflow and automated WCAG A/AA accessibility. These are local built-app tests with HTTP fixtures, not hosted-cloud or live model certification.
 
 ## Deployment and verification limits
 
