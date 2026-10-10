@@ -16,13 +16,13 @@ import BudgetProgress from '@/components/overview/BudgetProgress';
 import UpcomingBillsList from '@/components/overview/UpcomingBillsList';
 import FinancialHealthCard from '@/components/overview/FinancialHealthCard';
 import OverviewAccounts from '@/components/overview/OverviewAccounts';
-import SuggestedBills from '@/components/overview/SuggestedBills';
 import AccountDialog from '@/components/accounts/AccountDialog';
 import AskAveraDrawer from '@/components/askavera/AskAveraDrawer';
 import { hasChosenMode } from '@/lib/mode';
 import { listRecords, createRecord, updateRecord, deleteRecord } from '@/services/dataService';
 import * as calc from '@/services/financialCalculations';
-import { estimateFromTransactions, pendingCandidates } from '@/services/plaidEstimates';
+import { estimateFromTransactions } from '@/services/plaidEstimates';
+import { connectBank } from '@/services/plaidClient';
 import { formatCurrency } from '@/utils/format';
 
 /** Overview dashboard — every figure is calculated from the user's saved records. */
@@ -102,25 +102,17 @@ export default function Overview() {
     }
   };
 
-  const addSuggestedBill = async (candidate) => {
+  const connectPlaid = async () => {
+    setAccountDialog({ open: false, account: null });
     setBusy(true);
     try {
-      await createRecord('bill', {
-        name: candidate.name,
-        amount: candidate.amount,
-        frequency: candidate.frequency,
-        next_due_date: candidate.next_due_date,
-        category: candidate.category,
-        source: 'Plaid Sandbox',
-        notes: `Estimated from ${candidate.months_seen} months of linked transactions.`,
-      });
-      toast({ title: 'Bill added from linked transactions' });
-      reload();
-    } catch (err) {
-      toast({ title: 'Could not add the bill', description: 'Please try again.', variant: 'destructive' });
-      throw err;
+      await connectBank();
+      toast({ title: 'Test bank connected', description: 'Accounts were imported from the Plaid Sandbox.' });
+    } catch (e) {
+      toast({ title: 'Connection not completed', description: e.message || 'Please try again.', variant: 'destructive' });
     } finally {
       setBusy(false);
+      reload();
     }
   };
 
@@ -152,9 +144,14 @@ export default function Overview() {
   const monthlyIncome = calc.monthlyIncomeTotal(incomes);
   const monthlyExpenses = calc.totalMonthlyExpenses({ bills, budgetCategories, properties, mortgages });
   const cash = calc.availableCash(accounts);
-  const remaining = calc.calculateProjectedRemaining(monthlyIncome + linkedIncome, monthlyExpenses + linkedExpenses);
-  const suggestions = est.hasData ? pendingCandidates(est.billCandidates, bills) : [];
   const upcoming = calc.upcomingBills(bills, 30);
+
+  /* Current-month figures: actual transactions this month, with normalized monthly estimates as fallback. */
+  const currentMonth = calc.monthRange();
+  const monthTxIncome = calc.incomeInMonth(transactions, currentMonth);
+  const monthTxExpenses = calc.spentInMonth(transactions, null, currentMonth);
+  const plaidThisMonth = transactions.some((t) => t.plaid_item_id && t.date >= currentMonth.start && t.date <= currentMonth.end);
+  const txSource = plaidThisMonth ? 'Plaid Sandbox' : 'Manual';
   const projection = calc.projectYearlyPlan({
     incomes,
     bills,
@@ -172,39 +169,31 @@ export default function Overview() {
       label: 'Available cash',
       value: accounts.length ? formatCurrency(cash) : '—',
       source: 'Manual',
-      note: accounts.length ? 'Across your saved accounts.' : 'Add an account below to see your balance.',
+      note: accounts.length ? 'Across your saved accounts.' : 'Add an account in the Accounts card below.',
     },
     {
-      label: 'Monthly income',
-      value: incomes.length || linkedIncome ? formatCurrency(monthlyIncome + linkedIncome) : '—',
-      source: incomes.length ? 'Manual' : linkedIncome ? 'Plaid Sandbox' : 'Manual',
-      note: incomes.length
-        ? 'Income sources normalized to a month.'
-        : linkedIncome
-          ? `Estimated from ${est.months} months of linked transactions.`
-          : 'Add income sources in Yearly Plan.',
+      label: 'Income this month',
+      value: monthTxIncome || incomes.length || linkedIncome ? formatCurrency(monthTxIncome || monthlyIncome + linkedIncome) : '—',
+      source: monthTxIncome ? txSource : incomes.length ? 'Manual' : linkedIncome ? 'Plaid Sandbox' : 'Manual',
+      note: monthTxIncome
+        ? "From this month's income transactions."
+        : incomes.length
+          ? 'Income sources normalized to a month.'
+          : linkedIncome
+            ? `Estimated from ${est.months} months of linked transactions.`
+            : 'Add income sources in Yearly Plan.',
     },
     {
-      label: 'Monthly expenses',
-      value: bills.length || budgetCategories.length || properties.length || linkedExpenses ? formatCurrency(monthlyExpenses + linkedExpenses) : '—',
-      source: bills.length || budgetCategories.length || properties.length ? 'Manual' : linkedExpenses ? 'Plaid Sandbox' : 'Manual',
-      note: bills.length || budgetCategories.length || properties.length
-        ? 'Bills, budget limits, and property costs.'
-        : linkedExpenses
-          ? `Estimated from ${est.months} months of linked transactions.`
-          : 'Bills, budget limits, and property costs.',
-    },
-    {
-      label: 'Projected remaining',
-      value: incomes.length || bills.length || budgetCategories.length || linkedIncome || linkedExpenses ? formatCurrency(remaining) : '—',
-      source: 'Estimated',
-      note: linkedIncome || linkedExpenses ? 'Includes estimates from your linked accounts.' : 'Monthly income minus monthly expenses.',
-    },
-    {
-      label: 'Upcoming bills',
-      value: bills.length ? String(upcoming.length) : '—',
-      source: 'Manual',
-      note: 'Unpaid bills due in the next 30 days.',
+      label: 'Expenses this month',
+      value: monthTxExpenses || bills.length || budgetCategories.length || properties.length || linkedExpenses ? formatCurrency(monthTxExpenses || monthlyExpenses + linkedExpenses) : '—',
+      source: monthTxExpenses ? txSource : bills.length || budgetCategories.length || properties.length ? 'Manual' : linkedExpenses ? 'Plaid Sandbox' : 'Manual',
+      note: monthTxExpenses
+        ? "From this month's transactions."
+        : bills.length || budgetCategories.length || properties.length
+          ? 'Bills, budget limits, and property costs.'
+          : linkedExpenses
+            ? `Estimated from ${est.months} months of linked transactions.`
+            : 'Bills, budget limits, and property costs.',
     },
   ];
 
@@ -215,6 +204,7 @@ export default function Overview() {
         onOpenChange={(open) => setAccountDialog((d) => ({ ...d, open }))}
         account={accountDialog.account}
         onSave={saveAccount}
+        onConnectPlaid={connectPlaid}
       />
       <ConfirmDeleteDialog
         open={Boolean(deleteTarget)}
@@ -243,10 +233,11 @@ export default function Overview() {
           </>
         }
       />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {SUMMARY.map((card) => (
           <SummaryCard key={card.label} label={card.label} value={card.value} source={card.source} note={card.note} />
         ))}
+        <FinancialHealthCard monthlyIncome={monthlyIncome} monthlyExpenses={monthlyExpenses} />
       </div>
       {!hasData && (
         <div className="mt-6">
@@ -257,7 +248,13 @@ export default function Overview() {
         </div>
       )}
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <FinancialHealthCard monthlyIncome={monthlyIncome} monthlyExpenses={monthlyExpenses} />
+        <BudgetProgress categories={budgetCategories} transactions={transactions} />
+        <UpcomingBillsList bills={upcoming} />
+      </div>
+      <div className="mt-6">
+        {hasData ? <OverviewChart rows={projection.rows} /> : <ChartPlaceholder />}
+      </div>
+      <div className="mt-6">
         <OverviewAccounts
           accounts={accounts}
           busy={busy}
@@ -266,16 +263,6 @@ export default function Overview() {
           dialog={accountDialogNode}
         />
       </div>
-      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          {hasData ? <OverviewChart rows={projection.rows} /> : <ChartPlaceholder />}
-        </div>
-        <BudgetProgress categories={budgetCategories} transactions={transactions} />
-      </div>
-      <div className="mt-6">
-        <UpcomingBillsList bills={upcoming} />
-      </div>
-      {suggestions.length > 0 && <SuggestedBills candidates={suggestions} busy={busy} onAdd={addSuggestedBill} />}
       {!hasData && (
         <div className="mt-6">
           <NextSteps />

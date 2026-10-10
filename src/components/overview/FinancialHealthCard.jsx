@@ -16,7 +16,7 @@ export default function FinancialHealthCard({ monthlyIncome, monthlyExpenses }) 
     <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
       <h2 className="font-heading text-base font-semibold text-foreground">Financial health</h2>
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <span className="font-heading text-2xl font-semibold tabular-nums text-foreground">
+        <span className="font-heading text-2xl font-semibold tabular-nums text-foreground [overflow-wrap:anywhere]">
           {hasInputs ? formatCurrency(net) : '—'}
         </span>
         <StatusPill tone={tone} icon={Icon}>{label}</StatusPill>

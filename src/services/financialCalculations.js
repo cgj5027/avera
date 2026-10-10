@@ -131,6 +131,15 @@ export function spentInMonth(transactions = [], category, range = monthRange()) 
   );
 }
 
+/** Income for one month range, from income-type transactions. */
+export function incomeInMonth(transactions = [], range = monthRange()) {
+  return round2(
+    transactions
+      .filter((t) => t.type === 'income' && t.date >= range.start && t.date <= range.end)
+      .reduce((s, t) => s + num(t.amount), 0)
+  );
+}
+
 const DAY_MS = 86400000;
 
 /** Next occurrence shifted forward by one bill frequency. */
