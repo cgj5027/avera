@@ -29,6 +29,10 @@
     "category": {
       "type": "string"
     },
+    "source": {
+      "type": "string",
+      "description": "Where the figure came from: Manual, Sample data, Plaid Sandbox, or Estimated."
+    },
     "reminder_days": {
       "type": "number",
       "default": 3,

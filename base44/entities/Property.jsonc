@@ -38,6 +38,10 @@
     "valuation_notes": {
       "type": "string"
     },
+    "source": {
+      "type": "string",
+      "description": "Where the figure came from: Manual, Sample data, Plaid Sandbox, or Estimated."
+    },
     "taxes_monthly": {
       "type": "number",
       "default": 0,
