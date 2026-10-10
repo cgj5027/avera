@@ -12,7 +12,7 @@ export default function OverviewChart({ rows }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <h2 className="font-heading text-base font-semibold text-foreground">Income & spending</h2>
-          <InfoHint label="About the income and spending outlook" text="Projected income and spending for the current month and next three months, using Yearly Plan assumptions. Bills are averaged by frequency; budget limits and mortgage/property costs are included. Linked transaction estimates fill gaps when manual plans are absent. These are projections, not actual transactions." />
+          <InfoHint label="About the income and spending outlook" text="Projected income and spending for the current month and next three months. Bills are averaged by frequency. Each category uses the larger of its budget limit or categorized obligations; uncategorized property costs are included. Linked transaction estimates fill gaps when manual plans are absent. These are projections, not actual transactions." />
         </div>
         <div className="flex flex-wrap items-center gap-4">
           <span className="flex items-center gap-1.5 text-sm text-muted-foreground">

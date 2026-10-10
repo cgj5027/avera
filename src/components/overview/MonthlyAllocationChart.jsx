@@ -4,14 +4,14 @@ import { monthlyAllocation } from '@/services/overviewAllocation';
 import { formatCurrency } from '@/utils/format';
 
 /** Uses the same projected monthly totals as the adjacent outlook. */
-export default function MonthlyAllocationChart({ projection, hasIncome, hasExpenses }) {
-  const allocation = monthlyAllocation(projection);
+export default function MonthlyAllocationChart({ projection, records, hasIncome, hasExpenses }) {
+  const allocation = monthlyAllocation(projection, records);
   const canChart = allocation && hasIncome && allocation.income > 0;
   return (
     <section aria-label="Monthly income allocation" className="min-w-0 rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
       <div className="flex items-center gap-2">
-        <h2 className="font-heading text-base font-semibold text-foreground">Monthly allocation</h2>
-        <InfoHint label="About monthly allocation" text="Projected monthly income allocated to bills, budget limits, and mortgage/property costs. Amounts are plans, not actual spending. Unallocated income is not guaranteed savings. If expenses exceed income, the pie shows the expense mix instead." />
+        <h2 className="font-heading text-base font-semibold text-foreground">Monthly spending plan</h2>
+        <InfoHint label="About monthly allocation" text="Planned monthly spending grouped by assigned budget category. Each category uses the larger of its budget limit or categorized obligations, so bills within a budget are counted once. Expenses without a category, including property costs, are Uncategorized. Unallocated income is not guaranteed savings." />
       </div>
       <p className="mt-3 text-sm text-muted-foreground">Projected income / month</p>
       <p className="mt-1 break-words font-heading text-2xl font-semibold tabular-nums text-foreground">{allocation && hasIncome ? formatCurrency(allocation.income) : '—'}</p>
@@ -30,7 +30,7 @@ export default function MonthlyAllocationChart({ projection, hasIncome, hasExpen
           {allocation.slices.map(slice => <div key={slice.key} className="flex items-start justify-between gap-2">
             <dt className="flex min-w-0 items-start gap-2 text-sm text-foreground">
               <span aria-hidden="true" className="mt-1 h-3 w-3 shrink-0 rounded-sm" style={{ backgroundColor: `hsl(var(--${slice.color}))` }} />
-              {slice.name}
+              <span className="min-w-0 break-words">{slice.name}</span>
             </dt>
             <dd className="shrink-0 text-right text-sm tabular-nums text-foreground">
               {formatCurrency(slice.value)}
@@ -43,7 +43,7 @@ export default function MonthlyAllocationChart({ projection, hasIncome, hasExpen
       </> : <p className="mt-4 rounded-xl border border-dashed border-border-strong bg-surface-subtle p-4 text-base text-muted-foreground">
         {!allocation ? 'Allocation is unavailable because projected amounts are invalid or inconsistent.' : 'Add an active income source in Yearly Plan to see how projected income is allocated.'}
       </p>}
-      <p className="mt-4 text-xs text-muted-foreground">Monthly estimates from the active dataset. Budget limits are planned spending; unallocated income is not guaranteed savings.</p>
+      <p className="mt-4 text-xs text-muted-foreground">{projection.estimateUsed?.expenses > 0 ? 'Spending estimated from linked transactions. ' : 'Planned spending by category. '}Categorized bills count within their budget, not in addition to it. Unallocated income is not guaranteed savings.</p>
     </section>
   );
 }

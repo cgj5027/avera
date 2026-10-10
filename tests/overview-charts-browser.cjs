@@ -24,8 +24,8 @@ const assert = require('node:assert/strict');
         const planned = {
           Account: [{ id: 'cash', name: 'Checking', type: 'checking', balance: 1000 }],
           IncomeSource: [{ id: 'income', name: 'Salary', amount: scenario === 'shortfall' ? 1000 : 3000, frequency: 'monthly', active: true }],
-          Bill: [{ id: 'bill', name: 'Rent', amount: 600, frequency: 'monthly', next_due_date: '2026-11-01' }],
-          BudgetCategory: [{ id: 'budget', name: 'Groceries', monthly_limit: 300 }],
+          Bill: [{ id: 'bill', name: 'Rent', category: 'Housing', amount: 600, frequency: 'monthly', next_due_date: '2026-11-01' }],
+          BudgetCategory: [{ id: 'budget', name: 'Groceries', monthly_limit: 300 }, ...(scenario === 'overlap' ? [{ id: 'housing', name: 'Housing', monthly_limit: 1500 }] : [])],
           Property: [{ id: 'home', nickname: 'Home', estimated_value: 100000, taxes_monthly: 100 }],
           MortgageRecord: [{ id: 'mortgage', property_id: 'home', monthly_payment: 500, outstanding_balance: 50000 }],
           Transaction: ['2026-08-01', '2026-09-01'].flatMap((date, i) => [
@@ -46,7 +46,7 @@ const assert = require('node:assert/strict');
       assert.deepEqual(violations, [], `accessibility ${theme} ${width} ${state}`);
       results.push({ theme, width, state });
     }
-    for (scenario of ['planned', 'shortfall', 'estimated', 'empty']) {
+    for (scenario of ['planned', 'overlap', 'shortfall', 'estimated', 'empty']) {
       await page.goto((process.env.AUDIT_BASE_URL || 'http://127.0.0.1:4173') + '/');
       const pie = page.getByRole('region', { name: 'Monthly income allocation' });
       await pie.waitFor();
@@ -68,11 +68,13 @@ const assert = require('node:assert/strict');
       const ticks = await outlook.locator('.recharts-xAxis .recharts-cartesian-axis-tick').evaluateAll(elements => elements.map(el => el.getBoundingClientRect()));
       assert.equal(ticks.length, 4, 'all four month labels displayed');
       assert(ticks.every(tick => Math.abs(tick.y - ticks[0].y) < 2), 'four months fit inline');
-      const expectedIncome = scenario === 'planned' ? '$3,000.00' : scenario === 'shortfall' ? '$1,000.00' : '$1,800.00';
+      const expectedIncome = scenario === 'estimated' ? '$1,800.00' : scenario === 'shortfall' ? '$1,000.00' : '$3,000.00';
       assert(await pie.getByText(expectedIncome, { exact: true }).isVisible());
       if (scenario === 'planned') {
         assert(await pie.getByText('50% of income', { exact: true }).isVisible());
-        assert(await pie.getByText('Mortgage & property', { exact: true }).isVisible());
+        assert(await pie.getByText('Housing', { exact: true }).isVisible());
+        assert(await pie.getByText('Groceries', { exact: true }).isVisible());
+        assert(await pie.getByText('Uncategorized', { exact: true }).isVisible());
         const hint = outlook.getByRole('button', { name: 'About the income and spending outlook' });
         await hint.focus();
         await page.getByRole('tooltip').waitFor();
@@ -81,12 +83,16 @@ const assert = require('node:assert/strict');
         await page.getByRole('tooltip').waitFor({ state: 'hidden' });
       }
       if (scenario === 'shortfall') assert(await pie.getByText(/\$500.00 projected monthly shortfall/).isVisible());
-      if (scenario === 'estimated') assert(await pie.getByText('Estimated spending', { exact: true }).isVisible());
+      if (scenario === 'estimated') assert(await pie.getByText('Uncategorized', { exact: true }).isVisible());
       await check(scenario);
       const values = outlook.locator('summary').filter({ hasText: 'View monthly values' });
       await values.focus(); await values.press('Enter');
       assert(await outlook.getByRole('table').isVisible(), 'keyboard-accessible data table');
       assert.equal(await outlook.getByRole('row').count(), 5);
+      if (scenario === 'overlap') {
+        assert.equal(await outlook.getByText('$2,400.00', { exact: true }).count(), 4, 'outlook excludes category/bill overlap');
+        assert(await pie.getByText('Unallocated income', { exact: true }).isVisible());
+      }
       await check(`${scenario} table`);
       if (scenario === 'planned') await page.screenshot({ path: `/tmp/avera-overview-charts-${theme}-${width}.png`, fullPage: true, animations: 'disabled' });
     }

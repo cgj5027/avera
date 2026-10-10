@@ -22,10 +22,10 @@ const plan = (income = 3000, bills = 600) => projectYearlyPlan({
 
 describe('monthly allocation of the existing projection', () => {
   it('allocates the complete monthly income without re-adding tracked transactions', () => {
-    const result = monthlyAllocation(plan());
+    const result = monthlyAllocation(plan(), { bills: [{ category: 'Housing' }], budgetCategories: [{ name: 'Groceries', monthly_limit: 300 }] });
     expect(result).toMatchObject({ income: 3000, expenses: 1500, unallocated: 1500, shortfall: 0 });
     expect(result.slices.map(s => [s.name, s.value, s.incomePercent])).toEqual([
-      ['Bills', 600, 20], ['Budget limits', 300, 10], ['Mortgage & property', 600, 20], ['Unallocated', 1500, 50],
+      ['Groceries', 300, 10], ['Housing', 600, 20], ['Uncategorized', 600, 20], ['Unallocated income', 1500, 50],
     ]);
     expect(round2(result.slices.reduce((sum, s) => sum + s.value, 0))).toBe(result.income);
   });
@@ -46,9 +46,41 @@ describe('monthly allocation of the existing projection', () => {
     expect(screen.getByText(/\$500.00 projected monthly shortfall/)).toBeTruthy();
     expect(screen.getByText(/slices show the expense mix/)).toBeTruthy();
   });
-  it('uses a single estimated spending bucket when manual plans are absent', () => {
+  it('leaves estimates without supplied categories Uncategorized', () => {
     const result = monthlyAllocation(projectYearlyPlan({ estimate: { income: 2000, expenses: 700 } }));
-    expect(result.slices.map(s => [s.name, s.value])).toEqual([['Estimated spending', 700], ['Unallocated', 1300]]);
+    expect(result.slices.map(s => [s.name, s.value])).toEqual([['Uncategorized', 700], ['Unallocated income', 1300]]);
+  });
+  it('counts categorized bills within their budget and preserves uncategorized obligations', () => {
+    const bills = [{ category: ' housing ', amount: 1200, frequency: 'monthly' }, { amount: 100, frequency: 'monthly' }];
+    const budgetCategories = [{ name: 'Housing', monthly_limit: 1500 }, { name: 'Food', monthly_limit: 300 }];
+    const projection = projectYearlyPlan({ incomes: [{ amount: 3000, frequency: 'monthly' }], bills, budgetCategories });
+    const result = monthlyAllocation(projection, { bills, budgetCategories });
+    expect(result).toMatchObject({ expenses: 1900, overlap: 1200, unallocated: 1100 });
+    expect(result.slices.map(s => [s.name, s.value])).toEqual([['Food', 300], ['Housing', 1500], ['Uncategorized', 100], ['Unallocated income', 1100]]);
+  });
+  it('keeps obligations above the category limit rather than hiding an overrun', () => {
+    const bills = [{ category: 'Housing', amount: 1200 }, { category: 'Housing', amount: 800 }];
+    const budgetCategories = [{ name: 'Housing', monthly_limit: 1500 }];
+    const result = monthlyAllocation(projectYearlyPlan({ incomes: [{ amount: 1000 }], bills, budgetCategories }), { bills, budgetCategories });
+    expect(result).toMatchObject({ expenses: 2000, shortfall: 1000, unallocated: 0 });
+    expect(result.slices).toHaveLength(1);
+    expect(result.slices[0].name).toBe('Housing');
+  });
+  it('groups linked estimates by assigned transaction categories without duplicate imports', () => {
+    const transactions = ['2026-08-01', '2026-09-01'].flatMap((date, index) => [
+      { date, amount: 300, type: 'expense', category: 'Food', plaid_item_id: 'item', plaid_transaction_id: `food-${index}` },
+      { date, amount: 100, type: 'expense', category: '', plaid_item_id: 'item', plaid_transaction_id: `other-${index}` },
+    ]);
+    transactions.push(transactions[0]);
+    const result = monthlyAllocation(projectYearlyPlan({ estimate: { income: 2000, expenses: 400 } }), { transactions });
+    expect(result.slices.map(s => [s.name, s.value])).toEqual([['Food', 300], ['Uncategorized', 100], ['Unallocated income', 1600]]);
+  });
+  it('preserves cents when category averages round independently', () => {
+    const transactions = ['A', 'B', 'C'].map((category, index) => ({ date: `2026-0${index + 1}-01`, amount: 1, type: 'expense', category, plaid_item_id: 'item', plaid_transaction_id: category }));
+    const result = monthlyAllocation(projectYearlyPlan({ incomes: [{ amount: 2 }], estimate: { expenses: 1 } }), { transactions });
+    expect(result.expenses).toBe(1);
+    expect(round2(result.slices.reduce((sum, slice) => sum + slice.value, 0))).toBe(2);
+    expect(result.slices.filter(slice => slice.key !== 'unallocated').map(slice => slice.value)).toEqual([0.34, 0.33, 0.33]);
   });
   it('avoids division by zero and distinguishes missing income from known zero', () => {
     const projection = plan(0);
@@ -101,5 +133,17 @@ describe('Overview charts use the active authenticated dataset; SDK fixtures', (
     expect(within(outlook).getAllByRole('row')).toHaveLength(5);
     expect(within(outlook).getAllByText('$3,000.00')).toHaveLength(4);
     expect(within(outlook).getAllByText('$600.00')).toHaveLength(4);
+  });
+  it('keeps the Overview outlook consistent with a category that covers its bills', async () => {
+    sdk.entities.Bill.filter.mockResolvedValue({ items: [{ name: 'Rent', category: 'Housing', amount: 1200, frequency: 'monthly' }], has_more: false });
+    sdk.entities.BudgetCategory.filter.mockResolvedValue({ items: [{ name: 'Housing', monthly_limit: 1500 }], has_more: false });
+    render(<MemoryRouter><Overview /></MemoryRouter>);
+    const allocation = await screen.findByRole('region', { name: 'Monthly income allocation' });
+    expect(within(allocation).getByText('Housing')).toBeTruthy();
+    expect(within(allocation).getAllByText('$1,500.00')).toHaveLength(2);
+    const outlook = screen.getByRole('region', { name: 'Income and spending outlook' });
+    fireEvent.click(within(outlook).getByText('View monthly values'));
+    expect(within(outlook).getAllByText('$1,500.00')).toHaveLength(4);
+    expect(within(outlook).queryByText('$2,700.00')).toBeNull();
   });
 });

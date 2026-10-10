@@ -25,6 +25,7 @@ import * as calc from '@/services/financialCalculations';
 import { estimateFromTransactions } from '@/services/plaidEstimates';
 import { connectBank } from '@/services/plaidClient';
 import { formatCurrency } from '@/utils/format';
+import { monthlyAllocation } from '@/services/overviewAllocation';
 
 /** Overview dashboard — every figure is calculated from the user's saved records. */
 export default function Overview() {
@@ -140,7 +141,6 @@ export default function Overview() {
   const { accounts, incomes, bills, budgetCategories, transactions, properties, mortgages } = data;
   const est = estimateFromTransactions(transactions);
   const monthlyIncome = calc.monthlyIncomeTotal(incomes);
-  const monthlyExpenses = calc.totalMonthlyExpenses({ bills, budgetCategories, properties, mortgages });
   const cash = calc.availableCash(accounts);
   const upcoming = calc.upcomingBills(bills, 30);
 
@@ -164,6 +164,12 @@ export default function Overview() {
     estimate: { income: est.hasData ? est.monthlyIncome : 0, expenses: est.hasData ? est.monthlyExpenses : 0 },
   });
   const hasData = accounts.length || incomes.length || bills.length || budgetCategories.length || properties.length || est.hasData;
+  const allocationRecords = { bills, budgetCategories, transactions };
+  const allocation = monthlyAllocation(projection, allocationRecords);
+  const monthlyExpenses = allocation?.expenses ?? projection.monthlyExpenses;
+  // Apply category overlap to this Overview outlook; other views retain their existing calculation rules.
+  const annualExpenses = calc.round2(projection.annualExpenses - (allocation?.overlap ?? 0) * 12);
+  const outlookRows = projection.rows.map((row, index) => ({ ...row, expenses: calc.round2(calc.round2(annualExpenses * (index + 1) / 12) - calc.round2(annualExpenses * index / 12)) }));
 
   /* Row two: monthly income, recurring expenses, and additional (non-recurring) expenses. */
   const flow = {
@@ -263,9 +269,9 @@ export default function Overview() {
         <UpcomingBillsList bills={upcoming} />
       </div>
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <MonthlyAllocationChart projection={projection} hasIncome={incomes.length > 0 || est.hasData} hasExpenses={bills.length > 0 || budgetCategories.length > 0 || properties.length > 0 || est.hasData} />
+        <MonthlyAllocationChart projection={projection} records={allocationRecords} hasIncome={incomes.length > 0 || est.hasData} hasExpenses={bills.length > 0 || budgetCategories.length > 0 || properties.length > 0 || est.hasData} />
         <div className="min-w-0 lg:col-span-2">
-          {hasData ? <OverviewChart rows={projection.rows} /> : <ChartPlaceholder />}
+          {hasData ? <OverviewChart rows={outlookRows} /> : <ChartPlaceholder />}
         </div>
       </div>
       <div className="mt-6">
