@@ -21,6 +21,18 @@
     "preferred_roles": {
       "type": "string"
     },
+    "job_type": {
+      "type": "string",
+      "enum": [
+        "any",
+        "full_time",
+        "part_time",
+        "temporary",
+        "contract"
+      ],
+      "default": "any",
+      "description": "Role type the candidate wants: full-time, part-time, temporary, or contract/gig. Used to filter job search results."
+    },
     "work_mode": {
       "type": "string",
       "enum": [
@@ -33,15 +45,6 @@
     },
     "location": {
       "type": "string"
-    },
-    "weekly_hours": {
-      "type": "integer",
-      "minimum": 0,
-      "maximum": 80
-    },
-    "target_monthly_income": {
-      "type": "number",
-      "minimum": 0
     },
     "demo_profile": {
       "type": "string",

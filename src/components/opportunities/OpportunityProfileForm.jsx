@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { JOB_TYPES } from './jobTypes';
 
 const WORK_MODES = [
   { value: 'any', label: 'Any' },
@@ -20,7 +21,7 @@ const EXPERIENCE_LEVELS = [
 ];
 
 /**
- * Income-opportunity profile form (Stage 2). Values persist to the user's own
+ * Income-opportunity profile form. Values persist to the user's own
  * JobProfile record; nothing here contacts an external service.
  */
 export default function OpportunityProfileForm({ profile, saving, onSave }) {
@@ -30,10 +31,8 @@ export default function OpportunityProfileForm({ profile, saving, onSave }) {
     if (saving) return;
     const f = new FormData(e.currentTarget);
     const skills = String(f.get('skills') ?? '').trim();
-    const hours = Number(f.get('weekly_hours'));
-    const target = Number(f.get('target_monthly_income'));
-    if (!skills || !Number.isInteger(hours) || hours < 0 || hours > 80 || !Number.isFinite(target) || target < 0) {
-      setError('Enter skills, 0–80 whole hours per week, and a non-negative income target.');
+    if (!skills) {
+      setError('Enter your skills to save your profile.');
       return;
     }
     setError('');
@@ -44,10 +43,9 @@ export default function OpportunityProfileForm({ profile, saving, onSave }) {
         ? String(f.get('experience_level'))
         : 'entry_level',
       preferred_roles: String(f.get('preferred_roles') ?? '').trim(),
+      job_type: JOB_TYPES.some((t) => t.value === f.get('job_type')) ? String(f.get('job_type')) : 'any',
       work_mode: String(f.get('work_mode') ?? 'any'),
       location: String(f.get('location') ?? '').trim(),
-      weekly_hours: hours,
-      target_monthly_income: target,
     });
   };
 
@@ -90,6 +88,19 @@ export default function OpportunityProfileForm({ profile, saving, onSave }) {
         </Select>
       </div>
       <div>
+        <Label htmlFor="opp-type">Role type</Label>
+        <Select name="job_type" defaultValue={profile?.job_type ?? 'any'}>
+          <SelectTrigger id="opp-type" className="mt-1.5 min-h-11 rounded-xl">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {JOB_TYPES.map((t) => (
+              <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
         <Label htmlFor="opp-roles">Preferred jobs or gigs</Label>
         <Input
           id="opp-roles"
@@ -112,7 +123,7 @@ export default function OpportunityProfileForm({ profile, saving, onSave }) {
           </SelectContent>
         </Select>
       </div>
-      <div>
+      <div className="sm:col-span-2">
         <Label htmlFor="opp-location">Location</Label>
         <Input
           id="opp-location"
@@ -120,30 +131,6 @@ export default function OpportunityProfileForm({ profile, saving, onSave }) {
           defaultValue={profile?.location ?? ''}
           placeholder="City, state — or leave blank for remote only"
           className="mt-1.5 min-h-11 rounded-xl bg-surface"
-        />
-      </div>
-      <div>
-        <Label htmlFor="opp-hours">Available hours per week</Label>
-        <Input
-          id="opp-hours"
-          name="weekly_hours"
-          type="number"
-          min="0"
-          max="80"
-          defaultValue={profile?.weekly_hours ?? ''}
-          className="mt-1.5 min-h-11 rounded-xl bg-surface tabular-nums"
-        />
-      </div>
-      <div className="sm:col-span-2">
-        <Label htmlFor="opp-target">Target additional income (per month)</Label>
-        <Input
-          id="opp-target"
-          name="target_monthly_income"
-          type="number"
-          min="0"
-          step="0.01"
-          defaultValue={profile?.target_monthly_income ?? ''}
-          className="mt-1.5 min-h-11 rounded-xl bg-surface tabular-nums"
         />
       </div>
       {error && <p role="alert" className="text-base text-danger-text sm:col-span-2">{error}</p>}

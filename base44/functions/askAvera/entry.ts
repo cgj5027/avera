@@ -49,7 +49,7 @@ export default async function(req) {
           limit: 5, fields: ['household_name', 'household_type', 'budget_style', 'emergency_fund_months']
         }),
         base44.entities.JobProfile.filter({ created_by_id: user.id }, {
-          limit: 5, fields: ['skills', 'preferred_roles', 'weekly_hours', 'target_monthly_income']
+          limit: 5, fields: ['skills', 'preferred_roles', 'job_type']
         }),
       ]);
 

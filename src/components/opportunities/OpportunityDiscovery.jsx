@@ -8,9 +8,9 @@ import OpportunityResults from './OpportunityResults';
 import { listRecords, createRecord, updateRecord } from '@/services/dataService';
 
 /**
- * Income-opportunity discovery (Stage 2): an optional profile of skills,
- * preferences, hours, and target income, saved to the user's own record, plus
- * opportunity search against the backend function. Self-contained.
+ * Income-opportunity discovery: an optional profile of skills and job
+ * preferences, saved to the user's own record, plus opportunity search
+ * against the backend function. Self-contained.
  */
 export default function OpportunityDiscovery() {
   const [profile, setProfile] = useState(null);
@@ -51,7 +51,8 @@ export default function OpportunityDiscovery() {
     setSaving(true);
     setSaveError(false);
     try {
-      const saved = profile
+      // Resume suggestions can sit on `profile` before any record exists, so key off the saved id.
+      const saved = profile?.id
         ? await updateRecord('jobProfile', profile.id, values)
         : await createRecord('jobProfile', values);
       setProfile(saved);
@@ -70,7 +71,7 @@ export default function OpportunityDiscovery() {
         <StatusPill tone="neutral">Optional</StatusPill>
       </div>
       <p className="mt-2 max-w-2xl text-base text-muted-foreground">
-        Describe your skills and availability to request job and gig listings. Search is optional. Results show source links; availability is not yet verified.
+        Describe your skills and the kind of work you want to request job and gig listings. Search is optional. Results show source links; availability is not yet verified.
       </p>
       {saveError && (
         <div className="mt-3" role="alert">

@@ -4,8 +4,7 @@ import { Button } from '@/components/ui/button';
 import StatusPill from '@/components/states/StatusPill';
 import SourceChip from '@/components/states/SourceChip';
 import { searchOpportunities } from '@/services/assistantService';
-import { formatCurrency } from '@/utils/format';
-import { estimatedTakeHomeMonthly, coversTargetPercent, parseHourlyRate } from '@/services/opportunityCalculations';
+import { jobTypeLabel } from './jobTypes';
 
 /**
  * Clearly labeled demonstration listings shown only when the external jobs
@@ -42,14 +41,8 @@ function fitTier(score) {
   return { label: 'Possible fit', tone: 'neutral' };
 }
 
-function OpportunityItem({ item, profile }) {
-  const hours = ['number', 'string'].includes(typeof profile?.weekly_hours) ? profile.weekly_hours : null;
-  const monthlyTakeHome = estimatedTakeHomeMonthly(
-    parseHourlyRate(item.compensation),
-    hours
-  );
-  const target = ['number', 'string'].includes(typeof profile?.target_monthly_income) ? profile.target_monthly_income : null;
-  const covers = coversTargetPercent(monthlyTakeHome, target);
+function OpportunityItem({ item }) {
+  const roleType = jobTypeLabel(item.employment_type);
 
   return (
     <li className="break-words rounded-2xl border border-border bg-surface-subtle p-4">
@@ -92,24 +85,21 @@ function OpportunityItem({ item, profile }) {
           ))}
         </ul>
       )}
-      <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-        <div>
-          <dt className="text-muted-foreground">Advertised compensation</dt>
-          <dd className="mt-0.5 font-medium tabular-nums text-foreground">{item.compensation ?? '—'}</dd>
-        </div>
-        <div>
-          <dt className="flex items-center gap-2 text-muted-foreground">
-            Estimated take-home, {hours || '—'} hrs/wk <SourceChip source="Estimated" />
-          </dt>
-          <dd className="mt-0.5 font-medium tabular-nums text-foreground">
-            {monthlyTakeHome !== null ? `${formatCurrency(monthlyTakeHome)}/mo` : '—'}
-          </dd>
-        </div>
-      </dl>
-      {covers !== null && target > 0 && (
-        <p className="mt-2 text-sm text-muted-foreground">
-          At this pace it would cover about {covers}% of your {formatCurrency(target)}/mo additional-income target.
-        </p>
+      {(item.compensation || roleType) && (
+        <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+          {item.compensation && (
+            <div>
+              <dt className="text-muted-foreground">Pay range</dt>
+              <dd className="mt-0.5 font-medium tabular-nums text-foreground">{item.compensation}</dd>
+            </div>
+          )}
+          {roleType && (
+            <div>
+              <dt className="text-muted-foreground">Role type</dt>
+              <dd className="mt-0.5 font-medium text-foreground">{roleType}</dd>
+            </div>
+          )}
+        </dl>
       )}
     </li>
   );
@@ -189,12 +179,12 @@ export default function OpportunityResults({ profile }) {
         <>
           <ul className="mt-4 space-y-3">
             {items.map((item, i) => (
-              <OpportunityItem key={item.url ?? i} item={item} profile={profile} />
+              <OpportunityItem key={item.url ?? i} item={item} />
             ))}
           </ul>
           <p className="mt-3 text-sm text-muted-foreground">
-            Listings are ranked by how well each one fits your profile — preferred roles, available hours, income target, and experience level (results not matching your experience level are excluded).{' '}
-            Take-home estimates assume advertised hourly compensation is gross pay before taxes and deductions. A fixed 78% share and your available hours are planning assumptions, not guaranteed pay. Actual take-home depends on taxes, deductions, and hours offered. Postings come from public web search; coverage is not exhaustive and availability is not verified.
+            Listings are ranked by how well each one fits your profile — preferred roles, role type, and experience level (results that clearly do not match your experience level or role type are excluded).{' '}
+            Pay ranges appear only when the posting lists one and are shown as advertised, before taxes and deductions. Postings come from public web search; coverage is not exhaustive and availability is not verified.
           </p>
         </>
       )}

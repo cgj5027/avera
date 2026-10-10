@@ -53,11 +53,11 @@ export async function searchOpportunities(profile) {
   const data = await authenticatedInvoke('searchJobOpportunities', {
     skills: profile?.skills ?? '',
     experience: profile?.experience ?? '',
+    experience_level: profile?.experience_level ?? 'entry_level',
     preferred_roles: profile?.preferred_roles ?? '',
+    job_type: profile?.job_type ?? 'any',
     work_mode: profile?.work_mode ?? 'any',
     location: profile?.location ?? '',
-    weekly_hours: profile?.weekly_hours ?? 0,
-    target_monthly_income: profile?.target_monthly_income ?? 0,
   });
   if (!Array.isArray(data?.opportunities)) throw new Error('Invalid search response.');
   const items = data.opportunities.filter(item =>
@@ -68,6 +68,8 @@ export async function searchOpportunities(profile) {
     company: item.company.trim(),
     url: sourceListingUrl(item.url),
     compensation: typeof item.compensation === 'string' && item.compensation.trim() ? item.compensation : null,
+    employment_type: typeof item.employment_type === 'string' && item.employment_type.trim() ? item.employment_type : null,
+    match_score: typeof item.match_score === 'number' ? item.match_score : null,
     location: typeof item.location === 'string' && item.location.trim() ? item.location : null,
     publisher: typeof item.publisher === 'string' && item.publisher.trim() ? item.publisher : null,
     posted_at: typeof item.posted_at === 'string' && item.posted_at.trim() ? item.posted_at : null,

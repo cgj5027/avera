@@ -4,7 +4,7 @@
 // APIs can be added without changing profile matching or result presentation.
 // Read-only; listings are validated server-side before display.
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
-import { searchListings } from '../../shared/opportunitySource.ts';
+import { searchListings, JOB_TYPES } from '../../shared/opportunitySource.ts';
 
 export default async function(req) {
   try {
@@ -14,10 +14,6 @@ export default async function(req) {
 
     const body = await req.json().catch(() => ({}));
     const str = (v) => (typeof v === 'string' ? v.trim().slice(0, 400) : '');
-    const boundedInt = (v, max) => {
-      const n = Math.floor(Number(v));
-      return Number.isFinite(n) && n > 0 ? Math.min(n, max) : 0;
-    };
     const profile = {
       skills: str(body.skills),
       experience: str(body.experience),
@@ -27,8 +23,7 @@ export default async function(req) {
       preferred_roles: str(body.preferred_roles),
       work_mode: ['any', 'remote', 'hybrid', 'onsite'].includes(body.work_mode) ? body.work_mode : 'any',
       location: str(body.location),
-      weekly_hours: boundedInt(body.weekly_hours, 80),
-      target_monthly_income: boundedInt(body.target_monthly_income, 100000),
+      job_type: JOB_TYPES.includes(body.job_type) ? body.job_type : 'any',
     };
     if (!profile.skills) return Response.json({ error: 'Describe your skills to search for opportunities.' }, { status: 400 });
 

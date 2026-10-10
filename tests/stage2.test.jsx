@@ -1,8 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { askAvera, searchOpportunities, sourceListingUrl, SERVICE_TIMEOUT_MS } from '../src/services/assistantService';
-import { parseHourlyRate, estimatedTakeHomeMonthly, coversTargetPercent } from '../src/services/opportunityCalculations';
 import { calculateIncomeGapAllocated } from '../src/services/financialCalculations';
 import AskAveraConversation from '../src/components/askavera/AskAveraConversation';
 import OpportunityResults from '../src/components/opportunities/OpportunityResults';
@@ -13,22 +12,15 @@ import * as data from '../src/services/dataService';
 const sdk = vi.hoisted(() => ({ auth: { me: vi.fn() }, functions: { invoke: vi.fn() }, entities: { JobProfile: { filter: vi.fn(), get: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() } }, user: { id: 'a' } }));
 vi.mock('@/api/base44Client', () => ({ base44: sdk }));
 vi.mock('@/lib/AuthContext', () => ({ useAuth: () => ({ user: sdk.user }) }));
+vi.mock('@/components/opportunities/ResumeUpload', () => ({
+  default: ({ onApply }) => <button type="button" onClick={() => onApply({ skills: 'Bookkeeping, payroll' })}>Apply resume suggestions</button>,
+}));
 beforeEach(() => {
   vi.resetAllMocks(); sdk.user = { id: 'a' };
   sdk.auth.me.mockImplementation(async () => sdk.user);
   sdk.entities.JobProfile.filter.mockResolvedValue({ items: [], has_more: false });
 });
 
-describe('opportunity compensation', () => {
-  it.each(['$25/hr', '$25 per hour', 'USD $25/hour gross'])('parses explicit gross hourly %s', value => expect(parseHourlyRate(value)).toBe(25));
-  it.each(['$20-$30/hr', '$20 to $30/hour', '-$25/hr', '$60,000/year', '$25/hr net', '€25/hr', '25/hour plus commission', '$1,,2/hr', null])('does not invent a rate for %s', value => expect(parseHourlyRate(value)).toBeNull());
-  it('keeps gross separate from a disclosed take-home assumption', () => {
-    expect(estimatedTakeHomeMonthly(25, 10)).toBe(845);
-    expect(coversTargetPercent(845, 1000)).toBe(85);
-    expect(coversTargetPercent(845, 500)).toBe(100);
-  });
-  it.each([[null,10],[true,10],[25,81],[25,-1],[Infinity,10],[Number.MAX_VALUE,10]])('rejects unusable estimates %s %s', (rate,hours) => expect(estimatedTakeHomeMonthly(rate,hours)).toBeNull());
-});
 describe('allocated goal gaps', () => {
   const today = new Date(2026,0,2);
   const goal = { id:'a', target_amount:100, saved_amount:0, target_date:'2026-02-01' };
@@ -110,26 +102,26 @@ describe('critical function invocation boundaries (mocked, not backend authoriza
   });
   it('requires usable source links and renders only source-linked results, not verified live jobs', async () => {
     sdk.functions.invoke.mockResolvedValue({data:{opportunities:[{title:'Bookkeeper',company:'Employer',compensation:'$25/hr',url:'https://jobs.org/post'}]}});
-    render(<OpportunityResults profile={{weekly_hours:10,target_monthly_income:1000}} />);
+    render(<OpportunityResults profile={null} />);
     fireEvent.click(screen.getByRole('button',{name:'Find opportunities'}));
     expect(await screen.findByText('Source-linked results')).toBeTruthy();
     expect(screen.queryByText('Live listings')).toBeNull();
-    expect(screen.getByText('$845.00/mo')).toBeTruthy();
-    expect(screen.getByText(/78%/)).toBeTruthy();
     expect(screen.getByText(/freshness not verified/)).toBeTruthy();
   });
-  it('does not convert explicit net compensation or use an unrelated hourly override', async () => {
-    sdk.functions.invoke.mockResolvedValue({data:{opportunities:[{title:'Role',company:'Employer',compensation:'$25/hr net',hourly_rate:1000,url:'https://jobs.org/post'}]}});
-    render(<OpportunityResults profile={{weekly_hours:10,target_monthly_income:1000}} />);
+  it('shows the pay range exactly as posted, with the role type, when the posting has them', async () => {
+    sdk.functions.invoke.mockResolvedValue({data:{opportunities:[{title:'Role',company:'Employer',compensation:'$18-$22/hr',employment_type:'part_time',url:'https://jobs.org/post'}]}});
+    render(<OpportunityResults profile={null} />);
     fireEvent.click(screen.getByRole('button',{name:'Find opportunities'}));
-    expect(await screen.findByText('$25/hr net')).toBeTruthy();
-    expect(screen.queryByText('$845.00/mo')).toBeNull();expect(screen.queryByText(/it would cover/)).toBeNull();
+    expect(await screen.findByText('$18-$22/hr')).toBeTruthy();
+    expect(screen.getByText('Pay range')).toBeTruthy();
+    expect(screen.getByText('Part-time')).toBeTruthy();
+    expect(screen.queryByText(/take-home/i)).toBeNull();
   });
-  it('does not coerce a corrupted boolean availability into one paid hour', async () => {
-    sdk.functions.invoke.mockResolvedValue({data:{opportunities:[{title:'Role',company:'Employer',compensation:'$25/hr',url:'https://jobs.org/post'}]}});
-    render(<OpportunityResults profile={{weekly_hours:true,target_monthly_income:1000}} />);
+  it('omits the pay range and role type when the posting does not list them', async () => {
+    sdk.functions.invoke.mockResolvedValue({data:{opportunities:[{title:'Role',company:'Employer',url:'https://jobs.org/post'}]}});
+    render(<OpportunityResults profile={null} />);
     fireEvent.click(screen.getByRole('button',{name:'Find opportunities'}));await screen.findByText('Source-linked results');
-    expect(screen.queryByText('$84.50/mo')).toBeNull();expect(screen.queryByText(/it would cover/)).toBeNull();
+    expect(screen.queryByText('Pay range')).toBeNull();expect(screen.queryByText('Role type')).toBeNull();
   });
   it('rejects fabricated entries without a source and labels fallback samples', async () => {
     sdk.functions.invoke.mockResolvedValue({data:{opportunities:[{title:'Invented',company:'Employer'}]}});
@@ -151,15 +143,25 @@ describe('critical function invocation boundaries (mocked, not backend authoriza
     sdk.user={id:'b'};view.rerender(<AskAveraConversation />);
     expect(screen.queryByText('Private question')).toBeNull();expect(screen.queryByText('$100')).toBeNull();
   });
-  it('validates profile whitespace and numeric limits before persistence', () => {
+  it('validates profile whitespace before persistence and saves a role type instead of hours or income target', () => {
     const save=vi.fn(); render(<OpportunityProfileForm profile={null} saving={false} onSave={save} />);
     fireEvent.change(screen.getByLabelText('Skills'),{target:{value:'   '}});
     fireEvent.click(screen.getByRole('button',{name:'Save profile'}));
     expect(screen.getByRole('alert')).toBeTruthy();expect(save).not.toHaveBeenCalled();
     fireEvent.change(screen.getByLabelText('Skills'),{target:{value:'Bookkeeping'}});
-    fireEvent.change(screen.getByLabelText('Available hours per week'),{target:{value:'10'}});
     fireEvent.click(screen.getByRole('button',{name:'Save profile'}));
-    expect(save).toHaveBeenCalledWith(expect.objectContaining({skills:'Bookkeeping',weekly_hours:10,target_monthly_income:0}));
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({skills:'Bookkeeping',job_type:'any'}));
+    expect(save.mock.calls[0][0]).not.toHaveProperty('weekly_hours');expect(save.mock.calls[0][0]).not.toHaveProperty('target_monthly_income');
+    expect(screen.queryByLabelText('Available hours per week')).toBeNull();expect(screen.queryByLabelText(/Target additional income/)).toBeNull();
+  });
+  it('saves a first profile built from resume suggestions as a new record', async () => {
+    sdk.entities.JobProfile.create.mockResolvedValue({id:'new',skills:'Bookkeeping, payroll'});
+    render(<OpportunityDiscovery />);
+    fireEvent.click(await screen.findByRole('button',{name:'Apply resume suggestions'}));
+    fireEvent.click(screen.getByRole('button',{name:'Save profile'}));
+    await waitFor(() => expect(sdk.entities.JobProfile.create).toHaveBeenCalledWith(expect.objectContaining({skills:'Bookkeeping, payroll',job_type:'any'})));
+    expect(sdk.entities.JobProfile.get).not.toHaveBeenCalled();expect(sdk.entities.JobProfile.update).not.toHaveBeenCalled();
+    expect(screen.queryByText(/could not be saved/)).toBeNull();
   });
   it('does not create a duplicate profile after a failed load', async () => {
     sdk.entities.JobProfile.filter.mockRejectedValue(new Error('offline'));

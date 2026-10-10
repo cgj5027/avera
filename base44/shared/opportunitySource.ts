@@ -3,7 +3,8 @@
  *
  * searchListings(base44, profile, providerId) returns validated, normalized
  * listings: { source_provider, opportunities: [{title, company, url,
- * compensation, location, publisher, posted_at, match_reasons}] }.
+ * compensation (pay range exactly as posted), employment_type, location,
+ * publisher, posted_at, match_reasons}] }.
  *
  * To move to an approved job-data API (Adzuna, USAJOBS, ...), register another
  * provider below that returns the same raw shape; profile matching, validation
@@ -14,6 +15,30 @@ const MAX_LISTINGS = 6;
 
 /** Experience levels accepted from the profile; used as a search filter. */
 export const EXPERIENCE_LEVELS = ['entry_level', 'mid_level', 'senior'];
+
+/** Role types accepted from the profile; used as a search filter. */
+export const JOB_TYPES = ['any', 'full_time', 'part_time', 'temporary', 'contract'];
+
+const JOB_TYPE_NAMES = {
+  full_time: 'full-time',
+  part_time: 'part-time',
+  temporary: 'temporary',
+  contract: 'contract or gig',
+};
+
+const EMPLOYMENT_PATTERNS = [
+  ['part_time', /part[- ]?time/],
+  ['full_time', /full[- ]?time/],
+  ['temporary', /\b(temp|temporary|seasonal)\b/],
+  ['contract', /\b(contract|contractor|freelance|gig|per diem|1099)\b/],
+];
+
+/** Maps the posting's stated employment type to a role-type value; null when missing or ambiguous. */
+export function employmentTypeFrom(text) {
+  const t = typeof text === 'string' ? text.toLowerCase() : '';
+  const found = EMPLOYMENT_PATTERNS.filter(([, re]) => re.test(t)).map(([type]) => type);
+  return found.length === 1 ? found[0] : null;
+}
 
 /** True when a posting's title clearly targets a different experience level. */
 export function titleMismatchesExperience(title, level) {
@@ -32,18 +57,9 @@ function keywords(text) {
     .filter((w) => w.length >= 3);
 }
 
-/** First hourly rate in a compensation string ("$20-$30/hr" -> 20). */
-function hourlyRateFrom(text) {
-  const m = typeof text === 'string'
-    ? /(?:\$|usd\s*)?(\d+(?:\.\d+)?)\s*(?:\/|per\s+)?\s*(?:hr|hour)/i.exec(text)
-    : null;
-  const rate = m ? Number(m[1]) : NaN;
-  return Number.isFinite(rate) && rate > 0 ? rate : null;
-}
-
 /**
  * Server-side relevance score for one normalized listing: preferred roles,
- * available hours and the monthly income target all raise the score.
+ * skills and a matching role type all raise the score.
  */
 export function scoreOpportunity(item, profile) {
   const title = (item.title || '').toLowerCase();
@@ -52,19 +68,7 @@ export function scoreOpportunity(item, profile) {
   let score = 0;
   if (roles.length && roles.some((w) => title.includes(w))) score += 3;
   if (skills.length && skills.some((w) => title.includes(w))) score += 1;
-  const rate = hourlyRateFrom(item.compensation);
-  const hours = Number(profile.weekly_hours);
-  const target = Number(profile.target_monthly_income);
-  if (rate && Number.isFinite(hours) && hours > 0) {
-    if (Number.isFinite(target) && target > 0) {
-      const monthly = rate * hours * (52 / 12);
-      if (monthly >= target * 0.9) score += 2;
-      else if (monthly >= target * 0.5) score += 1;
-    }
-    const haystack = `${title} ${(item.compensation || '').toLowerCase()}`;
-    if (/part[- ]time/.test(haystack) && hours < 35) score += 1;
-    if (/full[- ]time/.test(haystack) && hours >= 35) score += 1;
-  }
+  if (profile.job_type && profile.job_type !== 'any' && item.employment_type === profile.job_type) score += 2;
   return score;
 }
 
@@ -107,11 +111,14 @@ function normalizeListing(raw) {
     : [];
   const text = (v, max) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null);
   const freshness = text(raw.posted_at, 40);
+  const pay = text(raw.compensation, 80);
   return {
     title,
     company,
     url,
-    compensation: text(raw.compensation, 80),
+    // Pay is shown only when the posting states an amount; a vague answer is no answer.
+    compensation: pay && /\d/.test(pay) ? pay : null,
+    employment_type: employmentTypeFrom(raw.employment_type),
     location: text(raw.location, 120),
     publisher: text(raw.publisher, 60),
     // A vague freshness answer is no answer: the UI only shows a real one.
@@ -122,6 +129,7 @@ function normalizeListing(raw) {
 
 /** Initial provider: web search grounded in real search results. */
 async function searchViaWebSearch(base44, profile) {
+  const roleType = JOB_TYPE_NAMES[profile.job_type];
   const llm = await base44.asServiceRole.integrations.Core.InvokeLLM({
     model: 'gemini_3_flash',
     add_context_from_internet: true,
@@ -134,14 +142,15 @@ async function searchViaWebSearch(base44, profile) {
       `Experience level: ${profile.experience_level === 'senior' ? 'senior (10+ years)' : profile.experience_level === 'mid_level' ? 'mid-level (3-9 years)' : 'entry-level (0-2 years)'}`,
       'Experience level is a hard filter: only include listings suited to that level. Never return postings that clearly require more or less experience.',
       `Preferred roles: ${profile.preferred_roles || 'any'}`,
+      `Role type: ${roleType || 'any (full-time, part-time, temporary, or contract)'}`,
+      ...(roleType ? [`Role type is a hard filter: only include ${roleType} listings.`] : []),
       `Work mode: ${profile.work_mode}`,
       `Location: ${profile.location || 'any (prefer remote or major US metros)'}`,
-      `Available hours per week: ${profile.weekly_hours || 'flexible'}`,
-      `Target income: ${profile.target_monthly_income ? `$${profile.target_monthly_income} per month` : 'not specified'}`,
       '',
       'Return up to 6 REAL listings from the search results, varied across employers.',
       'Only include a listing when you have its direct URL to the posting itself. Never invent a URL, and never return a search-results or listings-index page.',
-      'compensation: a short string such as "$15-$18/hr" or "$22/hr + tips" when known, otherwise empty.',
+      'compensation: the pay range exactly as the posting states it, with its period (for example "$18-$22/hr" or "$62,000-$75,000/yr"). Leave empty when the posting does not state pay. Never estimate, convert, or invent pay.',
+      'employment_type: the posting\'s stated employment type (full-time, part-time, temporary, or contract), otherwise empty.',
       'location: the listing\'s location, or "Remote".',
       'publisher: the job board or site the listing came from (for example Indeed, LinkedIn, or a company careers page), otherwise empty.',
       'posted_at: how recently the listing was posted, exactly as the source states it (for example "3 days ago"), otherwise empty.',
@@ -159,6 +168,7 @@ async function searchViaWebSearch(base44, profile) {
               company: { type: 'string' },
               url: { type: 'string' },
               compensation: { type: 'string' },
+              employment_type: { type: 'string' },
               location: { type: 'string' },
               publisher: { type: 'string' },
               posted_at: { type: 'string' },
@@ -187,8 +197,9 @@ const PROVIDERS = {
 export async function searchListings(base44, profile, providerId = 'web_search') {
   const provider = PROVIDERS[providerId];
   if (!provider) throw new Error('Unknown opportunity source.');
-  const rawList = await provider(base44, profile);
   const level = EXPERIENCE_LEVELS.includes(profile.experience_level) ? profile.experience_level : 'entry_level';
+  const jobType = JOB_TYPES.includes(profile.job_type) ? profile.job_type : 'any';
+  const rawList = await provider(base44, { ...profile, job_type: jobType });
   const seenUrls = new Set();
   const opportunities = (Array.isArray(rawList) ? rawList : [])
     .map(normalizeListing)
@@ -201,9 +212,11 @@ export async function searchListings(base44, profile, providerId = 'web_search')
     })
     // Experience level is a filter, not just a preference: drop clear mismatches.
     .filter((item) => !titleMismatchesExperience(item.title, level))
-    .map((item) => ({ ...item, match_score: scoreOpportunity(item, profile) }))
+    // Role type is a filter too: drop postings that state a different type; keep unstated ones.
+    .filter((item) => jobType === 'any' || !item.employment_type || item.employment_type === jobType)
+    .map((item) => ({ ...item, match_score: scoreOpportunity(item, { ...profile, job_type: jobType }) }))
     // Best fit first; Array.prototype.sort is stable, so equal scores keep order.
     .sort((a, b) => b.match_score - a.match_score)
     .slice(0, MAX_LISTINGS);
-  return { source_provider: providerId, experience_level: level, opportunities };
+  return { source_provider: providerId, experience_level: level, job_type: jobType, opportunities };
 }
