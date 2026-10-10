@@ -15,8 +15,10 @@ export default function ModeIndicator({ variant = 'inline', className = '' }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1 text-sm',
-        variant === 'sidebar' ? 'bg-white/10 text-white/90' : 'border border-border bg-surface-subtle text-muted-foreground',
+        'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm',
+        variant === 'sidebar'
+          ? 'mx-3 bg-white/10 text-white/90'
+          : 'whitespace-nowrap border border-border bg-surface-subtle text-muted-foreground',
         className
       )}
     >
