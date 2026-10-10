@@ -11,6 +11,7 @@ export default function PageHeader({ title, subtitle, actions = undefined, class
     >
       <div>
         <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+
           {title}
         </h1>
         {subtitle && <p className="mt-1 max-w-2xl text-base text-muted-foreground">{subtitle}</p>}

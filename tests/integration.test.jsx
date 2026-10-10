@@ -18,7 +18,6 @@ import GoalContributionDialog from '../src/components/goals/GoalContributionDial
 import PropertyCard from '../src/components/properties/PropertyCard';
 import BillsBudget from '../src/pages/BillsBudget';
 import Properties from '../src/pages/Properties';
-import Goals from '../src/pages/GoalsOpportunities';
 import YearlyPlan from '../src/pages/YearlyPlan';
 import * as data from '../src/services/dataService';
 
@@ -166,7 +165,7 @@ describe('primary manual workflows with SDK fixtures', () => {
     await waitFor(()=>expect(rows.Property).toHaveLength(1));expect(rows.MortgageRecord).toHaveLength(1);expect(rows.Property[0].nickname).toBe('Rental');
   });
   it('adds a goal, records savings, edits it and deletes it', async () => {
-    render(<Goals />);fireEvent.click(await screen.findByRole('button',{name:'Add goal'}));
+    render(<BillsBudget />);const goalsTab=await screen.findByRole('tab',{name:'Goals'});fireEvent.mouseDown(goalsTab,{button:0,ctrlKey:false});fireEvent.click(goalsTab);fireEvent.click(await screen.findByRole('button',{name:'Add goal'}));
     fireEvent.change(screen.getByLabelText('Goal name'),{target:{value:'Emergency'}});
     fireEvent.change(screen.getByLabelText('Target amount'),{target:{value:'1000'}});
     const adds=screen.getAllByRole('button',{name:'Add goal'});fireEvent.click(adds[adds.length-1]);

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Receipt, Sparkles, Target, MoreHorizontal, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Receipt, Sparkles, Briefcase, MoreHorizontal, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { PRIMARY_NAV, SETTINGS_NAV } from '@/config/navigation';
@@ -11,7 +11,7 @@ const BAR_ITEMS = [
   { label: 'Overview', path: '/', icon: LayoutDashboard },
   { label: 'Bills', path: '/bills-budget', icon: Receipt },
   { label: 'Ask Avera', path: '/ask-avera', icon: Sparkles },
-  { label: 'Goals', path: '/goals-opportunities', icon: Target },
+  { label: 'Opportunities', path: '/opportunities', icon: Briefcase },
 ];
 
 const MORE_ITEMS = [PRIMARY_NAV[2], PRIMARY_NAV[4], SETTINGS_NAV];

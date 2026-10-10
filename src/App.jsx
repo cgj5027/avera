@@ -11,7 +11,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import Overview from '@/pages/Overview';
 import BillsBudget from '@/pages/BillsBudget';
 import YearlyPlan from '@/pages/YearlyPlan';
-import GoalsOpportunities from '@/pages/GoalsOpportunities';
+import Opportunities from '@/pages/Opportunities';
 import Properties from '@/pages/Properties';
 import AskAveraPage from '@/pages/AskAveraPage';
 import Settings from '@/pages/Settings';
@@ -47,7 +47,7 @@ export const AuthenticatedApp = () => {
         <Route path="/" element={<Overview />} />
         <Route path="/bills-budget" element={<BillsBudget />} />
         <Route path="/yearly-plan" element={<YearlyPlan />} />
-        <Route path="/goals-opportunities" element={<GoalsOpportunities />} />
+        <Route path="/opportunities" element={<Opportunities />} />
         <Route path="/properties" element={<Properties />} />
         <Route path="/ask-avera" element={<AskAveraPage />} />
         <Route path="/settings" element={<Settings />} />

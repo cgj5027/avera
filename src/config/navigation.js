@@ -1,4 +1,4 @@
-import { LayoutDashboard, Receipt, CalendarDays, Target, Building2, Sparkles, Settings } from 'lucide-react';
+import { LayoutDashboard, Receipt, CalendarDays, Briefcase, Building2, Sparkles, Settings } from 'lucide-react';
 
 /**
  * Single source of truth for navigation labels and destinations.
@@ -8,7 +8,7 @@ export const PRIMARY_NAV = [
   { label: 'Overview', path: '/', icon: LayoutDashboard },
   { label: 'Bills & Budget', path: '/bills-budget', icon: Receipt },
   { label: 'Yearly Plan', path: '/yearly-plan', icon: CalendarDays },
-  { label: 'Goals & Opportunities', path: '/goals-opportunities', icon: Target },
+  { label: 'Opportunities', path: '/opportunities', icon: Briefcase },
   { label: 'Properties', path: '/properties', icon: Building2 },
   { label: 'Ask Avera', path: '/ask-avera', icon: Sparkles },
 ];

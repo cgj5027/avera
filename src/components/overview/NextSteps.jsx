@@ -4,7 +4,7 @@ import { ChevronRight } from 'lucide-react';
 const STEPS = [
   { label: 'Explore Demo Mode', path: '/welcome' },
   { label: 'Add your first bill', path: '/bills-budget' },
-  { label: 'Create a savings goal', path: '/goals-opportunities' },
+  { label: 'Create a savings goal', path: '/bills-budget' },
   { label: 'View bank connection status', path: '/settings' },
 ];
 

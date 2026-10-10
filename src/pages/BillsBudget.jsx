@@ -21,6 +21,7 @@ import CategoryCard from '@/components/budget/CategoryCard';
 import LinkedTransactionsDialog from '@/components/budget/LinkedTransactionsDialog';
 import CategoryDialog from '@/components/budget/CategoryDialog';
 import LogSpendingDialog from '@/components/budget/LogSpendingDialog';
+import GoalsSection from '@/components/goals/GoalsSection';
 import { listRecords, createRecord, updateRecord, deleteRecord } from '@/services/dataService';
 import * as calc from '@/services/financialCalculations';
 import { importedTransactions, estimateBillCandidates, normalizeName } from '@/services/plaidEstimates';
@@ -32,6 +33,10 @@ export default function BillsBudget() {
   const [categories, setCategories] = useState(null);
   const [transactions, setTransactions] = useState(null);
   const [accounts, setAccounts] = useState(null);
+  const [goals, setGoals] = useState(null);
+  const [incomes, setIncomes] = useState(null);
+  const [properties, setProperties] = useState(null);
+  const [mortgages, setMortgages] = useState(null);
   const [error, setError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -52,13 +57,21 @@ export default function BillsBudget() {
       listRecords('budgetCategory'),
       listRecords('transaction'),
       listRecords('account'),
+      listRecords('goal'),
+      listRecords('incomeSource'),
+      listRecords('property'),
+      listRecords('mortgageRecord'),
     ])
-      .then(([b, c, t, a]) => {
+      .then(([b, c, t, a, g, inc, p, m]) => {
         if (!cancelled) {
           setBills(b);
           setCategories(c);
           setTransactions(t);
           setAccounts(a);
+          setGoals(g);
+          setIncomes(inc);
+          setProperties(p);
+          setMortgages(m);
         }
       })
       .catch((e) => {
@@ -145,6 +158,20 @@ export default function BillsBudget() {
   const addManualTransaction = (payload) =>
     run(() => createRecord('transaction', payload), 'Transaction added');
 
+  const saveGoal = (goal, payload) =>
+    run(
+      () => (goal ? updateRecord('goal', goal.id, payload) : createRecord('goal', payload)),
+      goal ? 'Goal updated' : 'Goal added'
+    );
+
+  const applyContribution = (goalId, amount) => {
+    const goal = goals.find((g) => g.id === goalId);
+    return run(
+      () => updateRecord('goal', goalId, { saved_amount: calc.round2((Number(goal?.saved_amount) || 0) + amount) }),
+      'Contribution logged'
+    );
+  };
+
   const markNotRecurring = (transaction) =>
     run(
       () => updateRecord('transaction', transaction.id, { not_recurring: true }),
@@ -156,6 +183,7 @@ export default function BillsBudget() {
     const { kind, record } = deleteTarget;
     if (kind === 'bill') await run(() => deleteRecord('bill', record.id), 'Bill deleted');
     else if (kind === 'transaction') await run(() => deleteRecord('transaction', record.id), 'Spending deleted');
+    else if (kind === 'goal') await run(() => deleteRecord('goal', record.id), 'Goal deleted');
     else await run(() => deleteRecord('budgetCategory', record.id), 'Category deleted');
     setDeleteTarget(null);
   };
@@ -167,7 +195,7 @@ export default function BillsBudget() {
       </div>
     );
   }
-  if (!bills || !categories || !transactions || !accounts) {
+  if (!bills || !categories || !transactions || !accounts || !goals || !incomes || !properties || !mortgages) {
     return (
       <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
         <LoadingState label="Loading Bills & Budget" />
@@ -195,6 +223,9 @@ export default function BillsBudget() {
       ...transactions.map((t) => (t.date ?? '').slice(0, 7)).filter(Boolean),
     ]),
   ].sort().reverse();
+  /* Goals tab: monthly savings capacity from income sources minus recurring expenses. */
+  const monthlyIncome = calc.monthlyIncomeTotal(incomes);
+  const monthlyExpenses = calc.totalMonthlyExpenses({ bills, budgetCategories: categories, properties, mortgages });
   const limitsTotal = calc.budgetLimitsTotal(categories);
   const spentTotal = calc.spentInMonth(transactions, null, range);
 
@@ -222,6 +253,7 @@ export default function BillsBudget() {
         <TabsList className="mb-6">
           <TabsTrigger value="bills" className="min-h-9 rounded-lg px-4">Bills</TabsTrigger>
           <TabsTrigger value="budget" className="min-h-9 rounded-lg px-4">Budget</TabsTrigger>
+          <TabsTrigger value="goals" className="min-h-9 rounded-lg px-4">Goals</TabsTrigger>
           {transactions.length > 0 && (
             <TabsTrigger value="transactions" className="min-h-9 rounded-lg px-4">
               Transactions
@@ -314,6 +346,18 @@ export default function BillsBudget() {
           )}
         </TabsContent>
 
+        <TabsContent value="goals" className="mt-0">
+          <GoalsSection
+            goals={goals}
+            monthlyIncome={monthlyIncome}
+            monthlyExpenses={monthlyExpenses}
+            busy={busy}
+            onSaveGoal={saveGoal}
+            onApplyContribution={applyContribution}
+            onDelete={(g) => setDeleteTarget({ kind: 'goal', record: g })}
+          />
+        </TabsContent>
+
         {transactions.length > 0 && (
           <TabsContent value="transactions" className="mt-0">
             <TransactionsTable
@@ -387,6 +431,8 @@ export default function BillsBudget() {
             ? 'This removes the spending entry and recalculates budget totals. This cannot be undone.'
             : deleteTarget?.kind === 'bill'
             ? 'This removes the bill and its schedule. This cannot be undone.'
+            : deleteTarget?.kind === 'goal'
+            ? 'This removes the goal and its progress. This cannot be undone.'
             : 'This removes the category and its limit. Logged spending stays in your history. This cannot be undone.'
         }
         onConfirm={confirmDelete}
