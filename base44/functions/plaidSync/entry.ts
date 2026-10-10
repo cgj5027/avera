@@ -18,8 +18,10 @@ export default async function(req) {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    const service = base44.asServiceRole;
-    const itemsPage = await service.entities.PlaidItem.filter({ created_by_id: user.id }, { limit: 50 });
+    // User-scoped entity access: records are owned by the end user, so reads
+    // and writes must use the user's token — service-role writes get stamped
+    // with the service identity and would be invisible to the user.
+    const itemsPage = await base44.entities.PlaidItem.filter({ created_by_id: user.id }, { limit: 50 });
     const items = itemsPage.items || [];
 
     const results = [];
@@ -46,7 +48,7 @@ export default async function(req) {
           };
         });
         for (const batch of chunk(accountRows, 200)) {
-          await service.entities.Account.upsert(batch, { key: 'plaid_account_id' });
+          await base44.entities.Account.upsert(batch, { key: 'plaid_account_id' });
         }
         result.accounts = accountRows.length;
 
@@ -75,11 +77,11 @@ export default async function(req) {
           created_by_id: user.id
         })).filter((r) => r.date);
         for (const batch of chunk(rows, 200)) {
-          await service.entities.Transaction.upsert(batch, { key: 'plaid_transaction_id' });
+          await base44.entities.Transaction.upsert(batch, { key: 'plaid_transaction_id' });
         }
         result.transactions = rows.length;
 
-        await service.entities.PlaidItem.update(item.id, {
+        await base44.entities.PlaidItem.update(item.id, {
           sync_cursor: cursor,
           last_synced_at: new Date().toISOString(),
           status: 'active',
@@ -88,7 +90,7 @@ export default async function(req) {
       } catch (err) {
         result.status = 'error';
         result.error = err.message;
-        await service.entities.PlaidItem.update(item.id, { status: 'error', last_sync_error: err.message });
+        await base44.entities.PlaidItem.update(item.id, { status: 'error', last_sync_error: err.message });
       }
       results.push(result);
     }

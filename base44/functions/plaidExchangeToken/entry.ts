@@ -25,9 +25,12 @@ export default async function(req) {
     if (!publicToken) return Response.json({ error: 'public_token is required' }, { status: 400 });
 
     const exchanged = await plaidRequest('/item/public_token/exchange', { public_token: publicToken });
-    const service = base44.asServiceRole;
 
-    await service.entities.PlaidItem.upsert([{
+    // User-scoped writes: the platform stamps created_by_id with the caller's
+    // identity, so records must be written with the end user's token to stay
+    // visible to that user (service-role writes are stamped to a service user
+    // and would be invisible to everyone).
+    await base44.entities.PlaidItem.upsert([{
       item_id: exchanged.item_id,
       institution_id: institutionId,
       institution_name: institutionName,
@@ -59,7 +62,7 @@ export default async function(req) {
       };
     });
     for (const batch of chunk(accountRows, 200)) {
-      await service.entities.Account.upsert(batch, { key: 'plaid_account_id' });
+      await base44.entities.Account.upsert(batch, { key: 'plaid_account_id' });
     }
 
     return Response.json({ item_id: exchanged.item_id, institution_name: institutionName, accounts_imported: accountRows.length });
