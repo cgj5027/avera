@@ -101,7 +101,7 @@ function Conversation() {
             </div>
           ) : (
             <div key={i} className="min-w-0 break-words max-w-[90%] rounded-2xl border border-border bg-surface-subtle px-4 py-2.5 text-base text-foreground">
-              <div className="avera-prose space-y-2 [&_p]:m-0 [&_strong]:font-semibold">
+              <div className="avera-prose space-y-3 leading-relaxed [&_p]:m-0 [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:my-1 [&_li>ul]:mt-2 [&_li>ol]:mt-2 [&_h1]:text-lg [&_h2]:text-lg [&_h3]:text-base [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-semibold [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-4">
                 <ReactMarkdown components={{ a: ({ children }) => <span>{children}</span>, img: () => null, pre: ({ children }) => <pre className="overflow-x-auto">{children}</pre> }}>{m.text}</ReactMarkdown>
               </div>
             </div>
@@ -109,6 +109,7 @@ function Conversation() {
         )}
       </div>
       <div className="shrink-0 border-t border-border bg-surface p-4 sm:p-6">
+        <p className="mb-3 text-center text-sm text-muted-foreground">AI can make mistakes. Verify important information and consult a financial advisor before making financial decisions.</p>
         <form
           aria-label="Send a message to Ask Avera"
           className="space-y-2"

@@ -1,3 +1,5 @@
+import InfoHint from '@/components/states/InfoHint';
+
 /**
  * Income-versus-spending chart placeholder. Uses the ordered chart palette
  * for its legend; the real chart arrives with data services (Stage 1+).
@@ -8,9 +10,12 @@ export default function ChartPlaceholder() {
     { label: 'Spending', className: 'bg-chart-2' },
   ];
   return (
-    <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
+    <section className="h-full rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-heading text-base font-semibold text-foreground">Income versus spending</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="font-heading text-base font-semibold text-foreground">Income & spending</h2>
+          <InfoHint label="About the income and spending outlook" text="Projected income and spending for the current month and next three months. Add income, bills or budget plans to populate this outlook." />
+        </div>
         <div className="flex items-center gap-4" aria-hidden="true">
           {legend.map((l) => (
             <span key={l.label} className="flex items-center gap-1.5 text-sm text-muted-foreground">

@@ -18,6 +18,7 @@ const DEMO_ENTITIES = [
   'transaction',
   'account',
   'bill',
+  'billSuggestionDismissal',
   'budgetCategory',
   'goal',
   'property',

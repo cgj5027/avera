@@ -2,7 +2,7 @@ import { Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 /** Small info icon that reveals a longer explanation on hover or keyboard focus. */
-export default function InfoHint({ text }) {
+export default function InfoHint({ text, label = 'More information' }) {
   if (!text) return null;
   return (
     <TooltipProvider delayDuration={150}>
@@ -10,8 +10,8 @@ export default function InfoHint({ text }) {
         <TooltipTrigger asChild>
           <button
             type="button"
-            aria-label="More information"
-            className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+            aria-label={label}
+            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Info className="h-4 w-4" aria-hidden="true" />
           </button>

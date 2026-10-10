@@ -1,5 +1,7 @@
 # Audit validation
 
+For Overview's allocation/outlook charts, build and start the frontend preview, then run `node tests/overview-charts-browser.cjs` with `AUDIT_BASE_URL` set to its URL. This fixture runner checks the desktop 1/3–2/3 split, stacked mobile layouts, four inline month labels, accessible amounts/tables and info descriptors, plus planned/estimated/shortfall/empty scenarios in both themes at four widths. `tests/overview-allocation.test.jsx` covers projection breakdowns and authenticated dataset boundaries; fixtures do not verify hosted persistence.
+
 For Ask Avera layout checks, build the frontend and start `npm run preview -- --host 127.0.0.1 --port 4173`, then run `node tests/chat-layout-browser.cjs` (override `AUDIT_BASE_URL` if the port changes). The fixture runner checks wider page/drawer layouts, a composer anchored above navigation, long-reply scrolling, Enter/Shift+Enter, drawer Escape/focus restoration and WCAG A/AA in light/dark themes, including short viewports and Demo Mode. No live AI calls are made.
 
 For the persistence follow-up, build the frontend, start `npm run preview -- --host 127.0.0.1 --port 4173`, then run `node tests/persistence-followup-browser.cjs`. This runner uses durable in-memory API fixtures and checks save/edit/page-return workflows plus opportunity success/empty/failure states at four widths in both themes. See `docs/STAGE3_FOLLOWUP.md`; fixture checks do not certify hosted persistence or web-search availability.

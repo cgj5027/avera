@@ -61,6 +61,11 @@ describe('demo and UI fixtures, distinct from real Plaid Sandbox',()=>{
     await removeDemoData('early_career',['ordinary']);
     expect(rows.Account.map(r=>r.id)).toEqual(['ordinary','other-demo']);expect(rows.PlaidItem).toHaveLength(1);expect(sdk.functions.invoke).not.toHaveBeenCalled();
   });
+  it('resets only active user demo bill dismissals',async()=>{
+    rows.BillSuggestionDismissal=[{id:'active',created_by_id:'a',demo_profile:'early_career'},{id:'ordinary',created_by_id:'a'},{id:'other-user',created_by_id:'b',demo_profile:'early_career'},{id:'other-profile',created_by_id:'a',demo_profile:'multi_income'}];
+    await removeDemoData('early_career');
+    expect(rows.BillSuggestionDismissal.map(r=>r.id)).toEqual(['ordinary','other-user','other-profile']);
+  });
   it('propagates deletion failures instead of falsely reporting demo reset success',async()=>{
     rows.Account=[{id:'demo',created_by_id:'a',demo_profile:'early_career'}];sdk.entities.Account.delete.mockRejectedValue(new Error('offline'));
     await expect(removeDemoData('early_career')).rejects.toThrow('offline');expect(rows.Account).toHaveLength(1);

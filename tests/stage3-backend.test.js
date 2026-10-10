@@ -164,6 +164,26 @@ describe('actual backend handlers with SDK/Plaid fixtures; NOT real Sandbox requ
     expect(prompt).toContain('untrusted data');
   });
 
+  it('gives Ask Avera normalized named bills and computed goal evidence, excluding other users',async()=>{
+    rows.IncomeSource=[{created_by_id:'a',name:'Salary',amount:1500,frequency:'biweekly',active:true},{created_by_id:'b',name:'Private salary',amount:99999,frequency:'monthly'}];
+    rows.Bill=[{created_by_id:'a',name:'Insurance',amount:1200,frequency:'annual'}];
+    rows.Goal=[{created_by_id:'a',name:'Emergency fund',target_amount:4000,saved_amount:1000,target_date:'2027-12-01'}];
+    await ask(req({question:'What should I focus on?'}));
+    const prompt=fixture.client.asServiceRole.integrations.Core.InvokeLLM.mock.calls[0][0].prompt;
+    const context=JSON.parse(prompt.split('FINANCIAL CONTEXT (JSON):\n')[1].split('\n\n')[0]);
+    expect(context.income.sources[0]).toMatchObject({name:'Salary',monthly_equivalent:3250});
+    expect(context.recurring_bills.bills[0]).toMatchObject({name:'Insurance',monthly_equivalent:100});
+    expect(context.insights.goals[0]).toMatchObject({name:'Emergency fund',remaining:3000});
+    expect(context.insights.goals[0].required_monthly).toBeGreaterThan(0);
+    expect(prompt).not.toContain('Private salary');expect(prompt).toContain('Name the relevant bills');
+  });
+  it('Ask Avera reports missing records as unknown and rejects empty model answers',async()=>{
+    fixture.client.asServiceRole.integrations.Core.InvokeLLM.mockResolvedValue({answer:' '});
+    expect((await ask(req({question:'How much can I save?'}))).status).toBe(502);
+    const prompt=fixture.client.asServiceRole.integrations.Core.InvokeLLM.mock.calls[0][0].prompt;
+    const context=JSON.parse(prompt.split('FINANCIAL CONTEXT (JSON):\n')[1].split('\n\n')[0]);
+    expect(context.insights.planning_surplus).toBeNull();expect(context.insights.warnings.join(' ')).toContain('No active income');
+  });
   it('removes accounts no longer returned by Plaid without deleting manual accounts',async()=>{
     rows.Account=[{id:'old',created_by_id:'a',plaid_item_id:'item',plaid_account_id:'closed',source:'Plaid Sandbox'},{id:'manual',created_by_id:'a',plaid_item_id:'item',source:'Manual'}];
     await sync(req());expect(rows.Account.some(r=>r.id==='old')).toBe(false);expect(rows.Account.some(r=>r.id==='manual')).toBe(true);
