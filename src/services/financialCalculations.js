@@ -199,9 +199,9 @@ export function upcomingBills(bills = [], withinDays = 30, today = new Date()) {
 }
 
 export function goalMonthsRemaining(targetDate, today = new Date()) {
-  if (!targetDate) return null;
+  if (typeof targetDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(targetDate) || !Number.isFinite(today.getTime())) return null;
   const t = new Date(`${targetDate}T00:00:00`);
-  if (!Number.isFinite(t.getTime())) return null;
+  if (!Number.isFinite(t.getTime()) || t.getFullYear() !== Number(targetDate.slice(0,4)) || t.getMonth()+1 !== Number(targetDate.slice(5,7)) || t.getDate() !== Number(targetDate.slice(8,10))) return null;
   const months = Math.ceil((t.getTime() - today.getTime()) / (DAY_MS * 30.44));
   return Math.max(0, months);
 }
@@ -209,6 +209,7 @@ export function goalMonthsRemaining(targetDate, today = new Date()) {
 /** Monthly contribution needed to hit the target by the deadline; null when no deadline is set. */
 export function goalRequiredMonthly(goal, today = new Date()) {
   if (!goal.target_date) return null;
+  if (!validGoalAmount(goal.target_amount) || !validGoalAmount(goal.saved_amount ?? (goal.saved_amount === undefined ? 0 : NaN))) return null;
   const remaining = Math.max(0, num(goal.target_amount) - num(goal.saved_amount));
   const months = goalMonthsRemaining(goal.target_date, today);
   if (months === null) return null;
@@ -228,7 +229,10 @@ export function goalPace(goal, monthlyCapacity, today = new Date()) {
   return { key: 'behind', label: 'Behind pace', tone: 'danger' };
 }
 
-export function calculateIncomeGap(goal, { monthlyIncome = 0, monthlyExpenses = 0 } = {}, today = new Date()) {
+const validGoalAmount = value => (typeof value === 'number' || typeof value === 'string') && String(value).trim() !== '' && Number.isFinite(Number(value)) && Number(value) >= 0;
+
+export function calculateIncomeGap(goal, { monthlyIncome = undefined, monthlyExpenses = undefined } = {}, today = new Date()) {
+  if (!validGoalAmount(monthlyIncome) || !validGoalAmount(monthlyExpenses)) return null;
   const required = goalRequiredMonthly(goal, today);
   if (required === null) return null;
   const capacity = round2(num(monthlyIncome) - num(monthlyExpenses));
@@ -249,12 +253,13 @@ export function calculateIncomeGap(goal, { monthlyIncome = 0, monthlyExpenses = 
 export function calculateIncomeGapAllocated(goal, allGoals = [], context = {}, today = new Date()) {
   const base = calculateIncomeGap(goal, context, today);
   if (!base) return null;
+  const others = allGoals.filter((g) => g !== goal && (!goal.id || g.id !== goal.id));
+  if (others.some(g => g.target_date && goalRequiredMonthly(g, today) === null)) return null;
   const otherReserve = round2(
-    allGoals
-      .filter((g) => g.id !== goal.id)
+    others
       .reduce((s, g) => s + (goalRequiredMonthly(g, today) ?? 0), 0)
   );
-  const allocatedCapacity = round2(Math.max(0, base.capacity - otherReserve));
+  const allocatedCapacity = round2(base.capacity - otherReserve);
   return {
     ...base,
     otherReserve,

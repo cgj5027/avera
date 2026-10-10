@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Briefcase } from 'lucide-react';
 import StatusPill from '@/components/states/StatusPill';
+import { Button } from '@/components/ui/button';
 import OpportunityProfileForm from './OpportunityProfileForm';
 import OpportunityResults from './OpportunityResults';
 import { listRecords, createRecord, updateRecord } from '@/services/dataService';
@@ -15,15 +16,19 @@ export default function OpportunityDiscovery() {
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setLoaded(false);
+    setLoadError(false);
     listRecords('jobProfile')
       .then((items) => {
         if (!cancelled) setProfile(items[0] ?? null);
       })
       .catch(() => {
-        if (!cancelled) setSaveError(true);
+        if (!cancelled) setLoadError(true);
       })
       .finally(() => {
         if (!cancelled) setLoaded(true);
@@ -31,9 +36,10 @@ export default function OpportunityDiscovery() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
 
   const save = async (values) => {
+    if (saving || loadError) return;
     setSaving(true);
     setSaveError(false);
     try {
@@ -56,18 +62,22 @@ export default function OpportunityDiscovery() {
         <StatusPill tone="neutral">Optional</StatusPill>
       </div>
       <p className="mt-2 max-w-2xl text-base text-muted-foreground">
-        Describe your skills and availability to search for real jobs and one-off gigs. Search is optional — your
-        profile is saved only for you, and results always show their source.
+        Describe your skills and availability to request job and gig listings. Search is optional. Results show source links; availability is not yet verified.
       </p>
       {saveError && (
-        <div className="mt-3">
+        <div className="mt-3" role="alert">
           <StatusPill tone="danger">Profile could not be saved — please try again</StatusPill>
         </div>
       )}
-      {loaded ? (
+      {loadError ? (
+        <div className="mt-4" role="alert">
+          <p className="text-base text-danger-text">Your profile could not be loaded. Retry before saving changes.</p>
+          <Button type="button" variant="outline" className="mt-2" onClick={() => setReloadKey(k => k + 1)}>Retry loading profile</Button>
+        </div>
+      ) : loaded ? (
         <>
           <OpportunityProfileForm profile={profile} saving={saving} onSave={save} />
-          <OpportunityResults profile={profile} />
+          <OpportunityResults key={JSON.stringify(profile)} profile={profile} />
         </>
       ) : (
         <div className="mt-4">

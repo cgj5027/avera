@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CircleDollarSign } from 'lucide-react';
 import StatusPill from '@/components/states/StatusPill';
 import EmptyState from '@/components/states/EmptyState';
+import SourceChip from '@/components/states/SourceChip';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { calculateIncomeGapAllocated, goalMonthsRemaining } from '@/services/financialCalculations';
@@ -48,6 +49,9 @@ export default function IncomeGapPanel({ goals, monthlyIncome, monthlyExpenses }
           </SelectContent>
         </Select>
       </div>
+      <div className="mt-3"><SourceChip source="Projected" /></div>
+      {!gap && <p role="status" className="mt-4 text-base text-muted-foreground">A valid deadline and valid financial amounts are needed to calculate the monthly income gap. Review this goal and other dated goals.</p>}
+      {months === 0 && <p role="status" className="mt-3 text-base text-muted-foreground">The deadline has passed or is today. The calculation shows the remaining amount over one month; it cannot meet the original deadline.</p>}
       {gap && (
         <dl className="mt-4 grid gap-3 text-base sm:grid-cols-2">
           <div>
@@ -83,7 +87,7 @@ export default function IncomeGapPanel({ goals, monthlyIncome, monthlyExpenses }
               {gap.shortfall > 0 ? (
                 <>
                   <StatusPill tone="danger" icon={CircleDollarSign}>Monthly shortfall</StatusPill>
-                  <span className="tabular-nums text-foreground">{formatCurrency(gap.shortfall)}/mo extra income needed after other goals</span>
+                  <span className="tabular-nums text-foreground">{formatCurrency(gap.shortfall)}/mo additional take-home income needed after other goals</span>
                 </>
               ) : (
                 <>
@@ -103,7 +107,7 @@ export default function IncomeGapPanel({ goals, monthlyIncome, monthlyExpenses }
         </p>
         <p className="mt-1">
           Assumptions: every figure comes from your saved records (Manual); pay and bill frequencies are amortized to
-          monthly; a goal without a deadline reserves nothing; property equity is not counted as income.
+          monthly; a goal without a deadline reserves nothing; enter take-home income to estimate a net gap — saved income has no gross/net classification; property equity is not counted as income.
         </p>
       </div>
     </section>

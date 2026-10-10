@@ -16,6 +16,8 @@ const assert = require('node:assert/strict');
       let body;
       if(path.includes('public-settings'))body={id:'audit',public_settings:{}};
       else if(path.endsWith('/User/me'))body={id:'audit-user',email:'audit@example.test',full_name:'Audit User',role:'user'};
+      else if(path.includes('/functions/askAvera')) body={answer:'Browser fixture only: **$100.00** is a test figure, not a live calculation. '+ 'longword'.repeat(30)};
+      else if(path.includes('/functions/searchJobOpportunities')) body={opportunities:[{title:'Fixture role',company:'Fixture employer',compensation:'$25/hr',location:'Remote',url:'https://www.indeed.com/viewjob?jk=fixture'}]};
       else if(path.endsWith('/v2/list')) {
         const entity=path.split('/entities/')[1].split('/')[0];
         const fixture={
@@ -33,13 +35,23 @@ const assert = require('node:assert/strict');
       else body={};
       await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
     });
-    for(const path of ['/','/bills-budget','/yearly-plan','/goals-opportunities','/properties','/settings','/login','/register']) {
+    for(const path of ['/','/bills-budget','/yearly-plan','/goals-opportunities','/properties','/settings','/login','/register','/ask-avera']) {
       await page.goto((process.env.AUDIT_BASE_URL || 'http://127.0.0.1:5173')+path,{waitUntil:'domcontentloaded'});
       await page.waitForTimeout(150);
       await page.getByRole('heading').first().waitFor();
       assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`overflow ${theme} ${width} ${path}`);
       const title=await page.getByRole('heading').first().innerText();
       assert(!title.includes('Something went wrong'),`unexpected error ${path}`);
+      if (path === '/ask-avera') {
+        await page.getByLabel('Ask Avera',{exact:true}).fill('What are my savings?');
+        await page.getByRole('button',{name:'Send question'}).click();
+        await page.getByText(/Browser fixture only/).waitFor();
+      }
+      if (path === '/goals-opportunities') {
+        await page.getByRole('button',{name:'Find opportunities'}).click();
+        await page.getByText('Source-linked results',{exact:true}).waitFor();
+      }
+      assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`response overflow ${theme} ${width} ${path}`);
       await page.addScriptTag({path:require.resolve('axe-core/axe.min.js')});
       const accessibility=await page.evaluate(async()=>{const r=await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}});return r.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}));});
       if(accessibility.length)violations.push({theme,width,path,accessibility});
@@ -61,6 +73,28 @@ const assert = require('node:assert/strict');
           await page.screenshot({animations:'disabled',path:`/tmp/avera-property-${theme}-${width}.png`});
         }
         await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
+      }
+      if (path === '/goals-opportunities') {
+        await page.route('**/api/**',route=>new URL(route.request().url()).pathname.includes('/functions/searchJobOpportunities') ? route.fulfill({status:503,contentType:'application/json',body:'{"error":"fixture unavailable"}'}) : route.fallback());
+        await page.getByRole('button',{name:'Find opportunities'}).click();
+        await page.getByText('Demonstration listings',{exact:true}).waitFor();
+        const a=await page.evaluate(async()=>{const r=await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}});return r.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}));});
+        if(a.length)violations.push({theme,width,path,state:'opportunity unavailable',accessibility:a});
+        assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'unavailable result overflow');
+      }
+      if (path === '/') {
+        const launcher=page.getByRole('button',{name:'Ask Avera',exact:true});
+        await launcher.click();
+        const drawer=page.getByRole('dialog');await drawer.waitFor();await page.waitForTimeout(250);
+        await drawer.getByLabel('Ask Avera',{exact:true}).fill('How much can I save?');
+        await drawer.getByRole('button',{name:'Send question'}).click();await drawer.getByText(/Browser fixture only/).waitFor();
+        const bounds=await drawer.boundingBox();assert(bounds.x>=0&&bounds.x+bounds.width<=width,`AI drawer bounds ${width}`);
+        const transcript=drawer.getByRole('log');assert(await transcript.evaluate(el=>el.clientHeight>40),'AI transcript remains visible');
+        const a=await page.evaluate(async()=>{const r=await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}});return r.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}));});
+        if(a.length)violations.push({theme,width,path,dialog:'Ask Avera',accessibility:a});
+        await page.screenshot({animations:'disabled',path:`/tmp/avera-ask-${theme}-${width}.png`});
+        await page.keyboard.press('Escape');await drawer.waitFor({state:'hidden'});
+        await page.waitForTimeout(50);assert(await launcher.evaluate(el=>document.activeElement===el),'Ask Avera focus returns to launcher');
       }
       if (path === '/bills-budget') {
         await page.getByRole('tab',{name:'Budget',exact:true}).click();

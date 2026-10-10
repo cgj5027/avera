@@ -8,8 +8,10 @@ Visual specification: *Avera Alternative — Design System v2.0* (`avera_design_
 (Stage 0) are live, manual money entry with real calculations (Stage 1) is live —
 including auth, accounts, income, bills, budgets, transactions, and an audit trail
 (`docs/STAGE1_AUDIT.md`) — and Stage 2 work (goal/property dialog draft persistence,
-manual-entry source-label fixes) is merged. Ask Avera remains an honest
-not-yet-available shell; Plaid connection and AI analysis are still ahead.
+manual-entry source-label fixes) is merged. Ask Avera and opportunity search have
+frontend function-call interfaces, but their backend functions are absent from
+this checkout. Stage 2 AI grounding and employment integration are not verified;
+see `docs/STAGE2_AUDIT.md`. Plaid connection is still ahead.
 
 ---
 
@@ -127,7 +129,9 @@ container is required; the same codebase targets web and native mobile shells.
 - Third-party credentials (Plaid client ID/secret, any future API keys) go ONLY in
   Base44 secure environment secrets, consumed by backend functions — never in
   frontend code, design files, or this repository's docs.
-- All financial computation and bank-token handling happens server-side.
+- Current manual financial calculations run in deterministic frontend services.
+  Any future AI context retrieval, provider credentials, and bank-token handling
+  must use authenticated backend functions; those integrations are not verified.
 - Out of scope product-wide: payment execution, transfers, banking authorization.
 
 ## 9. GitHub / Codex review conventions

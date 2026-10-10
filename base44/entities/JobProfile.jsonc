@@ -25,54 +25,32 @@
       "type": "string"
     },
     "weekly_hours": {
-      "type": "integer"
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 80
     },
     "target_monthly_income": {
-      "type": "number"
+      "type": "number",
+      "minimum": 0
     }
   },
   "required": [
     "skills"
   ],
   "rls": {
-    "read": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    },
     "create": {
+      "user_condition": {
+        "id": "{{user.id}}"
+      }
+    },
+    "read": {
       "created_by_id": "{{user.id}}"
     },
     "update": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
+      "created_by_id": "{{user.id}}"
     },
     "delete": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
+      "created_by_id": "{{user.id}}"
     }
   }
 }

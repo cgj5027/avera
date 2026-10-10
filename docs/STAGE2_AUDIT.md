@@ -1,0 +1,76 @@
+# Avera Stage 2 technical audit
+
+**Verdict: Stage 2 does not pass.** AI answers cannot yet be demonstrated to originate from user-owned records, and real employment integration cannot be demonstrated from this repository or environment.
+
+Audited branch `stage1-follow-up`, starting at `fb7a913b7fda1b73f30d3a8174f1fedd235a9a17` (latest main when the branch was created), plus the local audit repairs. The repository's roadmap calls draft persistence “Stage 2” and places AI/jobs in later stages; this review uses the user's requested AI/jobs acceptance criteria. Claims of shipped stages in older documentation do not establish functionality.
+
+## Prioritized findings
+
+| Priority | Status | Finding | Evidence / next step |
+|---|---|---|---|
+| P0 | **Failed: repository implementation absent; Blocked: deployed verification** | `askAvera` is invoked, but there is no `base44/functions/askAvera/entry.*`, financial-context assembler, model prompt, deterministic backend calculation envelope, or response-to-record attribution in this checkout. | `src/services/assistantService.js:26`, `base44/`. Obtain the actual backend implementation and connect an isolated test app; execute two-user adversarial requests and reconcile every financial figure to records and deterministic calculations. Remote functions could exist separately; their presence and behavior are unknown. |
+| P0 | **Blocked** | Actual server-side user isolation and prompt-injection defenses cannot be certified. The browser checks authentication and sends only a question, but a client boundary cannot authorize server reads or constrain model instructions. | Missing backend function source. Verify request-derived identity, owner-only queries including cursor pages, immutable ownership metadata, no caller-selected user/context, no service-role unrestricted reads or record-mutation/money tools, and separation of untrusted question/record/job text from privileged instructions. Test other-user record IDs, malicious record names/notes, anonymous calls, and admin behavior. |
+| P1 | **Failed: provider integration absent; Blocked: live verification** | `searchJobOpportunities` is called, but no provider adapter, external employment HTTP request, provider credentials contract, posting verification, or freshness policy exists in the checkout. A plausible HTTPS URL can still be fabricated. | `src/services/assistantService.js:52`, `src/components/opportunities/OpportunityResults.jsx`. Results now say **Source-linked results**, not **Live listings**; verify real provider responses, source IDs, units/currency, posted/retrieved dates, and expired postings before upgrading the label. |
+| P1 | **Failed / unresolved** | Income records do not identify gross versus net. A household net-income gap cannot be guaranteed from them. | `base44/entities/IncomeSource.jsonc`, `src/components/goals/IncomeGapPanel.jsx`. The UI now explicitly requires take-home inputs for a net estimate. Opportunity gross pay and the fixed 78% take-home assumption remain separate and visibly labeled; this is not a tax calculation. A data-model/migration decision is needed for enforceable household gross/net classification. |
+| P1 | **Failed / unresolved** | Arbitrary valid answer strings remain renderable; neither source periods nor numerical claims are verified. Missing, stale, duplicate, or contradictory records could produce unsupported answers in an unknown backend. | `src/services/assistantService.js:32`, `src/components/askavera/AskAveraConversation.jsx`. The UI now discloses unverified grounding. Add a backend contract with deterministic facts, record attribution, coverage/period/as-of information, and output validation; a browser disclaimer does not satisfy the acceptance gate. |
+| P1 | **Failed / inherited** | Concurrent goal contributions can overwrite savings, making later AI context wrong even if retrieval is correctly scoped. | `src/pages/GoalsOpportunities.jsx`, expected-failure regression in `tests/integration.test.jsx`, `docs/STAGE1_AUDIT.md`. Requires an atomic backend mutation or contribution ledger. |
+| P2 | **Not Tested** | Live model failures, provider quota/error responses, email/auth provisioning, screen readers, physical-device keyboards, external font delivery, and deployment configuration. | Browser and integration fixtures establish local handling only. |
+
+## Requested verification matrix
+
+| Requirement | Status | Verified behavior and limits |
+|---|---|---|
+| 1. Authorized financial context retrieval | **Blocked** | Authenticated browser invocation is tested; no backend financial retrieval exists to inspect or execute. Browser code sends no balances or owner selectors. `assistantService.js`, `tests/stage2.test.jsx`. |
+| 2. Strict user isolation | **Passed locally for tested boundaries; Blocked server** | Anonymous calls rejected before invocation; account changes during a request invalidate its response; conversation state resets per user. JobProfile reads use explicit owner filters, cross-owner mutations fail preflight, and local RLS is now owner-only including admins. Tests are mocked, not proof of deployed RLS. `dataService.js`, `JobProfile.jsonc`, `AskAveraConversation.jsx`. |
+| 3. AI calculation accuracy | **Passed pure math; Blocked AI linkage** | Goal gaps and opportunity estimates have deterministic regression tests. There is no evidence that an actual model receives or cites those results; financial services currently run in the frontend. `financialCalculations.js`, `opportunityCalculations.js`, `tests/stage2.test.jsx`. |
+| 4. Missing/outdated/contradictory records | **Passed selected math cases; Blocked assistant behavior** | Invalid/missing amounts and invalid deadlines yield no gap; invalid other dated goals do not silently reserve zero. Expired goals explicitly use a one-month remaining-amount convention without promising the original deadline. Backend freshness/deduplication policies are absent and untested. Empty income/bill lists on the page still normalize to zero; zero is not proof that records are complete. |
+| 5. Monthly goal-based income gaps | **Passed tested local calculations** | Preserves budget deficits when reserving other goals; excludes completed/no-deadline goals from reserves; handles positive capacity, missing IDs, rounding, invalid dates and inputs. Negative capacity is not clamped before calculating a shortfall. Allocation is a planning assumption, not an actual transfer. |
+| 6. Unsupported balance/savings claims | **Failed acceptance gate** | Removed the UI's unconditional claim of record-grounded answers and the false failure claim that no data was transmitted. No model output-to-record numerical validation exists. Valid answer strings can still contain unsupported figures; the UI labels grounding unverified. |
+| 7. Prompt/injection security | **Passed bounded frontend checks; Blocked backend** | Questions are bounded to 2,000 characters, only whitelisted payload fields are sent, invalid responses rejected, generated images suppressed and generated Markdown links rendered as text to avoid passive tracking and untrusted AI links. Injection text is forwarded as ordinary data; that alone does not establish server/model resistance. No new server-side fetch was added, so URL checks are UI link checks, not an SSRF defense. |
+| 8. Actual employment integration | **Failed repository implementation; Blocked remote** | No external employment request/provider code found. Missing/unsafe/placeholder listing URLs and malformed responses produce an unavailable state. Empty arrays produce no matches. Fallback samples are explicitly marked Sample data and have no application links. HTTPS source links are not evidence of authentic job availability. |
+| 9. Gross/net differentiation | **Passed opportunity presentation; Failed household certainty** | Advertised compensation is unchanged; hourly compensation is explicitly assumed gross for estimated take-home is hourly gross × weekly hours × 52/12 × 0.78, rounded to cents. Ambiguous ranges, annual/mixed units, explicit net pay and non-dollar formats do not receive inferred hourly estimates. Weekly availability is an assumption about possible hours, not guaranteed employment. Saved household income has no gross/net classification. |
+| 10. AI/provider failure handling | **Passed mocked browser/service behavior; Not Tested live** | Invocation failures, malformed responses and a 20-second function timeout recover without stuck loading states. Timeout stops waiting; it does not cancel work or prevent data already sent. Auth verification calls themselves use SDK behavior. Failed profile loads block saving until retry; no duplicate creation is permitted through that failure path. |
+
+## Repaired defects
+
+- Removed the JobProfile admin ownership bypass and used authenticated creation rules; added schema bounds for hours (0–80) and nonnegative income targets. Restored the schema test to require owner-only rules instead of accepting an admin exception.
+- Fixed allocated goal shortfalls to include existing household deficits; repaired same-goal detection for objects without IDs. Invalid goal dates no longer roll into another month; missing/invalid goal or context amounts no longer silently imply a known zero gap.
+- Added a focused service boundary for authenticated invocation, account-change detection, bounded questions/responses, response structure checks, timeouts, and whitelisted employment payloads. This reuses the existing SDK and function names.
+- Replaced unsupported “Live listings” with source-linked results and explicit freshness uncertainty. Preserved clearly marked layout samples only in the unavailable state. Missing/malformed results no longer masquerade as “no matches.”
+- Corrected compensation parsing that selected the upper end of ranges as a definite hourly rate, and stopped trusting a separate `hourly_rate` override instead of advertised compensation. Rejected invalid/overflowing estimate inputs and retained the visible 78% assumption.
+- Removed inaccurate data-transmission and grounding guarantees. Conversation state is isolated per authenticated user; assistant-generated images and links cannot initiate passive external tracking through Markdown rendering.
+- Blocked saving after a failed profile load, provided retry, announced save errors, validated whitespace skills/hours/target inputs, and reset results after the saved profile changes.
+
+## Design validation
+
+Reference: repository `avera_design_system.md`, especially §§12, 20, 22–24. The original uploaded `avera_design.md` is unchanged.
+
+| Check | Outcome |
+|---|---|
+| Semantic colors, existing typography and branding | Existing tokens retained; primary suggestion controls now use 16px text. Corrected dark-mode information-panel contrast using the existing text-info/bg-info-surface pair. No new raw colors or alternate UI framework. |
+| Shapes and touch targets | Suggestion controls and listing links use 12px control radii and ≥44px height; opportunity cards use 16px radius. |
+| Keyboard/accessibility | Fixed the scrolling transcript's missing keyboard focus target. Added a named live transcript, search busy/status announcements, profile error/retry states and visible missing-calculation explanations. |
+| Responsive layout | Wrapped long messages, bounded/scrollable suggestion area so the transcript remains visible, and kept forms in one mobile/two desktop columns. Browser audit covers 320/390/768/1440px in light/dark. |
+| Dialog behavior | Existing drawer reused; Escape dismissal and focus restoration to the Overview launcher tested. No duplicate assistant/dialog framework was introduced. |
+| Provenance | Gap panel labeled Projected; opportunity take-home labeled Estimated; layout samples labeled Sample data; source hosts and freshness uncertainty visible. Backend answer period and supporting-record attribution remain unimplemented. |
+| Component reuse | Page and drawer share AskAveraConversation; profile/results retain their existing components; validation resides in calculation/service layers. The profile retry action reuses the shared Button instead of duplicating its styling. |
+
+Automated accessibility results cover reported WCAG A/AA checks, not a full certification or screen-reader review. Browser fixtures block external assets and do not verify hosted fonts.
+
+## Test evidence and reproduction
+
+- `npm test`: **122 passed, 1 expected failure**, 123 tests across three files. The expected failure reproduces the unresolved Stage 1 concurrent-contribution bug and is not a successful workflow.
+- `npm run lint`, `npm run typecheck`, `npm run build`: **Passed**. Build still warns of missing Base44 app runtime configuration and large output bundles.
+- `tests/stage2.test.jsx`: financial math, authenticated function-call boundaries, payload whitelisting, session changes, malicious/invalid inputs, response parsing, timeouts, source labeling, profile retry, and Markdown external-resource suppression.
+- Browser fixture runner: **72 page/theme/viewport combinations, 64 financial-dialog checks, eight assistant-drawer checks, and eight opportunity-unavailable checks passed**, with zero reported WCAG A/AA violations, no page exceptions, no document overflow, and successful drawer Escape/focus restoration. The first run executed 72 page combinations and reported eight transcript-focus accessibility failures; the underlying defect was fixed before rerunning. The next run exposed eight dark-mode information-panel contrast failures; the token pairing was corrected and a further run included unavailable opportunity states.
+- `git diff --check`: **Passed**. A bounded credential-signature scan of 152 source/schema files found zero matches; this is not proof that external deployment secrets/logs are safe.
+
+Run the documented commands in `tests/README.md`. Browser evidence: `/tmp/avera-stage2-browser.json`; assistant drawer screenshots: `/tmp/avera-ask-{light,dark}-{320,390,768,1440}.png`. These contain synthetic fixture data only. Final command logs and browser JSON are also retained under `/workspace/audit-avera-stage2/`. No Base44 app link or VITE_BASE44/BASE44 runtime variable names were present; no remote app was accessed or deployed. Audit fixes were prepared on `stage1-follow-up`. Git publication status is recorded separately; no Base44 deployment was performed.
+
+## Required acceptance work
+
+1. Obtain/check in the actual `askAvera` and `searchJobOpportunities` implementations and configure an isolated connected test app securely.
+2. Validate owner-only retrieval with two users, an admin and anonymous requests; exercise prompt injections in questions, financial record text and provider text.
+3. For each answer, demonstrate exact deterministic figures, supporting owned records, period/freshness/coverage, gross/net basis, and a refusal or clarification when data is insufficient or contradictory.
+4. Exercise a real employment provider, confirm advertised units/currency/source dates, expired listings, zero matches and failures; keep estimated net pay distinct from guaranteed compensation.
+5. Resolve inherited savings-integrity issues before using goal savings as reliable AI context, then complete live user workflows and failure recovery.

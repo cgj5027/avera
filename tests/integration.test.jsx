@@ -82,13 +82,8 @@ describe('owner-scoped persistence with mocked SDK (not deployed RLS)', () => {
         [{user_condition:{id:'{{user.id}}'}}, {created_by_id:'{{user.id}}'}].some(r => JSON.stringify(r) === JSON.stringify(schema.rls.create)),
         `${file}:create must be owner-anchored`
       ).toBe(true);
-      // Read/update/delete must be owner-scoped: pure owner rule, or the accepted
-      // owner-or-admin pattern (JobProfile) that still hides records from other users.
       for(const op of ['read','update','delete']) {
-        const rule=schema.rls[op];
-        const ownerOnly=JSON.stringify(rule)===JSON.stringify({created_by_id:'{{user.id}}'});
-        const ownerOrAdmin=JSON.stringify(rule)===JSON.stringify({$or:[{created_by_id:'{{user.id}}'},{user_condition:{role:'admin'}}]});
-        expect(ownerOnly || ownerOrAdmin,`${file}:${op} must be owner-scoped`).toBe(true);
+        expect(schema.rls[op],`${file}:${op} must be owner-only, including admins`).toEqual({created_by_id:'{{user.id}}'});
       }
     }
   });

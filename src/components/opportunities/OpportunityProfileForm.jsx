@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,17 +18,27 @@ const WORK_MODES = [
  * JobProfile record; nothing here contacts an external service.
  */
 export default function OpportunityProfileForm({ profile, saving, onSave }) {
+  const [error, setError] = useState('');
   const submit = (e) => {
     e.preventDefault();
+    if (saving) return;
     const f = new FormData(e.currentTarget);
+    const skills = String(f.get('skills') ?? '').trim();
+    const hours = Number(f.get('weekly_hours'));
+    const target = Number(f.get('target_monthly_income'));
+    if (!skills || !Number.isInteger(hours) || hours < 0 || hours > 80 || !Number.isFinite(target) || target < 0) {
+      setError('Enter skills, 0–80 whole hours per week, and a non-negative income target.');
+      return;
+    }
+    setError('');
     onSave({
-      skills: String(f.get('skills') ?? '').trim(),
+      skills,
       experience: String(f.get('experience') ?? '').trim(),
       preferred_roles: String(f.get('preferred_roles') ?? '').trim(),
       work_mode: String(f.get('work_mode') ?? 'any'),
       location: String(f.get('location') ?? '').trim(),
-      weekly_hours: Number(f.get('weekly_hours')) || 0,
-      target_monthly_income: Number(f.get('target_monthly_income')) || 0,
+      weekly_hours: hours,
+      target_monthly_income: target,
     });
   };
 
@@ -113,6 +124,7 @@ export default function OpportunityProfileForm({ profile, saving, onSave }) {
           className="mt-1.5 min-h-11 rounded-xl bg-surface tabular-nums"
         />
       </div>
+      {error && <p role="alert" className="text-base text-danger-text sm:col-span-2">{error}</p>}
       <div className="sm:col-span-2">
         <Button type="submit" disabled={saving} className="min-h-11 rounded-xl px-4">
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
