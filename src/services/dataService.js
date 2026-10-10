@@ -19,6 +19,7 @@ export const DATA_ENTITIES = {
   property: 'Property',
   mortgageRecord: 'MortgageRecord',
   forecastRecord: 'ForecastRecord',
+  jobProfile: 'JobProfile',
 };
 
 const ent = (key) => {
