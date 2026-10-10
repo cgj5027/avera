@@ -96,7 +96,8 @@ function normalizeListing(raw) {
   if (/^(search|browse|find)\b.*\bjobs\b/i.test(title) || /\bjobs?\s+in\b/i.test(title.slice(0, 40))) return null;
   // Known search-results URL shapes are never a posting either.
   const checkUrl = url.toLowerCase();
-  if (checkUrl.includes('/search?') || checkUrl.includes('/jobs/search') ||
+  const checkPath = new URL(url).pathname.toLowerCase();
+  if (/(^|\/)search(\/|\?|$)/.test(checkPath) || checkUrl.includes('/search?') ||
       (/indeed\.com\/q-/.test(checkUrl) && checkUrl.endsWith('-jobs.html'))) return null;
   const reasons = Array.isArray(raw.match_reasons)
     ? raw.match_reasons
