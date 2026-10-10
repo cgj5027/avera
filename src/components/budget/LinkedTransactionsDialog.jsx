@@ -13,17 +13,17 @@ import { formatCurrency, formatDate } from '@/utils/format';
 const isSynced = (t) => Boolean(t.plaid_item_id) || t.source === 'Plaid Sandbox';
 
 /** Pop-up listing the transactions linked to one budget category for the current month. */
-export default function LinkedTransactionsDialog({ open, onOpenChange, category, transactions, busy, onEditTransaction, onDeleteTransaction }) {
+export default function LinkedTransactionsDialog({ open, onOpenChange, category, monthLabel, transactions, busy, onEditTransaction, onDeleteTransaction }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{category?.name} transactions</DialogTitle>
-          <DialogDescription>Transactions linked to this budget category this month.</DialogDescription>
+          <DialogDescription>Transactions linked to this budget category in {monthLabel ?? 'this month'}.</DialogDescription>
         </DialogHeader>
         {transactions.length === 0 ? (
           <p className="text-base text-muted-foreground">
-            No transactions are linked to this category this month. Link one from the Transactions tab, or log spending directly.
+            No transactions are linked to this category in {monthLabel ?? 'this month'}. Link one from the Transactions tab, or log spending directly.
           </p>
         ) : (
           <ul className="max-h-80 divide-y divide-border overflow-y-auto">

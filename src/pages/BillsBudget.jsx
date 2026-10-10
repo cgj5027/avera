@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { base44 } from '@/api/base44Client';
@@ -22,7 +24,7 @@ import LogSpendingDialog from '@/components/budget/LogSpendingDialog';
 import { listRecords, createRecord, updateRecord, deleteRecord } from '@/services/dataService';
 import * as calc from '@/services/financialCalculations';
 import { importedTransactions, estimateBillCandidates, normalizeName } from '@/services/plaidEstimates';
-import { formatCurrency, todayISO } from '@/utils/format';
+import { formatCurrency, monthLabel, todayISO } from '@/utils/format';
 
 /** Bills & Budget: recurring bill management plus monthly budget categories. */
 export default function BillsBudget() {
@@ -39,6 +41,7 @@ export default function BillsBudget() {
   const [addTxnOpen, setAddTxnOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [linkedDialog, setLinkedDialog] = useState(null);
+  const [budgetMonth, setBudgetMonth] = useState(() => calc.monthRange().key);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -182,7 +185,16 @@ export default function BillsBudget() {
           : -1
     );
 
-  const range = calc.monthRange();
+  /* The Budget tab tracks one month at a time; linked and logged spending count in their own month. */
+  const range = calc.monthRange(new Date(`${budgetMonth}-01T00:00:00`));
+
+  /* Months with activity, newest first — the current month is always selectable. */
+  const monthOptions = [
+    ...new Set([
+      calc.monthRange().key,
+      ...transactions.map((t) => (t.date ?? '').slice(0, 7)).filter(Boolean),
+    ]),
+  ].sort().reverse();
   const limitsTotal = calc.budgetLimitsTotal(categories);
   const spentTotal = calc.spentInMonth(transactions, null, range);
 
@@ -197,7 +209,7 @@ export default function BillsBudget() {
     remainingByCategory[c.name] = (Number(c.monthly_limit) || 0) - calc.spentInMonth(transactions, c.name, range);
   }
 
-  /* Transactions linked to a budget category (by name) within the current month, newest first. */
+  /* Transactions linked to a budget category (by name) within the selected month, newest first. */
   const linkedForCategory = (name) =>
     transactions
       .filter((t) => t.type !== 'income' && t.category === name && t.date >= range.start && t.date <= range.end)
@@ -251,14 +263,27 @@ export default function BillsBudget() {
         <TabsContent value="budget" className="mt-0 space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <SummaryCard label="Monthly limits" value={formatCurrency(limitsTotal)} source="Manual" />
-            <SummaryCard label="Spent this month" value={formatCurrency(spentTotal)} source="Manual" note="From logged spending." />
+            <SummaryCard label={`Spent in ${monthLabel(budgetMonth)}`} value={formatCurrency(spentTotal)} source="Manual" note="From linked and logged spending." />
             <SummaryCard
-              label="Remaining this month"
+              label={`Remaining in ${monthLabel(budgetMonth)}`}
               value={formatCurrency(limitsTotal - spentTotal)}
               source="Estimated"
             />
           </div>
-          <div className="flex justify-end">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="budget-month" className="text-sm text-muted-foreground">Month</Label>
+              <Select value={budgetMonth} onValueChange={setBudgetMonth}>
+                <SelectTrigger id="budget-month" aria-label="Budget month" className="w-48 rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {monthOptions.map((key) => (
+                    <SelectItem key={key} value={key}>{monthLabel(key)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Button onClick={() => setCategoryDialog({ open: true, category: null })} className="min-h-11 rounded-xl px-4">
               <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
               Add budget category
@@ -344,6 +369,7 @@ export default function BillsBudget() {
             if (!open) setLinkedDialog(null);
           }}
           category={linkedDialog}
+          monthLabel={monthLabel(budgetMonth)}
           transactions={linkedForCategory(linkedDialog.name)}
           busy={busy}
           onEditTransaction={(tx) => setLogDialog({ ...linkedDialog, _transaction: tx })}

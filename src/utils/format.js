@@ -18,6 +18,13 @@ export function todayISO() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+/** 'October 2026' from a 'YYYY-MM' month key. */
+export function monthLabel(key) {
+  const date = new Date(`${key}-01T00:00:00`);
+  if (!Number.isFinite(date.getTime())) return key;
+  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
 export function formatDate(value) {
   if (!value) return '—';
   const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00` : value);
