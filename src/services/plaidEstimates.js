@@ -19,7 +19,7 @@ const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
 const monthKey = (date) => String(date ?? '').slice(0, 7);
 
-const normalizeName = (raw) => String(raw ?? '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+export const normalizeName = (raw) => String(raw ?? '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
 
 function mostCommon(values) {
   const counts = new Map();

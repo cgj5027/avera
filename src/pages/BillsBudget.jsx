@@ -11,11 +11,13 @@ import ErrorState from '@/components/states/ErrorState';
 import EmptyState from '@/components/states/EmptyState';
 import BillCard from '@/components/bills/BillCard';
 import BillDialog from '@/components/bills/BillDialog';
+import TransactionsTable from '@/components/bills/TransactionsTable';
 import CategoryCard from '@/components/budget/CategoryCard';
 import CategoryDialog from '@/components/budget/CategoryDialog';
 import LogSpendingDialog from '@/components/budget/LogSpendingDialog';
 import { listRecords, createRecord, updateRecord, deleteRecord } from '@/services/dataService';
 import * as calc from '@/services/financialCalculations';
+import { importedTransactions, estimateBillCandidates, normalizeName } from '@/services/plaidEstimates';
 import { formatCurrency, todayISO } from '@/utils/format';
 
 /** Bills & Budget: recurring bill management plus monthly budget categories. */
@@ -76,6 +78,21 @@ export default function BillsBudget() {
     run(
       () => (billDialog.bill ? updateRecord('bill', billDialog.bill.id, payload) : createRecord('bill', payload)),
       billDialog.bill ? 'Bill updated' : 'Bill added'
+    );
+
+  const addBillFromCandidate = (candidate) =>
+    run(
+      () =>
+        createRecord('bill', {
+          name: candidate.name,
+          amount: candidate.amount,
+          frequency: candidate.frequency,
+          next_due_date: candidate.next_due_date,
+          category: candidate.category,
+          source: 'Plaid Sandbox',
+          notes: `Estimated from ${candidate.months_seen} months of linked transactions.`,
+        }),
+      'Bill added from linked transactions'
     );
 
   const markPaid = (bill) =>
@@ -139,6 +156,12 @@ export default function BillsBudget() {
   const limitsTotal = calc.budgetLimitsTotal(categories);
   const spentTotal = calc.spentInMonth(transactions, null, range);
 
+  /* Combined linked-account transactions get their own tab, next to the bills they can become. */
+  const linkedTransactions = importedTransactions(transactions);
+  const recurringCount = estimateBillCandidates(linkedTransactions).filter(
+    (c) => !bills.some((b) => normalizeName(b.name) === normalizeName(c.name))
+  ).length;
+
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
       <PageHeader title="Bills & Budget" subtitle="Due dates, recurring bills, and category budgets." />
@@ -146,6 +169,16 @@ export default function BillsBudget() {
         <TabsList className="mb-6">
           <TabsTrigger value="bills" className="min-h-9 rounded-lg px-4">Bills</TabsTrigger>
           <TabsTrigger value="budget" className="min-h-9 rounded-lg px-4">Budget</TabsTrigger>
+          {linkedTransactions.length > 0 && (
+            <TabsTrigger value="transactions" className="min-h-9 rounded-lg px-4">
+              Transactions
+              {recurringCount > 0 && (
+                <span className="ml-2 rounded-full bg-warning-surface px-2 py-0.5 text-xs font-medium text-warning">
+                  {recurringCount} recurring
+                </span>
+              )}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="bills" className="mt-0 space-y-4">
@@ -228,6 +261,17 @@ export default function BillsBudget() {
             )}
           </section>
         </TabsContent>
+
+        {linkedTransactions.length > 0 && (
+          <TabsContent value="transactions" className="mt-0">
+            <TransactionsTable
+              transactions={transactions}
+              bills={bills}
+              busy={busy}
+              onAddBill={addBillFromCandidate}
+            />
+          </TabsContent>
+        )}
       </Tabs>
 
       <BillDialog
