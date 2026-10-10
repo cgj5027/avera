@@ -1,13 +1,15 @@
-# Avera — Stage 0 Foundation
+# Avera
 
 **Avera** is a household financial wellness and income-opportunity platform.
 Tagline: **Your finances. Your rules. Your control.**
-Visual specification: *Avera Alternative — Design System v2.0* (authoritative).
+Visual specification: *Avera Alternative — Design System v2.0* (`avera_design_system.md`, authoritative).
 
-Stage 0 establishes a clean, secure, maintainable foundation on Base44's native
-architecture: the design system mapped to tokens, a reusable component library,
-the six-destination navigation shell, and the mode-entry onboarding flow.
-**No financial modules are implemented yet** — their seams are prepared below.
+**Status: Stages 0–2 shipped.** The design system, navigation shell, and onboarding
+(Stage 0) are live, manual money entry with real calculations (Stage 1) is live —
+including auth, accounts, income, bills, budgets, transactions, and an audit trail
+(`docs/STAGE1_AUDIT.md`) — and Stage 2 work (goal/property dialog draft persistence,
+manual-entry source-label fixes) is merged. Ask Avera remains an honest
+not-yet-available shell; Plaid connection and AI analysis are still ahead.
 
 ---
 
@@ -15,6 +17,7 @@ the six-destination navigation shell, and the mode-entry onboarding flow.
 
 - React 18 + Vite, Tailwind CSS, shadcn/ui primitives (native Base44 scaffold)
 - Base44 auth (platform-managed), Base44 entities (database), backend functions (HTTP/integrations)
+- Vitest (unit + integration) and a browser smoke test, ESLint + TypeScript checking
 - Inter via Google Fonts, `next-themes` for light/dark/system theming
 
 ## 2. Source organization (layer separation)
@@ -25,20 +28,29 @@ src/
     layout/                   App shell: sidebar, mobile nav, page header, mode indicator
     states/                   Empty / loading / error states, StatusPill, SourceChip, DestinationShell
     askavera/                 Assistant drawer + conversation shell (read-only)
-    finance/                  SummaryCard primitive
-    overview/                 Period selector, chart placeholder, next steps
-    settings/                 SettingSection, ThemeSelect
+    accounts/, bills/, budget/, income/, goals/, properties/, opportunities/,
+    yearlyplan/, finance/, overview/, settings/   Feature-level components
     ui/                       shadcn primitives
-  pages/                      Route-level screens (one route per page, registered in src/App.jsx)
-  services/                   Business logic & integration seams
-    financialCalculations.js  Financial calculations (Stage 0 stubs — no hardcoded data)
-    plaidClient.js            Plaid Sandbox seam (Stage 0 stub — backend-function only)
-    dataService.js            Persistence seam over Base44 entities (Stage 0 stub)
+  pages/                      Route-level screens (registered in src/App.jsx): Overview,
+                              BillsBudget, YearlyPlan, GoalsOpportunities, Properties,
+                              AskAveraPage, Settings, ModeEntry, plus auth pages
+                              (Login, Register, ForgotPassword, ResetPassword, OAuthConsent)
+  services/                   Business logic & data access
+    financialCalculations.js  Income/bill/budget math (pure functions, testable)
+    opportunityCalculations.js  Income-gap and opportunity math
+    valuationService.js       Property valuation and equity calculations
+    dataService.js            Persistence layer over Base44 entities
+    plaidClient.js            Plaid seam (stubbed until the backend-function stage)
   utils/                      format.js (currency/dates), constants.js (data-origin labels)
   lib/                        AuthContext, mode.js (onboarding mode), cn
   config/navigation.js        Single source of truth for nav labels/destinations
-base44/                       Base44 backend: entities/, functions/ (added in later stages)
+base44/                       Base44 backend: entities/ (data schemas)
+tests/                        Vitest unit/integration tests + browser smoke script
+docs/                         Stage audit (STAGE1_AUDIT.md)
 ```
+
+Data entities: `Account`, `IncomeSource`, `Bill`, `BudgetCategory`, `Transaction`,
+`Goal`, `Property`, `MortgageRecord`, `ForecastRecord`, `JobProfile`, `HouseholdProfile`.
 
 Guardrails: no raw hex values inside components (semantic tokens only), no
 fabricated totals independent of records, no hardcoded test data in calculation
@@ -57,27 +69,35 @@ services, no payment execution / transfer / banking-authorization code anywhere.
 - Terminology: exactly **Demo Mode** (never "Classroom Mode");
   **Plaid Sandbox — Test account**; seeded data labeled **Sample data**.
 
-## 4. Core flows (Stage 0)
+## 4. Core flows
 
 1. **Onboarding** — first visit routes to `/welcome` (mode entry): Explore Demo
    Mode / Connect a Test Bank / Enter Finances Manually. Choice is stored in
-   `sessionStorage` only; nothing is persisted to the database and no Plaid
-   connection is made.
-2. **Navigation shell** — six destinations + Settings; desktop forest sidebar,
-   mobile labeled bar (4 visible) + "More" sheet. Designed empty/loading/error
-   states per destination (preview control on each page).
-3. **Ask Avera** — persistent launcher on Overview opens a right drawer (full-width
-   sheet on mobile); Escape dismisses and focus returns to the launcher. Dedicated
-   page at `/ask-avera`. Honest not-yet-available state.
-4. **Settings** — profile, appearance, household, bank connections ("Not connected"),
-   demo controls, privacy, notifications.
+   `sessionStorage` only; nothing is persisted and no Plaid connection is made.
+2. **Auth** — email/password register → OTP verification, sign-in, password reset,
+   and OAuth consent, on the platform-managed auth pages.
+3. **Manual money entry** — add income sources, bills, and budget categories;
+   balances, totals, and remaining amounts are computed by the calculation
+   services from stored records only. Every figure carries a data-origin label.
+4. **Goals & properties** — goal tracking with the income-gap breakdown, property
+   cards with equity math (value minus debt), and draft persistence in dialogs so
+   accidental dismissals don't lose input.
+5. **Ask Avera** — launcher on Overview opens a right drawer (full-width sheet on
+   mobile); Escape dismisses and focus returns to the launcher. Dedicated page at
+   `/ask-avera`. Read-only by design; arrives as a real assistant in a later stage.
+6. **Settings** — profile, appearance, household, bank connections ("Not connected"),
+   demo controls, privacy, notifications, sign out.
 
 ## 5. Local development
 
 ```bash
 npm install
-npm run dev      # Vite dev server (Base44 preview/plugin wiring is automatic)
-npm run build    # production build check
+npm run dev         # Vite dev server (Base44 preview/plugin wiring is automatic)
+npm run build       # production build check
+npm run test        # Vitest unit + integration tests
+npm run test:browser # browser smoke test
+npm run lint        # ESLint
+npm run typecheck   # TypeScript check
 ```
 
 The Base44 Vite plugin provides the platform SDK, auth, and hosting integration —
@@ -85,12 +105,15 @@ do not add a custom server, router, or state framework.
 
 ## 6. Testing approach
 
-- **Manual / preview:** every destination must be checked in light *and* dark mode
-  at mobile (<640px), tablet (640–1023px), and desktop (≥1024px).
-- **Stage 0 UI states:** each destination exposes Empty / Loading / Error previews.
-- **Later stages:** calculation services are written as pure functions
-  (data in → result out) so they can be unit-tested without a database; AI/agent
-  behavior is verified against the "no fabricated figures" acceptance rule.
+- **Unit/integration (`tests/`):** calculation services are pure functions
+  (data in → result out), so all money math is tested without a database;
+  integration tests cover the data service and page wiring.
+- **Browser smoke (`tests/browser-smoke.cjs`):** end-to-end pass over the primary
+  flows (onboarding, navigation, entry dialogs, dark mode, mobile overflow).
+- **Manual / preview:** every destination is checked in light *and* dark mode at
+  mobile (<640px), tablet (640–1023px), and desktop (≥1024px).
+- **Acceptance rule for AI features (later stage):** no fabricated figures — every
+  number must trace to a stored record with its source label.
 - Accessibility checks: visible keyboard focus everywhere, no color-only status,
   touch targets ≥44px for major controls.
 
@@ -110,26 +133,28 @@ container is required; the same codebase targets web and native mobile shells.
 ## 9. GitHub / Codex review conventions
 
 - Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`).
-- Branches: `feat/stage-N-scope`, `fix/scope-detail`.
+- Branches: `feat/stage-N-scope`, `fix/scope-detail` (e.g. `avera-stage-one`,
+  `avera-stage-two`).
 - PRs: describe the stage scope touched; reviewers verify against the compliance
   checklist below; design-system deviations must update the design doc first.
 
 ## 10. Roadmap stages
 
-| Stage | Scope |
-|---|---|
-| 0 (this) | Design tokens, component library, navigation shell, onboarding |
-| 1 | Manual entry: income, bills, budgets; calculation services (real) |
-| 2 | Plaid Sandbox connection via backend functions + secure secrets |
-| 3 | Demo Mode: scenarios, seeded Sample data, reset |
-| 4 | Ask Avera: AI explanation assistant (read-only) |
-| 5 | Goals & Opportunities, properties, forecasting |
+| Stage | Scope | Status |
+|---|---|---|
+| 0 | Design tokens, component library, navigation shell, onboarding | ✅ Shipped |
+| 1 | Manual entry: income, bills, budgets; calculation services; audit trail | ✅ Shipped |
+| 2 | Dialog draft persistence, manual-entry source-label fixes | ✅ Shipped |
+| 3 | Plaid Sandbox connection via backend functions + secure secrets | Next |
+| 4 | Demo Mode: scenarios, seeded Sample data, reset | Planned |
+| 5 | Ask Avera: AI explanation assistant (read-only) | Planned |
+| 6 | Job/gig opportunity discovery with verified external sources | Planned |
 
 ## 11. Platform notes
 
 - Base44 backend functions and entities are the supported persistence/API layer —
   there is no arbitrary server infrastructure.
-- Plaid (Stage 2) will require secrets plus a backend-function wrapper; the browser
+- Plaid (Stage 3) requires secrets plus a backend-function wrapper; the browser
   never contacts Plaid directly.
 - Chart palette tokens are defined; dark-mode chart contrast should be re-verified
   when real charts land.
@@ -145,5 +170,5 @@ container is required; the same codebase targets web and native mobile shells.
 - [ ] No fabricated totals; no hardcoded test data in calculation services
 - [ ] Responsive hierarchy preserved at mobile / tablet / desktop
 - [ ] Navigation labels match page titles; compact nav on desktop, 4–5 actions on mobile
-- [ ] Destructive actions (future) require confirmation naming affected scope
-- [ ] Charts (future) have labels/legends and ordered palette only
+- [ ] Destructive actions require confirmation naming affected scope
+- [ ] Charts have labels/legends and ordered palette only
