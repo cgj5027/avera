@@ -26,3 +26,9 @@ Ask about the largest planned expenses, affordability of an extra expense, a nam
 ## Executed checks
 
 Full test suite: 10 files passed, 229 tests passed and one pre-existing expected failure. Production build, lint, backend type checking and whitespace checks passed. No new UI or live-model tests were claimed.
+
+## Disclaimer and response formatting
+
+The shared Ask Avera page/drawer now keeps this disclaimer visible above the composer: “AI can make mistakes. Verify important information and consult a financial advisor before making financial decisions.” Responses use semantic Markdown lists with visible bullets/numbers and indentation, short paragraph spacing, relaxed line height, modest heading sizes and indented quotations. The backend asks for formatting appropriate to the answer, without forcing lists on simple replies. Markdown links/images remain suppressed. Styles use existing semantic tokens and the design system's 16px body text. Financial calculation behavior is unchanged.
+
+The response-rendering test checks bullet and numbered lists alongside the existing link/image suppression and account-switch isolation. Chat browser fixtures include lists within long replies and exercise the persistent composer, light/dark layouts, page/drawer responsiveness and accessibility.

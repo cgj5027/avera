@@ -25,7 +25,7 @@ const assert = require('node:assert/strict');
       else if (path.endsWith('/User/me')) body = { id: 'chat-user', email: 'fixture@example.test', role: 'user' };
       else if (path.includes('/functions/askAvera')) {
         await new Promise(resolve => setTimeout(resolve, 350));
-        body = { answer: '**Fixture answer only.**\n\n' + 'A paragraph about sample financial records.\n\n'.repeat(45) + 'longword'.repeat(35) };
+        body = { answer: '**Fixture answer only.**\n\n- Review your saved bills.\n- Confirm your recorded income.\n\n1. Open Bills & Budget.\n2. Review amounts.\n\n' + 'A paragraph about sample financial records.\n\n'.repeat(45) + 'longword'.repeat(35) };
       } else if (path.endsWith('/v2/list')) body = { items: [], has_more: false };
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
     });

