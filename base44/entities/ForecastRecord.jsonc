@@ -1,0 +1,68 @@
+{
+  "name": "ForecastRecord",
+  "type": "object",
+  "properties": {
+    "year": {
+      "type": "number"
+    },
+    "projected_income": {
+      "type": "number"
+    },
+    "projected_expenses": {
+      "type": "number"
+    },
+    "projected_savings": {
+      "type": "number"
+    },
+    "year_end_cash": {
+      "type": "number"
+    },
+    "assumptions": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "year"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

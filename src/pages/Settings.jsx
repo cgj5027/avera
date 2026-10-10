@@ -3,9 +3,12 @@ import { Plug, Info } from 'lucide-react';
 import PageHeader from '@/components/layout/PageHeader';
 import SettingSection from '@/components/settings/SettingSection';
 import ThemeSelect from '@/components/settings/ThemeSelect';
+import HouseholdForm from '@/components/settings/HouseholdForm';
 import StatusPill from '@/components/states/StatusPill';
 import ModeIndicator from '@/components/layout/ModeIndicator';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/AuthContext';
+import { base44 } from '@/api/base44Client';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -28,16 +31,19 @@ export default function Settings() {
           ) : (
             <p className="text-base text-muted-foreground">Loading your profile…</p>
           )}
+          {user && (
+            <Button variant="outline" className="mt-4 min-h-11 rounded-xl" onClick={() => base44.auth.logout('/login')}>
+              Sign out
+            </Button>
+          )}
         </SettingSection>
 
         <SettingSection title="Appearance" description="A warm, organic dark mode is available.">
           <ThemeSelect />
         </SettingSection>
 
-        <SettingSection title="Household" description="Members of your household workspace.">
-          <p className="text-base text-muted-foreground">
-            Household members arrive in a later stage. Every member will see only what they are authorized to see.
-          </p>
+        <SettingSection title="Household profile" description="Household type, pay frequency, budget style, and preferences.">
+          <HouseholdForm />
         </SettingSection>
 
         <SettingSection title="Bank connections" description="Simulated connections only in this stage.">

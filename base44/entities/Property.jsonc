@@ -1,0 +1,105 @@
+{
+  "name": "Property",
+  "type": "object",
+  "properties": {
+    "nickname": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "property_type": {
+      "type": "string",
+      "enum": [
+        "primary_residence",
+        "rental",
+        "investment",
+        "vacation",
+        "other"
+      ],
+      "default": "primary_residence"
+    },
+    "estimated_value": {
+      "type": "number"
+    },
+    "valuation_source": {
+      "type": "string",
+      "enum": [
+        "user_provided",
+        "external_provider"
+      ],
+      "default": "user_provided"
+    },
+    "valuation_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "valuation_notes": {
+      "type": "string"
+    },
+    "taxes_monthly": {
+      "type": "number",
+      "default": 0
+    },
+    "insurance_monthly": {
+      "type": "number",
+      "default": 0
+    },
+    "hoa_monthly": {
+      "type": "number",
+      "default": 0
+    },
+    "maintenance_monthly": {
+      "type": "number",
+      "default": 0
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "nickname",
+    "estimated_value"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

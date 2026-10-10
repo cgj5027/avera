@@ -1,0 +1,88 @@
+{
+  "name": "IncomeSource",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "salary",
+        "hourly",
+        "self_employed",
+        "benefits",
+        "other"
+      ],
+      "default": "salary"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "frequency": {
+      "type": "string",
+      "enum": [
+        "weekly",
+        "biweekly",
+        "semimonthly",
+        "monthly",
+        "quarterly",
+        "semiannual",
+        "annual"
+      ],
+      "default": "monthly"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "amount"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
