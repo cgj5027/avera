@@ -204,23 +204,23 @@ export default function TransactionsTable({
         />
       </div>
 
-      <div className="mt-2 flex w-full gap-2 overflow-x-auto pb-1">
+      <div className="mt-2 flex flex-wrap gap-2">
         <Input
           type="date"
           value={dateFrom}
           onChange={(e) => setDateFrom(e.target.value)}
           aria-label="From date"
-          className="w-40 shrink-0 rounded-xl"
+          className="w-full shrink-0 rounded-xl sm:w-40"
         />
         <Input
           type="date"
           value={dateTo}
           onChange={(e) => setDateTo(e.target.value)}
           aria-label="To date"
-          className="w-40 shrink-0 rounded-xl"
+          className="w-full shrink-0 rounded-xl sm:w-40"
         />
         <Select value={account} onValueChange={setAccount}>
-          <SelectTrigger className="w-40 shrink-0" aria-label="Filter by account">
+          <SelectTrigger className="w-full shrink-0 sm:w-40" aria-label="Filter by account">
             <SelectValue placeholder="All accounts" />
           </SelectTrigger>
           <SelectContent>
@@ -231,7 +231,7 @@ export default function TransactionsTable({
           </SelectContent>
         </Select>
         <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger className="w-48 shrink-0" aria-label="Filter by transaction category">
+          <SelectTrigger className="w-full shrink-0 sm:w-48" aria-label="Filter by transaction category">
             <SelectValue placeholder="All transaction categories" />
           </SelectTrigger>
           <SelectContent>
@@ -243,7 +243,7 @@ export default function TransactionsTable({
           </SelectContent>
         </Select>
         <Select value={type} onValueChange={setType}>
-          <SelectTrigger className="w-32 shrink-0" aria-label="Filter by type">
+          <SelectTrigger className="w-full shrink-0 sm:w-32" aria-label="Filter by type">
             <SelectValue placeholder="All types" />
           </SelectTrigger>
           <SelectContent>
@@ -253,7 +253,7 @@ export default function TransactionsTable({
           </SelectContent>
         </Select>
         <Select value={source} onValueChange={setSource}>
-          <SelectTrigger className="w-44 shrink-0" aria-label="Filter by source">
+          <SelectTrigger className="w-full shrink-0 sm:w-44" aria-label="Filter by source">
             <SelectValue placeholder="All sources" />
           </SelectTrigger>
           <SelectContent>
@@ -275,9 +275,9 @@ export default function TransactionsTable({
               <TableRow>
                 <TableHead>Date</TableHead>
                 <TableHead>Name</TableHead>
-                <TableHead>Account</TableHead>
+                <TableHead className="hidden md:table-cell">Account</TableHead>
                 <TableHead>Transaction category</TableHead>
-                <TableHead>Source</TableHead>
+                <TableHead className="hidden md:table-cell">Source</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead className="text-right">Status</TableHead>
               </TableRow>
@@ -295,7 +295,7 @@ export default function TransactionsTable({
                     <TableCell className="font-medium text-foreground">
                       {t.description || 'Unnamed'}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                    <TableCell className="hidden whitespace-nowrap text-sm text-muted-foreground md:table-cell">
                       {accountNames.find((a) => a.id === t.plaid_account_id)?.name || '—'}
                     </TableCell>
                     <TableCell>
@@ -318,7 +318,7 @@ export default function TransactionsTable({
                         </Button>
                       </span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       {synced ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-info-surface px-2 py-0.5 text-xs font-medium text-info">
                           <RefreshCw className="h-3 w-3" aria-hidden="true" />

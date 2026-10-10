@@ -11,11 +11,14 @@ import ErrorState from '@/components/states/ErrorState';
 import EmptyState from '@/components/states/EmptyState';
 import MonthlyPlanChart from '@/components/yearlyplan/MonthlyPlanChart';
 import AssumptionsPanel from '@/components/yearlyplan/AssumptionsPanel';
+import PossibleIncomeSources from '@/components/yearlyplan/PossibleIncomeSources';
+import ProjectedIncomeDialog from '@/components/yearlyplan/ProjectedIncomeDialog';
 import IncomeCard from '@/components/income/IncomeCard';
 import IncomeDialog from '@/components/income/IncomeDialog';
+import { base44 } from '@/api/base44Client';
 import { listRecords, createRecord, updateRecord, deleteRecord, getHouseholdProfile } from '@/services/dataService';
 import * as calc from '@/services/financialCalculations';
-import { estimateFromTransactions } from '@/services/plaidEstimates';
+import { estimateFromTransactions, estimateIncomeCandidates, normalizeName } from '@/services/plaidEstimates';
 import { formatCurrency, formatDate } from '@/utils/format';
 
 /** Yearly Plan: live projection from income, bills, budget limits, and property costs. */
@@ -25,6 +28,8 @@ export default function YearlyPlan() {
   const [reloadKey, setReloadKey] = useState(0);
   const [busy, setBusy] = useState(false);
   const [incomeDialog, setIncomeDialog] = useState({ open: false, income: null });
+  const [projecting, setProjecting] = useState(false);
+  const [incomeCandidate, setIncomeCandidate] = useState(null);
   const [deleteIncome, setDeleteIncome] = useState(null);
   const [deleteForecast, setDeleteForecast] = useState(null);
   const [defaultFrequency, setDefaultFrequency] = useState('monthly');
@@ -114,6 +119,32 @@ export default function YearlyPlan() {
       () => (incomeDialog.income ? updateRecord('incomeSource', incomeDialog.income.id, payload) : createRecord('incomeSource', payload)),
       incomeDialog.income ? 'Income source updated' : 'Income source added'
     );
+
+  /* Transactions flagged as income (linked or manual) become possible income sources. */
+  const incomeCandidates = estimateIncomeCandidates(transactions).filter(
+    (c) => !incomes.some((i) => normalizeName(i.name) === normalizeName(c.name))
+  );
+
+  const addIncomeFromCandidate = async (candidate) => {
+    setProjecting(true);
+    try {
+      const res = await base44.functions.invoke('projectAnnualIncome', {
+        name: candidate.name,
+        amount: candidate.amount,
+        frequency: candidate.frequency,
+        occurrences: candidate.occurrences,
+        months_seen: candidate.months_seen,
+        source: candidate.source,
+      });
+      const result = res.data ?? {};
+      if (result.error) throw new Error(result.error);
+      setIncomeCandidate({ ...candidate, annual_amount: result.annual_amount, rationale: result.rationale });
+    } catch {
+      toast({ title: 'Projection unavailable', description: 'We could not project annual earnings. You can still add the source manually.', variant: 'destructive' });
+    } finally {
+      setProjecting(false);
+    }
+  };
 
   const saveSnapshot = () =>
     run(() =>
@@ -227,6 +258,16 @@ export default function YearlyPlan() {
         />
       </div>
 
+      {incomeCandidates.length > 0 && (
+        <div className="mt-6">
+          <PossibleIncomeSources
+            candidates={incomeCandidates}
+            busy={busy || projecting}
+            onAdd={addIncomeFromCandidate}
+          />
+        </div>
+      )}
+
       <section className="mt-6 rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -297,6 +338,14 @@ export default function YearlyPlan() {
         onOpenChange={(open) => setIncomeDialog((d) => ({ ...d, open }))}
         income={incomeDialog.income}
         defaultFrequency={defaultFrequency}
+        onSave={saveIncome}
+      />
+      <ProjectedIncomeDialog
+        open={Boolean(incomeCandidate)}
+        onOpenChange={(open) => {
+          if (!open) setIncomeCandidate(null);
+        }}
+        candidate={incomeCandidate}
         onSave={saveIncome}
       />
       <ConfirmDeleteDialog

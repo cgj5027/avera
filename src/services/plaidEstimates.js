@@ -123,6 +123,46 @@ export function estimateFromTransactions(transactions = []) {
   return { hasData: true, months, monthlyIncome, monthlyExpenses, billCandidates: estimateBillCandidates(txns) };
 }
 
+/**
+ * Income sources observed in transactions (linked or manual), as suggested
+ * income entries the user can add on the Yearly Plan.
+ */
+export function estimateIncomeCandidates(transactions = []) {
+  const groups = new Map();
+  for (const t of transactions) {
+    if (t.type !== 'income') continue;
+    const key = normalizeName(t.description || t.category);
+    if (!key) continue;
+    const group = groups.get(key) ?? [];
+    group.push(t);
+    groups.set(key, group);
+  }
+  const candidates = [];
+  for (const group of groups.values()) {
+    const lastDate = group.map((t) => t.date).filter(Boolean).sort().at(-1);
+    if (!lastDate) continue;
+    const monthsSeen = countMonths(group.map((t) => t.date));
+    const perMonth = group.length / Math.max(1, monthsSeen);
+    const match = OCCURRENCE_TO_FREQUENCY.find((f) => perMonth >= f.minPerMonth);
+    const frequency = match ? match.frequency : 'monthly';
+    const amount = round2(group.reduce((s, t) => s + num(t.amount), 0) / group.length);
+    const sources = [
+      ...new Set(group.map((t) => (Boolean(t.plaid_item_id) || t.source === 'Plaid Sandbox' ? 'Plaid Sandbox' : 'Manual'))),
+    ];
+    candidates.push({
+      name: mostCommon(group.map((t) => t.description || t.category || 'Unknown')),
+      frequency,
+      amount,
+      monthly: monthlyFromFrequency(amount, frequency),
+      occurrences: group.length,
+      months_seen: monthsSeen,
+      last_date: lastDate,
+      source: sources.length === 1 ? sources[0] : 'Estimated',
+    });
+  }
+  return candidates.sort((a, b) => b.monthly - a.monthly);
+}
+
 /** Suggestions not yet saved as bills (matched by normalized name). */
 export function pendingCandidates(candidates = [], bills = []) {
   const saved = new Set(bills.map((b) => normalizeName(b.name)));
