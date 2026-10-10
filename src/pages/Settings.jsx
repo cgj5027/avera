@@ -5,7 +5,6 @@ import SettingSection from '@/components/settings/SettingSection';
 import ThemeSelect from '@/components/settings/ThemeSelect';
 import HouseholdForm from '@/components/settings/HouseholdForm';
 import BankConnections from '@/components/settings/BankConnections';
-import FeedbackForm from '@/components/settings/FeedbackForm';
 import ModeIndicator from '@/components/layout/ModeIndicator';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/AuthContext';
@@ -71,9 +70,6 @@ export default function Settings() {
           <p className="text-base text-muted-foreground">
             Bill reminders are shown in the app. Email and push notification delivery are not available.
           </p>
-        </SettingSection>
-        <SettingSection title="App feedback" description="Share your testing experience.">
-          <FeedbackForm />
         </SettingSection>
       </div>
     </div>

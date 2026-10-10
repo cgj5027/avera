@@ -55,6 +55,12 @@ const assert = require('node:assert/strict');
         await page.getByRole('button',{name:'Send question'}).click();
         await page.getByText(/Browser fixture only/).waitFor();
       }
+      const feedbackTrigger=page.getByRole('button',{name:'Give app feedback'});
+      const hasFeedback=!['/login','/register'].includes(path);
+      if(hasFeedback) {
+        await feedbackTrigger.click();
+        await page.getByRole('dialog',{name:'App feedback'}).waitFor();
+      }
       if (path === '/settings') {
         await page.getByRole('radio',{name:'4 of 5'}).check();
         await page.getByLabel('Your feedback').fill('Fixture testing feedback');
@@ -68,13 +74,20 @@ const assert = require('node:assert/strict');
         assert.deepEqual(Object.keys(feedbackPayloads[0]).sort(),['consent','message','rating','request_id'],'no financial context attached');
       }
       if (path === '/opportunities') {
+        await page.keyboard.press('Escape');
         await page.getByRole('button',{name:'Find opportunities'}).click();
         await page.getByText('Source-linked results',{exact:true}).waitFor();
+        await feedbackTrigger.click();
       }
       assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`response overflow ${theme} ${width} ${path}`);
       await page.addScriptTag({path:require.resolve('axe-core/axe.min.js')});
       const accessibility=await page.evaluate(async()=>{const r=await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}});return r.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}));});
       if(accessibility.length)violations.push({theme,width,path,accessibility});
+      if(hasFeedback) {
+        await page.keyboard.press('Escape');
+        await page.getByRole('dialog',{name:'App feedback'}).waitFor({state:'hidden'});
+        assert(await feedbackTrigger.evaluate(el=>document.activeElement===el),'feedback focus restored');
+      }
       results.push({theme,width,path,title,overflow:false});
       const dialogs = {
         '/': ['Add account'], '/bills-budget': ['Add bill','Add goal','Log contribution'],
@@ -106,6 +119,7 @@ const assert = require('node:assert/strict');
         await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
       }
       if (path === '/opportunities') {
+        await page.keyboard.press('Escape');
         await page.route('**/api/**',route=>new URL(route.request().url()).pathname.includes('/functions/searchJobOpportunities') ? route.fulfill({status:503,contentType:'application/json',body:'{"error":"fixture unavailable"}'}) : route.fallback());
         await page.getByRole('button',{name:'Find opportunities'}).click();
         await page.getByText('Demonstration listings',{exact:true}).waitFor();

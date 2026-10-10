@@ -4,7 +4,6 @@ import { LayoutDashboard, Receipt, Sparkles, Briefcase, MoreHorizontal, ChevronR
 import { cn } from '@/lib/utils';
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { PRIMARY_NAV, SETTINGS_NAV } from '@/config/navigation';
-import ModeIndicator from './ModeIndicator';
 
 /* Mobile bar shows 4 destinations; the rest sit one step away (design system §17). */
 const BAR_ITEMS = [
@@ -21,17 +20,6 @@ export default function MobileNav() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 shrink-0 border-b border-border bg-surface/95 backdrop-blur lg:hidden">
-        <div className="flex min-h-14 items-center justify-between py-2 px-4">
-          <div className="flex shrink-0 items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">
-              A
-            </span>
-            <span className="text-base font-semibold tracking-tight text-foreground">Avera</span>
-          </div>
-          <ModeIndicator variant="inline" />
-        </div>
-      </header>
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface lg:hidden" aria-label="Primary">
         <div className="grid grid-cols-5">
           {BAR_ITEMS.map((item) => (
