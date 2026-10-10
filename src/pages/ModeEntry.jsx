@@ -78,14 +78,6 @@ export default function ModeEntry() {
       expandable: true,
     },
     {
-      key: 'profiles',
-      icon: FlaskConical,
-      title: 'Explore a Preconfigured Demo Profile',
-      description:
-        'Load one of three ready-made financial scenarios as labeled Avera sample data and explore every feature.',
-      expandable: true,
-    },
-    {
       key: 'manual',
       icon: PencilLine,
       title: 'Enter Financial Information Manually',
@@ -94,6 +86,14 @@ export default function ModeEntry() {
         setMode('manual');
         navigate('/bills-budget');
       },
+    },
+    {
+      key: 'profiles',
+      icon: FlaskConical,
+      title: 'Explore a Preconfigured Demo Profile',
+      description:
+        'Load one of three ready-made financial scenarios as labeled Avera sample data and explore every feature.',
+      expandable: true,
     },
   ];
 
