@@ -12,6 +12,7 @@ import EmptyState from '@/components/states/EmptyState';
 import ChartPlaceholder from '@/components/overview/ChartPlaceholder';
 import NextSteps from '@/components/overview/NextSteps';
 import OverviewChart from '@/components/overview/OverviewChart';
+import MonthlyAllocationChart from '@/components/overview/MonthlyAllocationChart';
 import BudgetProgress from '@/components/overview/BudgetProgress';
 import UpcomingBillsList from '@/components/overview/UpcomingBillsList';
 import MonthlyFlowCards from '@/components/overview/MonthlyFlowCards';
@@ -159,10 +160,10 @@ export default function Overview() {
     properties,
     mortgages,
     accounts,
-    months: 6,
+    months: 4,
     estimate: { income: est.hasData ? est.monthlyIncome : 0, expenses: est.hasData ? est.monthlyExpenses : 0 },
   });
-  const hasData = accounts.length || incomes.length || bills.length || budgetCategories.length || properties.length;
+  const hasData = accounts.length || incomes.length || bills.length || budgetCategories.length || properties.length || est.hasData;
 
   /* Row two: monthly income, recurring expenses, and additional (non-recurring) expenses. */
   const flow = {
@@ -261,8 +262,11 @@ export default function Overview() {
         <BudgetProgress categories={budgetCategories} transactions={transactions} />
         <UpcomingBillsList bills={upcoming} />
       </div>
-      <div className="mt-6">
-        {hasData ? <OverviewChart rows={projection.rows} /> : <ChartPlaceholder />}
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <MonthlyAllocationChart projection={projection} hasIncome={incomes.length > 0 || est.hasData} hasExpenses={bills.length > 0 || budgetCategories.length > 0 || properties.length > 0 || est.hasData} />
+        <div className="min-w-0 lg:col-span-2">
+          {hasData ? <OverviewChart rows={projection.rows} /> : <ChartPlaceholder />}
+        </div>
       </div>
       <div className="mt-6">
         <OverviewAccounts
