@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Repeat, Check, Pencil, Download, Sparkles, RefreshCw, Keyboard } from 'lucide-react';
+import { Search, Repeat, Check, Pencil, Download, Sparkles, RefreshCw, Keyboard, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { estimateBillCandidates, normalizeName } from '@/services/plaidEstimates';
+import ManualTransactionDialog from '@/components/bills/ManualTransactionDialog';
 import { formatCurrency } from '@/utils/format';
 
 const PAGE_SIZE = 25;
@@ -38,6 +39,7 @@ export default function TransactionsTable({
   busy,
   onAddBill,
   onSaveTransaction,
+  onAddTransaction,
   onSuggestCategories,
 }) {
   const [search, setSearch] = useState('');
@@ -48,7 +50,8 @@ export default function TransactionsTable({
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(0);
-  const [editing, setEditing] = useState(null); // { transaction, name, category }
+  const [addOpen, setAddOpen] = useState(false);
+  const [editing, setEditing] = useState(null); // { transaction, category }
   const [saveError, setSaveError] = useState('');
 
   const rows = useMemo(
@@ -103,7 +106,6 @@ export default function TransactionsTable({
     setSaveError('');
     try {
       await onSaveTransaction(editing.transaction.id, {
-        description: String(editing.name ?? '').trim() || 'Unnamed',
         category: String(editing.category ?? ''),
       });
       setEditing(null);
@@ -149,6 +151,17 @@ export default function TransactionsTable({
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button
+            onClick={() => {
+              setSaveError('');
+              setAddOpen(true);
+            }}
+            disabled={busy}
+            className="min-h-11 rounded-xl"
+          >
+            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+            Add transaction
+          </Button>
+          <Button
             variant="secondary"
             onClick={onSuggestCategories}
             disabled={busy}
@@ -171,17 +184,18 @@ export default function TransactionsTable({
         </div>
       </div>
 
-      <div className="mt-4 flex w-full gap-2 overflow-x-auto pb-1">
-        <div className="relative w-56 shrink-0">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search transactions"
-            aria-label="Search transactions"
-            className="w-full pl-9"
-          />
-        </div>
+      <div className="relative mt-4">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search transactions"
+          aria-label="Search transactions"
+          className="w-full pl-9"
+        />
+      </div>
+
+      <div className="mt-2 flex w-full gap-2 overflow-x-auto pb-1">
         <Input
           type="date"
           value={dateFrom}
@@ -277,10 +291,10 @@ export default function TransactionsTable({
                           size="icon"
                           onClick={() => {
                             setSaveError('');
-                            setEditing({ transaction: t, name: t.description || '', category: t.category || '' });
-                          }}
-                          disabled={busy}
-                          aria-label={`Edit ${t.description || 'transaction'}`}
+                            setEditing({ transaction: t, category: t.category || '' });
+                            }}
+                            disabled={busy}
+                            aria-label={`Edit category for ${t.description || 'transaction'}`}
                           className="h-7 w-7"
                         >
                           <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
@@ -385,20 +399,12 @@ export default function TransactionsTable({
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit transaction</DialogTitle>
-            <DialogDescription>{editing?.transaction?.date || ''}</DialogDescription>
+            <DialogTitle>Edit transaction category</DialogTitle>
+            <DialogDescription>
+              {editing?.transaction?.description || 'Unnamed'} · {editing?.transaction?.date || ''}
+            </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={submitEdit}>
-            <div className="space-y-1.5">
-              <Label htmlFor="txn-name">Name / description</Label>
-              <Input
-                id="txn-name"
-                value={editing?.name ?? ''}
-                onChange={(e) => setEditing((cur) => ({ ...cur, name: e.target.value }))}
-                placeholder="McDonald's"
-                className="min-h-11 rounded-xl"
-              />
-            </div>
             <div className="space-y-1.5">
               <Label htmlFor="txn-category">Transaction category</Label>
               <Select
@@ -426,11 +432,18 @@ export default function TransactionsTable({
             {saveError && <p role="alert" className="text-base text-danger-text">{saveError}</p>}
             <DialogFooter className="gap-2">
               <Button type="button" variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
-              <Button type="submit" disabled={busy}>Save transaction</Button>
+              <Button type="submit" disabled={busy}>Save category</Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      <ManualTransactionDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        categories={categories}
+        onSave={onAddTransaction}
+      />
     </section>
   );
 }

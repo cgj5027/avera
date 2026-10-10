@@ -13,6 +13,7 @@ import EmptyState from '@/components/states/EmptyState';
 import BillCard from '@/components/bills/BillCard';
 import BillDialog from '@/components/bills/BillDialog';
 import TransactionsTable from '@/components/bills/TransactionsTable';
+import ManualTransactionDialog from '@/components/bills/ManualTransactionDialog';
 import SuggestedBudgetCategories from '@/components/budget/SuggestedBudgetCategories';
 import CategoryCard from '@/components/budget/CategoryCard';
 import CategoryDialog from '@/components/budget/CategoryDialog';
@@ -34,6 +35,7 @@ export default function BillsBudget() {
   const [billDialog, setBillDialog] = useState({ open: false, bill: null });
   const [categoryDialog, setCategoryDialog] = useState({ open: false, category: null });
   const [logDialog, setLogDialog] = useState(null);
+  const [addTxnOpen, setAddTxnOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const { toast } = useToast();
 
@@ -134,6 +136,9 @@ export default function BillsBudget() {
     }, 'Categories suggested for your transactions');
 
   const logSpending = (category, payload) => run(() => category._transaction ? updateRecord('transaction', category._transaction.id, payload) : createRecord('transaction', payload), category._transaction ? 'Spending updated' : 'Spending logged');
+
+  const addManualTransaction = (payload) =>
+    run(() => createRecord('transaction', payload), 'Transaction added');
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
@@ -279,6 +284,7 @@ export default function BillsBudget() {
               busy={busy}
               onAddBill={addBillFromCandidate}
               onSaveTransaction={saveTransactionRow}
+              onAddTransaction={() => setAddTxnOpen(true)}
               onSuggestCategories={suggestCategories}
             />
           </TabsContent>
@@ -308,6 +314,12 @@ export default function BillsBudget() {
           onSave={(payload) => logSpending(logDialog, payload)}
         />
       )}
+      <ManualTransactionDialog
+        open={addTxnOpen}
+        onOpenChange={setAddTxnOpen}
+        categories={categories}
+        onSave={addManualTransaction}
+      />
       <ConfirmDeleteDialog
         open={Boolean(deleteTarget)}
         onOpenChange={(open) => {
