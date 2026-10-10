@@ -109,7 +109,7 @@ function Conversation() {
         )}
       </div>
       <div className="shrink-0 border-t border-border bg-surface p-4 sm:p-6">
-        <p className="mb-3 text-base text-muted-foreground">AI can make mistakes. Verify important information and consult a financial advisor before making financial decisions.</p>
+        <p className="mb-3 text-center text-sm text-muted-foreground">AI can make mistakes. Verify important information and consult a financial advisor before making financial decisions.</p>
         <form
           aria-label="Send a message to Ask Avera"
           className="space-y-2"
