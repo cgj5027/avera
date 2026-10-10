@@ -1,4 +1,5 @@
 import { base44 } from '@/api/base44Client';
+import { getDataMode, getDemoWorkspace } from '@/lib/mode';
 
 // Browser checks complement server authorization; they cannot establish AI grounding.
 export const SERVICE_TIMEOUT_MS = 20000;
@@ -28,7 +29,7 @@ export async function askAvera(question) {
     throw new Error('Enter a question of up to 2,000 characters.');
   }
   // Never accept user IDs, financial context, or system instructions from the UI.
-  const data = await authenticatedInvoke('askAvera', { question: question.trim() });
+  const data = await authenticatedInvoke('askAvera', { question: question.trim(), dataset: getDataMode() === 'demo' ? {mode:'demo',profile:getDemoWorkspace()?.profile} : {mode:'ordinary'} });
   if (typeof data?.answer !== 'string' || !data.answer.trim() || data.answer.length > 20000) {
     throw new Error('Invalid assistant response.');
   }

@@ -11,7 +11,7 @@
 import { base44 } from '@/api/base44Client';
 import { listRecords, createRecords, deleteRecordsWhere } from './dataService';
 import { buildDemoDataset, createDemoRecords, DEMO_PROFILES, DEMO_PROFILE_KEYS } from './demoProfiles';
-import { getDemoWorkspace, setDemoWorkspace, clearDemoWorkspace } from '@/lib/mode';
+import { getDemoWorkspace, setDemoWorkspace, clearDemoWorkspace, setModeOwner } from '@/lib/mode';
 
 /** Entities a demo workspace seeds. PlaidItem is handled alongside its imports. */
 const DEMO_ENTITIES = [
@@ -37,14 +37,12 @@ export async function removeDemoData(profileKeys, plaidItemIds = []) {
       await deleteRecordsWhere(key, { demo_profile: { $in: validKeys } });
     }
   }
-  /* Demo Plaid connections are removed by tag (survives a new device) and, as
-     a belt-and-braces measure, by the ids the current session remembers. */
-  const demoItems = await listRecords('plaidItem', { demo_profile: { $in: validKeys.length ? validKeys : DEMO_PROFILE_KEYS } });
-  const itemIds = [...new Set([...demoItems.map((i) => i.item_id), ...plaidItemIds].filter(Boolean))];
+  /* Remembered Item ids are untrusted; only owned, demo-tagged connections
+     may be removed. The backend also verifies the private credential tag. */
+  const demoItems = await listRecords('plaidItem', { demo_profile: { $in: validKeys } }, {allDatasets:true});
+  const itemIds = [...new Set([...demoItems.map((i) => i.item_id)].filter(Boolean))];
   for (const itemId of itemIds) {
-    await deleteRecordsWhere('transaction', { plaid_item_id: itemId });
-    await deleteRecordsWhere('account', { plaid_item_id: itemId });
-    await deleteRecordsWhere('plaidItem', { item_id: itemId });
+    await base44.functions.invoke('plaidDisconnect', { item_id:itemId, demo_only:true });
   }
   return itemIds;
 }
@@ -53,8 +51,7 @@ async function seedStructuralRecords(profileKey, includeTransactionData) {
   const dataset = buildDemoDataset(profileKey, new Date(), { includeTransactionData });
   await createDemoRecords(
     dataset,
-    (key, rows) => createRecords(key, rows),
-    async (key) => (await listRecords(key, { demo_profile: { $exists: false } })).length > 0
+    (key, rows) => createRecords(key, rows)
   );
 }
 
@@ -65,13 +62,19 @@ async function connectPlaidDemo(profileKey) {
   if (!itemId) throw new Error(res.data?.error || 'Plaid Sandbox connection failed.');
   /* The first sync can return before the sandbox publishes the custom
      transactions; retry once after a short wait so the profile loads fully. */
-  const syncResult = await base44.functions.invoke('plaidSync', {});
-  let imported = (syncResult.data?.results ?? []).reduce((s, r) => s + (r.transactions || 0), 0);
+  const syncResult = await base44.functions.invoke('plaidSync', {item_id:itemId});
+  const check = result => {
+    const own = result.data?.results?.find(r => r.item_id === itemId);
+    if (!own || own.status !== 'synced') throw new Error('Demo sync failed');
+    return own.transactions || 0;
+  };
+  let imported = check(syncResult);
   if (imported === 0) {
     await new Promise((resolve) => setTimeout(resolve, 4000));
-    const retry = await base44.functions.invoke('plaidSync', {});
-    imported = (retry.data?.results ?? []).reduce((s, r) => s + (r.transactions || 0), 0);
+    const retry = await base44.functions.invoke('plaidSync', {item_id:itemId});
+    imported = check(retry);
   }
+  if (!imported) throw new Error('Demo transactions are not ready');
   return itemId;
 }
 
@@ -82,6 +85,9 @@ async function connectPlaidDemo(profileKey) {
  * failed and the labeled Avera sample dataset was used instead.
  */
 export async function loadDemoProfile(profileKey, { viaPlaid = false } = {}) {
+  const user = await base44.auth.me();
+  if (!user?.id) throw new Error('Sign in to load demo data.');
+  setModeOwner(user.id);
   if (!DEMO_PROFILES[profileKey]) throw new Error('Unknown demo profile.');
   /* A demo workspace holds exactly one profile: clear every demo tag first. */
   await removeDemoData(DEMO_PROFILE_KEYS, getDemoWorkspace()?.plaid_item_id ? [getDemoWorkspace().plaid_item_id] : []);
@@ -92,6 +98,7 @@ export async function loadDemoProfile(profileKey, { viaPlaid = false } = {}) {
     try {
       plaidItemId = await connectPlaidDemo(profileKey);
     } catch {
+      await removeDemoData(profileKey);
       plaidItemId = null;
       warning = 'Plaid Sandbox connection failed — loaded the labeled Avera sample dataset instead.';
     }

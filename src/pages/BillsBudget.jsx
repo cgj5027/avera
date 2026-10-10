@@ -250,12 +250,12 @@ export default function BillsBudget() {
     <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
       <PageHeader title="Bills & Budget" subtitle="Due dates, recurring bills, and category budgets." />
       <Tabs defaultValue="bills">
-        <TabsList className="mb-6">
-          <TabsTrigger value="bills" className="min-h-9 rounded-lg px-4">Bills</TabsTrigger>
-          <TabsTrigger value="budget" className="min-h-9 rounded-lg px-4">Budget</TabsTrigger>
-          <TabsTrigger value="goals" className="min-h-9 rounded-lg px-4">Goals</TabsTrigger>
+        <TabsList className="mb-6 flex h-auto flex-wrap gap-1">
+          <TabsTrigger value="bills" className="min-h-11 rounded-xl px-4">Bills</TabsTrigger>
+          <TabsTrigger value="budget" className="min-h-11 rounded-xl px-4">Budget</TabsTrigger>
+          <TabsTrigger value="goals" className="min-h-11 rounded-xl px-4">Goals</TabsTrigger>
           {transactions.length > 0 && (
-            <TabsTrigger value="transactions" className="min-h-9 rounded-lg px-4">
+            <TabsTrigger value="transactions" className="min-h-11 rounded-xl px-4">
               Transactions
               {recurringCount > 0 && (
                 <span className="ml-2 rounded-full bg-warning-surface px-2 py-0.5 text-xs font-medium text-warning">

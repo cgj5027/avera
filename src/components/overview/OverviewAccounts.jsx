@@ -3,7 +3,8 @@ import { ChevronDown, Plus, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ACCOUNT_TYPES } from '@/services/financialCalculations';
-import { formatCurrency } from '@/utils/format';
+import SourceChip from '@/components/states/SourceChip';
+import { formatCurrency, formatDate } from '@/utils/format';
 
 /** Overview accounts section, collapsed by default: balances with add, edit, and delete. */
 export default function OverviewAccounts({ accounts, onDelete, dialog, onOpenDialog, busy }) {
@@ -34,16 +35,13 @@ export default function OverviewAccounts({ accounts, onDelete, dialog, onOpenDia
                   <div className="min-w-0">
                     <p className="text-base font-medium text-foreground">
                       {a.name}
-                      <span
-                        className="ml-2 inline-flex items-center rounded-full bg-surface-subtle px-2 py-0.5 align-middle text-xs font-medium text-muted-foreground"
-                      >
-                        {a.plaid_item_id ? 'Synced via Plaid' : 'Manual'}
-                      </span>
+                      <SourceChip source={a.source || (a.plaid_item_id ? 'Plaid Sandbox' : 'Manual')} className="ml-2" />
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {ACCOUNT_TYPES[a.type] ?? 'Other'}
                       {a.institution ? ` · ${a.institution}` : ''}
                     </p>
+                    {a.balance_as_of && <p className="text-sm text-muted-foreground">Balance as of {formatDate(a.balance_as_of)}</p>}
                   </div>
                   <div className="flex items-center gap-2">
                     <p className="font-heading text-base font-semibold tabular-nums text-foreground">{formatCurrency(a.balance)}</p>

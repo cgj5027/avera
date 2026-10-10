@@ -1,30 +1,46 @@
-// Plaid Sandbox API helper — credentials live ONLY in Base44 secure secrets.
 import { secrets } from 'base44:runtime';
-
 export const PLAID_HOST = 'https://sandbox.plaid.com';
-
+export class PlaidFailure extends Error {
+  code: string;
+  constructor(code = 'PLAID_UNAVAILABLE') { super('Plaid Sandbox request failed. Please retry or reconnect.'); this.code = code; }
+}
 export async function plaidRequest(path, body, timeoutMs = 20000) {
+  if (!path.startsWith('/') || path.startsWith('//')) throw new PlaidFailure('INVALID_PATH');
   const clientId = secrets.get('PLAID_CLIENT_ID');
   const clientSecret = secrets.get('PLAID_SECRET');
-  if (!clientId || !clientSecret) {
-    throw new Error('Plaid credentials are not configured. Set PLAID_CLIENT_ID and PLAID_SECRET in app secrets.');
+  if (!clientId || !clientSecret) throw new PlaidFailure('NOT_CONFIGURED');
+  try {
+    const res = await fetch(PLAID_HOST + path, {
+      method: 'POST', redirect:'error', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...body, client_id: clientId, secret: clientSecret }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new PlaidFailure(typeof data.error_code === 'string' ? data.error_code : 'PLAID_UNAVAILABLE');
+    return data;
+  } catch (error) {
+    if (error instanceof PlaidFailure) throw error;
+    throw new PlaidFailure();
   }
-  const res = await fetch(PLAID_HOST + path, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ client_id: clientId, secret: clientSecret, ...body }),
-    signal: AbortSignal.timeout(timeoutMs)
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const message = data.error_message || data.error_type || 'Plaid request failed';
-    throw new Error(message);
-  }
-  return data;
 }
-
 export function chunk(array, size) {
   const out = [];
   for (let i = 0; i < array.length; i += size) out.push(array.slice(i, i + size));
   return out;
+}
+export async function allRecords(entity, query, options = {}) {
+  const rows = []; const seen = new Set(); let cursor;
+  do {
+    const page = await entity.filter(query, { ...options, limit: 100, ...(cursor ? { cursor } : {}) });
+    if (!Array.isArray(page.items)) throw new Error('Invalid entity response');
+    rows.push(...page.items);
+    if (!page.has_more) return rows;
+    if (!page.next_cursor || seen.has(page.next_cursor)) throw new Error('Invalid entity cursor');
+    cursor = page.next_cursor; seen.add(cursor);
+  } while (cursor);
+  return rows;
+}
+export function safeError(error) {
+  const codes = ['ITEM_LOGIN_REQUIRED','INVALID_ACCESS_TOKEN','ITEM_NOT_FOUND','PRODUCT_NOT_READY','TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION','NOT_CONFIGURED'];
+  return error instanceof PlaidFailure && codes.includes(error.code) ? error.code : 'SYNC_FAILED';
 }

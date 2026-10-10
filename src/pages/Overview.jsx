@@ -151,10 +151,7 @@ export default function Overview() {
   const recurringPaid = calc.recurringPaidInMonth(transactions, bills, currentMonth);
   const additionalSpent = calc.round2(monthTxExpenses - recurringPaid);
   const creditCards = accounts.filter((a) => a.type === 'credit_card');
-  const debts = calc.round2(
-    mortgages.reduce((s, m) => s + (Number(m.outstanding_balance) || 0), 0) +
-      creditCards.reduce((s, a) => s + (Number(a.balance) || 0), 0)
-  );
+  const debts = calc.totalDebt(mortgages, accounts);
   const projection = calc.projectYearlyPlan({
     incomes,
     bills,
@@ -240,7 +237,7 @@ export default function Overview() {
           label="Available cash"
           value={accounts.length ? formatCurrency(cash) : '—'}
           note={accounts.length ? 'Across your saved accounts.' : 'Add an account in the Accounts card below.'}
-          hint={accounts.length ? 'Combined balance of all saved accounts — checking, savings, cash, and other.' : null}
+          hint={accounts.length ? 'Combined checking, savings and cash balances. Credit liabilities and investments are excluded.' : null}
         />
         <SummaryCard
           label="Total debts"

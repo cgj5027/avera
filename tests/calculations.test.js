@@ -72,3 +72,10 @@ it('does not invent equity when the value or mortgage balance is unknown', () =>
 it('marks unfinished expired goals behind regardless of future capacity', () => {
   expect(c.goalPace({target_amount:100,saved_amount:0,target_date:'2020-01-01'},1000).key).toBe('behind');
 });
+
+it('separates liquid cash, invested assets and signed imported credit liabilities',()=>{
+  const accounts=[{type:'checking',balance:1000},{type:'savings',balance:200},{type:'investment',balance:5000},{type:'credit_card',balance:-300,source:'Plaid Sandbox'},{type:'credit_card',balance:40,source:'Plaid Sandbox'},{type:'credit_card',balance:50,source:'Manual'}];
+  expect(c.availableCash(accounts)).toBe(1200);
+  expect(c.totalDebt([{outstanding_balance:10000}],accounts)).toBe(10350);
+  const projection=c.projectYearlyPlan({accounts});expect(projection.yearEndCash).toBe(1200);
+});

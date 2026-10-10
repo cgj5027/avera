@@ -15,6 +15,7 @@ import { getDemoWorkspace, clearDataMode } from '@/lib/mode';
 export default function DemoModeBar() {
   const [busy, setBusy] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
+  const [resetOpen,setResetOpen]=useState(false);
   const { toast } = useToast();
   const ws = getDemoWorkspace();
   if (!ws) return null;
@@ -54,19 +55,20 @@ export default function DemoModeBar() {
         Demo Mode — {profile?.label ?? 'Workspace'}
       </span>
       <span className="rounded-lg border border-border bg-surface-subtle px-2.5 py-1 text-sm text-muted-foreground">
-        {ws.plaid_item_id ? 'Dataset: Plaid Sandbox (simulated bank)' : 'Dataset: Avera sample data'}
+        {ws.plaid_item_id ? 'Dataset: Plaid Sandbox + Avera sample plans' : 'Dataset: Avera sample data'}
       </span>
       <span className="hidden text-sm text-muted-foreground md:inline">Nothing here moves real money.</span>
-      <div className="ml-auto flex items-center gap-2">
-        <Button variant="outline" size="sm" className="min-h-9 rounded-lg" onClick={reset} disabled={busy}>
+      <div className="ml-auto flex flex-wrap items-center gap-2">
+        <Button variant="outline" size="sm" className="min-h-11 rounded-xl" onClick={()=>setResetOpen(true)} disabled={busy}>
           <RotateCcw className="h-4 w-4" aria-hidden="true" />
           Reset demo profile
         </Button>
-        <Button variant="ghost" size="sm" className="min-h-9 rounded-lg" onClick={() => setExitOpen(true)} disabled={busy}>
+        <Button variant="ghost" size="sm" className="min-h-11 rounded-xl" onClick={() => setExitOpen(true)} disabled={busy}>
           <LogOut className="h-4 w-4" aria-hidden="true" />
           Exit Demo Mode
         </Button>
       </div>
+      <ConfirmDeleteDialog open={resetOpen} onOpenChange={setResetOpen} title="Reset this demo profile?" description="This removes and replaces this account’s demo records. Ordinary financial records are preserved." onConfirm={reset} busy={busy} />
       <ConfirmDeleteDialog
         open={exitOpen}
         onOpenChange={setExitOpen}

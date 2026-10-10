@@ -16,7 +16,13 @@
     },
     "access_token": {
       "type": "string",
-      "description": "Plaid access token for this Item. Owner-scoped by RLS; only backend functions acting with the service role send it to Plaid. Never rendered in the UI."
+      "description": "Legacy field, inaccessible to clients. Reconnect old Items after deploying the private credential store.",
+      "rls": {
+        "create": false,
+        "read": false,
+        "update": false,
+        "delete": false
+      }
     },
     "products": {
       "type": "array",
@@ -54,8 +60,7 @@
     }
   },
   "required": [
-    "item_id",
-    "access_token"
+    "item_id"
   ],
   "rls": {
     "create": {

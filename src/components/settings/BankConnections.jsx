@@ -5,13 +5,15 @@ import StatusPill from '@/components/states/StatusPill';
 import ConfirmDeleteDialog from '@/components/finance/ConfirmDeleteDialog';
 import { useToast } from '@/components/ui/use-toast';
 import { base44 } from '@/api/base44Client';
+import { listRecords } from '@/services/dataService';
+import { getDemoWorkspace, setDemoWorkspace } from '@/lib/mode';
 import { connectBank, syncConnections, PLAID_LABEL } from '@/services/plaidClient';
 
-const ITEM_FIELDS = ['item_id', 'institution_name', 'status', 'last_synced_at', 'last_sync_error'];
+
 
 const STATUS_VIEW = {
   active: { tone: 'success', icon: Plug, label: 'Connected' },
-  needs_reauth: { tone: 'warning', icon: RefreshCw, label: 'Needs re-authentication' },
+  needs_reauth: { tone: 'warning', icon: RefreshCw, label: 'Reconnect needed' },
   error: { tone: 'danger', icon: RefreshCw, label: 'Sync error' },
   disconnected: { tone: 'neutral', icon: Plug, label: 'Disconnected' }
 };
@@ -25,23 +27,23 @@ export default function BankConnections() {
   const { toast } = useToast();
 
   const load = async () => {
-    const page = await base44.entities.PlaidItem.filter({}, {
-      sort: '-created_date',
-      limit: 50,
-      fields: ITEM_FIELDS
-    });
-    setItems(page.items);
+    const rows = await listRecords('plaidItem');
+    setItems(rows);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load().catch(()=>setConnectError('Connections could not be loaded. Please retry.')); }, []);
 
-  const handleConnect = async () => {
+  const handleConnect = async (itemId = undefined) => {
     setBusy('connect');
     setConnectError('');
     try {
-      await connectBank();
+      await connectBank({itemId});
+      if (itemId) {
+        const result = await syncConnections(itemId);
+        if (!result?.results?.some(r => r.item_id === itemId && r.status === 'synced')) throw new Error('Reconnection needs a successful sync. Please retry.');
+      }
       await load();
-      toast({ title: 'Test bank connected', description: 'Accounts were imported from the Plaid Sandbox.' });
+      toast({ title: itemId ? 'Test bank reconnected' : 'Test bank connected', description: 'Accounts were imported from the Plaid Sandbox.' });
     } catch (e) {
       setConnectError(e.message || 'Connection cancelled.');
     } finally {
@@ -51,8 +53,10 @@ export default function BankConnections() {
 
   const handleSync = async () => {
     setBusy('sync');
+    setConnectError('');
     try {
-      await syncConnections();
+      const result = await syncConnections();
+      if (!Array.isArray(result?.results) || result.results.some(r => r.status !== 'synced')) throw new Error('Some connections could not sync. Reconnect or retry.');
       await load();
       toast({ title: 'Connections synced', description: 'Balances refreshed and transactions imported.' });
     } catch (e) {
@@ -67,12 +71,17 @@ export default function BankConnections() {
     if (!item) return;
     setBusy('disconnect');
     try {
-      await base44.entities.Account.deleteMany({ plaid_item_id: item.item_id });
-      await base44.entities.Transaction.deleteMany({ plaid_item_id: item.item_id });
-      await base44.entities.PlaidItem.delete(item.id);
+      const response = await base44.functions.invoke('plaidDisconnect', {item_id:item.item_id});
+      if (response.data?.disconnected !== true) throw new Error('Incomplete disconnect');
+      const workspace = getDemoWorkspace();
+      if (workspace?.plaid_item_id === item.item_id) setDemoWorkspace({...workspace,plaid_item_id:null});
+      setConnectError('');
       setPendingDelete(null);
       await load();
       toast({ title: 'Disconnected', description: 'Imported accounts and transactions were removed.' });
+    } catch {
+      setConnectError('Disconnect did not finish. Retry to complete cleanup.');
+      throw new Error('Disconnect failed');
     } finally {
       setBusy('');
     }
@@ -103,15 +112,16 @@ export default function BankConnections() {
                     Last synced: {item.last_synced_at ? new Date(item.last_synced_at).toLocaleString() : 'Never'}
                   </p>
                   {item.last_sync_error && (
-                    <p className="mt-1 text-sm text-danger-text">{item.last_sync_error}</p>
+                    <p className="mt-1 text-sm text-danger-text">The connection needs attention. Retry or reconnect.</p>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex max-w-full flex-wrap items-center gap-2">
                   <StatusPill tone={view.tone} icon={view.icon}>{view.label}</StatusPill>
-                  <Button variant="outline" size="sm" disabled={busy === 'sync'} onClick={handleSync}>
+                  <Button variant="outline" size="sm" disabled={Boolean(busy)} onClick={handleSync}>
                     <RefreshCw aria-hidden="true" /> Sync now
                   </Button>
-                  <Button variant="ghost" size="icon" aria-label={`Disconnect ${item.institution_name || 'test bank'}`} onClick={() => setPendingDelete(item)}>
+                  {item.status === 'needs_reauth' && <Button variant="outline" disabled={Boolean(busy)} onClick={()=>handleConnect(item.item_id)}>Reconnect</Button>}
+                  <Button disabled={Boolean(busy)} variant="ghost" size="icon" aria-label={`Disconnect ${item.institution_name || 'test bank'}`} onClick={() => setPendingDelete(item)}>
                     <Trash2 className="text-danger-text" aria-hidden="true" />
                   </Button>
                 </div>
@@ -125,8 +135,9 @@ export default function BankConnections() {
         <p role="alert" className="mt-3 text-base text-danger-text">{connectError}</p>
       )}
 
+      {items === null && connectError && <Button variant="outline" onClick={()=>load().then(()=>setConnectError('')).catch(()=>setConnectError('Connections could not be loaded. Please retry.'))}>Retry loading connections</Button>}
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <Button className="min-h-11 rounded-xl" onClick={handleConnect} disabled={busy === 'connect'}>
+        <Button className="min-h-11 rounded-xl" onClick={() => handleConnect()} disabled={Boolean(busy)}>
           <Plus aria-hidden="true" /> Connect test bank
         </Button>
       </div>

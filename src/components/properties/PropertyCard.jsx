@@ -29,7 +29,7 @@ export default function PropertyCard({ property, mortgage, onEdit, onDelete, bus
             <span className="font-heading text-lg font-semibold tabular-nums text-foreground">
               {formatCurrency(valuation.value)}
             </span>
-            <SourceChip source="Manual" />
+            <SourceChip source={property.source || 'Manual'} />
           <p className="mt-0.5 text-sm text-muted-foreground">
             User-provided estimate{valuation.asOf ? `, as of ${formatDate(valuation.asOf)}` : ''}
           </p>

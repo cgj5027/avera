@@ -15,15 +15,15 @@ export default function ModeIndicator({ variant = 'inline', className = '' }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm',
+        'inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm',
         variant === 'sidebar'
           ? 'mx-3 bg-white/10 text-white/90'
-          : 'whitespace-nowrap border border-border bg-surface-subtle text-muted-foreground',
+          : 'whitespace-normal border border-border bg-surface-subtle text-muted-foreground',
         className
       )}
     >
       <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-      {modeLabel(mode)}
+      <span className="min-w-0 break-words">{modeLabel(mode)}</span>
     </span>
   );
 }

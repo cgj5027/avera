@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Repeat, Check, Pencil, BellOff, Download, Sparkles, RefreshCw, Keyboard, Plus, Columns3 } from 'lucide-react';
+import { Search, Repeat, Check, Pencil, BellOff, Download, Sparkles, Plus, Columns3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label';
 import { estimateBillCandidates, normalizeName } from '@/services/plaidEstimates';
 import ManualTransactionDialog from '@/components/bills/ManualTransactionDialog';
 import { formatCurrency } from '@/utils/format';
+import SourceChip from '@/components/states/SourceChip';
 
 const PAGE_SIZE = 25;
 const UNCATEGORIZED = 'uncategorized';
@@ -360,6 +361,7 @@ export default function TransactionsTable({
                     {show.name && (
                       <TableCell className="font-medium text-foreground">
                         {t.description || 'Unnamed'}
+                        {t.exclude_from_cashflow && <span className="block text-xs text-muted-foreground">Transfer · excluded from cash flow</span>}
                       </TableCell>
                     )}
                     {show.account && (
@@ -391,17 +393,7 @@ export default function TransactionsTable({
                     )}
                     {show.source && (
                       <TableCell>
-                        {synced ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-info-surface px-2 py-0.5 text-xs font-medium text-info">
-                          <RefreshCw className="h-3 w-3" aria-hidden="true" />
-                          Synced
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-surface-subtle px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                          <Keyboard className="h-3 w-3" aria-hidden="true" />
-                          Manual
-                        </span>
-                      )}
+                        <SourceChip source={t.source || (synced ? 'Plaid Sandbox' : 'Manual')} />
                       </TableCell>
                     )}
                     {show.amount && (

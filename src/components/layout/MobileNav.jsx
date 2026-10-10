@@ -22,8 +22,8 @@ export default function MobileNav() {
   return (
     <>
       <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur lg:hidden">
-        <div className="flex h-14 items-center justify-between px-4">
-          <div className="flex items-center gap-2.5">
+        <div className="flex min-h-14 items-center justify-between py-2 px-4">
+          <div className="flex shrink-0 items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">
               A
             </span>
