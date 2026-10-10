@@ -15,6 +15,7 @@ export const DATA_ENTITIES = {
   account: 'Account',
   transaction: 'Transaction',
   bill: 'Bill',
+  billSuggestionDismissal: 'BillSuggestionDismissal',
   budgetCategory: 'BudgetCategory',
   goal: 'Goal',
   property: 'Property',

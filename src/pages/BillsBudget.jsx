@@ -12,6 +12,7 @@ import ConfirmDeleteDialog from '@/components/finance/ConfirmDeleteDialog';
 import LoadingState from '@/components/states/LoadingState';
 import ErrorState from '@/components/states/ErrorState';
 import EmptyState from '@/components/states/EmptyState';
+import BillSuggestions from '@/components/bills/BillSuggestions';
 import BillCard from '@/components/bills/BillCard';
 import BillDialog from '@/components/bills/BillDialog';
 import TransactionsTable from '@/components/bills/TransactionsTable';
@@ -267,6 +268,7 @@ export default function BillsBudget() {
         </TabsList>
 
         <TabsContent value="bills" className="mt-0 space-y-4">
+          <BillSuggestions onAdded={reload} />
           <div className="flex justify-end">
             <Button onClick={() => setBillDialog({ open: true, bill: null })} className="min-h-11 rounded-xl px-4">
               <Plus className="mr-2 h-4 w-4" aria-hidden="true" />

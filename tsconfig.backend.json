@@ -5,5 +5,5 @@
     "lib":["ES2022","DOM"], "baseUrl":".",
     "paths":{"npm:@base44/sdk@0.8.52":["node_modules/@base44/sdk/dist/index.d.ts"]}
   },
-  "include":["base44/runtime.d.ts","base44/functions/plaid*/entry.ts","base44/functions/demoSandboxConnect/entry.ts","base44/functions/askAvera/entry.ts","base44/functions/searchJobOpportunities/entry.ts","base44/shared/opportunitySource.ts","base44/shared/plaid*.ts","base44/shared/dataset.ts","base44/shared/demoPlaidConfigs.ts"]
+  "include":["base44/runtime.d.ts","base44/functions/plaid*/entry.ts","base44/functions/demoSandboxConnect/entry.ts","base44/functions/askAvera/entry.ts","base44/functions/suggestBills/entry.ts","base44/shared/recurringBills.ts","base44/functions/searchJobOpportunities/entry.ts","base44/shared/opportunitySource.ts","base44/shared/plaid*.ts","base44/shared/dataset.ts","base44/shared/demoPlaidConfigs.ts"]
 }
