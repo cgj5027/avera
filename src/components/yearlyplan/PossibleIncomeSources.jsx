@@ -28,7 +28,7 @@ export default function PossibleIncomeSources({ candidates, busy, onAdd }) {
                 {candidate.months_seen === 1 ? '' : 's'} · last seen {formatDate(candidate.last_date)}
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <span className="flex items-center gap-2">
                 <span className="font-heading text-base font-semibold tabular-nums text-foreground">
                   {formatCurrency(candidate.amount)}

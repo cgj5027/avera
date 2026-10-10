@@ -10,7 +10,7 @@ export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!user?.id) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));
     const str = (v) => (typeof v === 'string' ? v.trim().slice(0, 400) : '');
@@ -29,7 +29,7 @@ export default async function(req) {
 
     const result = await searchListings(base44, profile, 'web_search');
     return Response.json(result);
-  } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+  } catch {
+    return Response.json({ error: 'Job search is unavailable. Please retry.' }, { status: 502 });
   }
 }

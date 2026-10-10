@@ -52,7 +52,7 @@ export default async function(req) {
           limit: 5, fields: ['household_name', 'household_type', 'budget_style', 'emergency_fund_months']
         }),
         allRecords(base44.entities.JobProfile, scope, {
-          limit: 5, fields: ['skills', 'preferred_roles', 'job_type']
+          sort:'-updated_date', limit: 5, fields: ['skills', 'preferred_roles', 'job_type']
         }),
       ]);
 

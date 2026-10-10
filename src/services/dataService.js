@@ -45,7 +45,15 @@ function financialScope(user, key, query, allDatasets = false) {
       const ws=getDemoWorkspace();
       if (!ws) throw new Error('Select a demo profile.');
       scoped.demo_profile=ws.profile;
-    } else scoped.demo_profile={$exists:false};
+    } else {
+      // Optional schema fields can be stored as null or an empty string.
+      const ordinary = {$or:[{demo_profile:{$exists:false}},{demo_profile:null},{demo_profile:''}]};
+      if (scoped.$or) {
+        const {$or,...rest}=scoped;
+        return {...rest,$and:[...(scoped.$and || []),{$or},ordinary]};
+      }
+      return {...scoped,...ordinary};
+    }
   }
   return scoped;
 }
@@ -87,7 +95,11 @@ export async function createRecord(key, data) {
   await currentUser();
   if (key === 'budgetCategory' && (await listRecords(key, { name: data.name })).length) throw new Error('A category with this name already exists.');
   const fields = writable(data);
-  if (getDataMode() === 'demo' && getDemoWorkspace() && key !== 'plaidItem') fields.demo_profile = getDemoWorkspace().profile;
+  if (key !== 'plaidItem') {
+    const workspace = getDemoWorkspace();
+    if (getDataMode() === 'demo' && !workspace) throw new Error('Select a demo profile.');
+    fields.demo_profile = getDataMode() === 'demo' ? workspace.profile : '';
+  }
   return ent(key).create(fields);
 }
 export async function updateRecord(key, id, data) {
@@ -138,4 +150,13 @@ export async function getHouseholdProfile() {
 export async function saveHouseholdProfile(data) {
   const profile = await getHouseholdProfile();
   return profile ? updateRecord('householdProfile', profile.id, data) : createRecord('householdProfile', data);
+}
+/** Use the most recently saved work profile if older duplicates exist. */
+export async function getJobProfile() {
+  const profiles = await listRecords('jobProfile');
+  const timestamp = profile => {
+    const date = Date.parse(profile.updated_date || profile.created_date || '');
+    return Number.isFinite(date) ? date : 0;
+  };
+  return profiles.sort((a,b) => timestamp(b)-timestamp(a))[0] ?? null;
 }

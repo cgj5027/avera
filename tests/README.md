@@ -1,5 +1,7 @@
 # Audit validation
 
+For the persistence follow-up, build the frontend, start `npm run preview -- --host 127.0.0.1 --port 4173`, then run `node tests/persistence-followup-browser.cjs`. This runner uses durable in-memory API fixtures and checks save/edit/page-return workflows plus opportunity success/empty/failure states at four widths in both themes. See `docs/STAGE3_FOLLOWUP.md`; fixture checks do not certify hosted persistence or web-search availability.
+
 Run `npm ci`, then `npm test`, `npm run lint`, `npm run typecheck`, and `npm run build` from the repository root.
 
 Unit tests cover calculations, money/date handling, recurrence, and redirect security. Integration tests exercise the actual React components and persistence service using an in-memory Base44 SDK fixture. They do not prove deployed RLS, email delivery, OAuth, or durable cloud persistence.

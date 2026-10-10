@@ -120,7 +120,7 @@ describe('actual backend handlers with SDK/Plaid fixtures; NOT real Sandbox requ
   it('Ask Avera applies active dataset filters to every entity read',async()=>{
     await ask(req({question:'What are my bills?',dataset:{mode:'demo',profile:'early_career'}}));
     for(const entity of Object.values(fixture.client.entities)) if(entity.filter.mock.calls.length) expect(entity.filter.mock.calls[0][0]).toMatchObject({created_by_id:'a',demo_profile:'early_career'});
-    expect(datasetQuery({id:'a'},{mode:'ordinary'})).toEqual({created_by_id:'a',demo_profile:{$exists:false}});
+    expect(datasetQuery({id:'a'},{mode:'ordinary'})).toEqual({created_by_id:'a',$or:[{demo_profile:{$exists:false}},{demo_profile:null},{demo_profile:''}]});
     expect(()=>datasetQuery({id:'a'},{mode:'demo',profile:'invalid'})).toThrow();
   });
   it('uses the private cursor even if public metadata is edited',async()=>{

@@ -122,6 +122,12 @@ export default function YearlyPlan() {
       incomeDialog.income ? 'Income source updated' : 'Income source added'
     );
 
+  // A detected source is always new, independent of a previously edited dialog.
+  const saveDetectedIncome = payload => run(
+    () => createRecord('incomeSource',payload),
+    'Income source added'
+  );
+
   /* Transactions flagged as income (linked or manual) become possible income sources. */
   const incomeCandidates = estimateIncomeCandidates(transactions).filter(
     (c) => !incomes.some((i) => normalizeName(i.name) === normalizeName(c.name))
@@ -362,7 +368,7 @@ export default function YearlyPlan() {
           if (!open) setIncomeCandidate(null);
         }}
         candidate={incomeCandidate}
-        onSave={saveIncome}
+        onSave={saveDetectedIncome}
       />
       <ConfirmDeleteDialog
         open={Boolean(deleteIncome) || Boolean(deleteForecast)}

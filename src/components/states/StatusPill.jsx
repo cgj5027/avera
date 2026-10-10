@@ -19,7 +19,7 @@ export default function StatusPill({ tone = 'neutral', icon = undefined, childre
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-border px-2.5 py-1 text-sm font-medium',
+        'inline-flex max-w-full items-center gap-1.5 whitespace-normal rounded-full border border-border px-2.5 py-1 text-sm font-medium',
         TONES[tone],
         className
       )}

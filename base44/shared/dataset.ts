@@ -5,5 +5,5 @@ export function datasetQuery(user, dataset) {
     return {created_by_id:user.id,demo_profile:dataset.profile};
   }
   if (dataset?.mode && dataset.mode!=='ordinary') throw new Error('Invalid dataset mode');
-  return {created_by_id:user.id,demo_profile:{$exists:false}};
+  return {created_by_id:user.id,$or:[{demo_profile:{$exists:false}},{demo_profile:null},{demo_profile:''}]};
 }

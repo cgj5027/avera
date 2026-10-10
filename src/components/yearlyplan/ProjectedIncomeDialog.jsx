@@ -97,7 +97,7 @@ export default function ProjectedIncomeDialog({ open, onOpenChange, candidate, o
             </p>
           </div>
         )}
-        <form className="space-y-4" onSubmit={submit}>
+        <form className="space-y-4" onSubmit={submit} aria-busy={saving}>
           <div className="space-y-1.5">
             <Label htmlFor="projected-income-name">Source name</Label>
             <Input
@@ -107,7 +107,7 @@ export default function ProjectedIncomeDialog({ open, onOpenChange, candidate, o
               className="min-h-11 rounded-xl"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="projected-income-type">Type</Label>
               <Select value={form.type} onValueChange={(v) => setForm((f) => ({ ...f, type: v }))}>
@@ -147,7 +147,7 @@ export default function ProjectedIncomeDialog({ open, onOpenChange, candidate, o
           {error && <p role="alert" className="text-base text-danger-text">{error}</p>}
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={saving}>Add income source</Button>
+            <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Add income source'}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
