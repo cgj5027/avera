@@ -159,18 +159,20 @@ export default function TransactionsTable({
           </Button>
           <Button
             variant="outline"
+            size="icon"
             onClick={exportCsv}
             disabled={visible.length === 0}
-            className="min-h-11 rounded-xl"
+            className="min-h-11 w-11 shrink-0 rounded-xl"
+            aria-label="Export CSV"
+            title="Export CSV"
           >
-            <Download className="mr-2 h-4 w-4" aria-hidden="true" />
-            Export CSV
+            <Download className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       </div>
 
-      <div className="mt-4 flex w-full flex-col gap-2">
-        <div className="relative">
+      <div className="mt-4 flex w-full gap-2 overflow-x-auto pb-1">
+        <div className="relative w-56 shrink-0">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input
             value={search}
@@ -185,17 +187,17 @@ export default function TransactionsTable({
           value={dateFrom}
           onChange={(e) => setDateFrom(e.target.value)}
           aria-label="From date"
-          className="w-full rounded-xl"
+          className="w-40 shrink-0 rounded-xl"
         />
         <Input
           type="date"
           value={dateTo}
           onChange={(e) => setDateTo(e.target.value)}
           aria-label="To date"
-          className="w-full rounded-xl"
+          className="w-40 shrink-0 rounded-xl"
         />
         <Select value={account} onValueChange={setAccount}>
-          <SelectTrigger className="w-full" aria-label="Filter by account">
+          <SelectTrigger className="w-40 shrink-0" aria-label="Filter by account">
             <SelectValue placeholder="All accounts" />
           </SelectTrigger>
           <SelectContent>
@@ -206,7 +208,7 @@ export default function TransactionsTable({
           </SelectContent>
         </Select>
         <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger className="w-full" aria-label="Filter by transaction category">
+          <SelectTrigger className="w-48 shrink-0" aria-label="Filter by transaction category">
             <SelectValue placeholder="All transaction categories" />
           </SelectTrigger>
           <SelectContent>
@@ -218,7 +220,7 @@ export default function TransactionsTable({
           </SelectContent>
         </Select>
         <Select value={type} onValueChange={setType}>
-          <SelectTrigger className="w-full" aria-label="Filter by type">
+          <SelectTrigger className="w-32 shrink-0" aria-label="Filter by type">
             <SelectValue placeholder="All types" />
           </SelectTrigger>
           <SelectContent>
@@ -228,7 +230,7 @@ export default function TransactionsTable({
           </SelectContent>
         </Select>
         <Select value={source} onValueChange={setSource}>
-          <SelectTrigger className="w-full" aria-label="Filter by source">
+          <SelectTrigger className="w-44 shrink-0" aria-label="Filter by source">
             <SelectValue placeholder="All sources" />
           </SelectTrigger>
           <SelectContent>
