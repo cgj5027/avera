@@ -1,0 +1,90 @@
+{
+  "name": "HouseholdProfile",
+  "type": "object",
+  "properties": {
+    "household_name": {
+      "type": "string"
+    },
+    "household_type": {
+      "type": "string",
+      "enum": [
+        "single_income",
+        "multi_income"
+      ],
+      "default": "single_income"
+    },
+    "default_pay_frequency": {
+      "type": "string",
+      "enum": [
+        "weekly",
+        "biweekly",
+        "semimonthly",
+        "monthly",
+        "quarterly",
+        "semiannual",
+        "annual"
+      ],
+      "default": "monthly"
+    },
+    "budget_style": {
+      "type": "string",
+      "enum": [
+        "category_caps",
+        "zero_based",
+        "flexible"
+      ],
+      "default": "category_caps"
+    },
+    "emergency_fund_months": {
+      "type": "number"
+    },
+    "currency": {
+      "type": "string",
+      "default": "USD"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "name": "MortgageRecord",
+  "type": "object",
+  "properties": {
+    "property_id": {
+      "type": "string"
+    },
+    "lender": {
+      "type": "string"
+    },
+    "outstanding_balance": {
+      "type": "number",
+      "default": 0
+    },
+    "monthly_payment": {
+      "type": "number",
+      "default": 0
+    },
+    "interest_rate": {
+      "type": "number"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "property_id"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
