@@ -240,15 +240,13 @@ export default function Overview() {
           label="Available cash"
           value={accounts.length ? formatCurrency(cash) : '—'}
           note={accounts.length ? 'Across your saved accounts.' : 'Add an account in the Accounts card below.'}
+          hint={accounts.length ? 'Combined balance of all saved accounts — checking, savings, cash, and other.' : null}
         />
         <SummaryCard
           label="Total debts"
           value={mortgages.length || creditCards.length ? formatCurrency(debts) : '—'}
-          note={
-            mortgages.length || creditCards.length
-              ? 'Outstanding mortgage balances plus credit card balances owed.'
-              : 'Add a mortgage in Properties or a credit card in Accounts.'
-          }
+          note={mortgages.length || creditCards.length ? 'Mortgages and credit cards owed.' : 'Add a mortgage in Properties or a credit card in Accounts.'}
+          hint={mortgages.length || creditCards.length ? 'Outstanding mortgage balances plus credit card balances owed.' : null}
         />
       </div>
       <div className="mt-4">
