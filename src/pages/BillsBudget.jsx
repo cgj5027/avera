@@ -345,6 +345,9 @@ export default function BillsBudget() {
           }}
           category={linkedDialog}
           transactions={linkedForCategory(linkedDialog.name)}
+          busy={busy}
+          onEditTransaction={(tx) => setLogDialog({ ...linkedDialog, _transaction: tx })}
+          onDeleteTransaction={(tx) => setDeleteTarget({ kind: 'transaction', record: tx })}
         />
       )}
       <ConfirmDeleteDialog

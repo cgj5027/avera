@@ -217,11 +217,12 @@ it('edits and deletes logged spending through the budget UI', async () => {
   render(<BillsBudget />);
   const tab=await screen.findByRole('tab',{name:'Budget',exact:true});
   fireEvent.mouseDown(tab,{button:0,ctrlKey:false});fireEvent.click(tab);
+  fireEvent.click(await screen.findByRole('button',{name:/View transactions/}));
   fireEvent.click(await screen.findByRole('button',{name:'Edit spending Lunch'}));
   fireEvent.change(screen.getByLabelText('Amount'),{target:{value:'15'}});
   fireEvent.click(screen.getByRole('button',{name:'Save changes'}));
   await waitFor(()=>expect(rows.Transaction[0].amount).toBe(15));
-  await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
+  await waitFor(()=>expect(screen.queryByRole('button',{name:'Save changes'})).toBeNull());
   fireEvent.click(screen.getByRole('button',{name:'Delete spending Lunch'}));
   fireEvent.click(screen.getByRole('button',{name:'Delete',exact:true}));
   await waitFor(()=>expect(rows.Transaction).toHaveLength(0));
