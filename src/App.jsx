@@ -20,6 +20,7 @@ import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
+import OAuthConsent from '@/pages/OAuthConsent';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { Navigate, useLocation } from 'react-router-dom';
 import LoadingState from '@/components/states/LoadingState';
@@ -42,6 +43,7 @@ export const AuthenticatedApp = () => {
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/oauth/consent" element={<OAuthConsent />} />
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to={loginPath} replace />} />}>
       <Route element={<AppLayout />}>
         <Route path="/" element={<Overview />} />

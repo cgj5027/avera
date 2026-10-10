@@ -1,0 +1,83 @@
+{
+  "auth": "oauth",
+  "login_path": null,
+  "consent_path": null,
+  "tools": {
+    "excluded_agents": [],
+    "entity_overrides": {
+      "Account": {
+        "operations": [
+          "read"
+        ],
+        "description": null
+      },
+      "Bill": {
+        "operations": [
+          "read"
+        ],
+        "description": null
+      },
+      "BudgetCategory": {
+        "operations": [
+          "read"
+        ],
+        "description": null
+      },
+      "ForecastRecord": {
+        "operations": [
+          "read"
+        ],
+        "description": null
+      },
+      "Goal": {
+        "operations": [
+          "read"
+        ],
+        "description": null
+      },
+      "HouseholdProfile": {
+        "operations": [
+          "read"
+        ],
+        "description": null
+      },
+      "IncomeSource": {
+        "operations": [
+          "read"
+        ],
+        "description": null
+      },
+      "JobProfile": {
+        "operations": [
+          "read"
+        ],
+        "description": null
+      },
+      "MortgageRecord": {
+        "operations": [
+          "read"
+        ],
+        "description": null
+      },
+      "PlaidItem": {
+        "operations": [
+          "read"
+        ],
+        "description": null
+      },
+      "Property": {
+        "operations": [
+          "read"
+        ],
+        "description": null
+      },
+      "Transaction": {
+        "operations": [
+          "read"
+        ],
+        "description": null
+      }
+    },
+    "functions": []
+  }
+}
