@@ -382,6 +382,11 @@ export function buildDemoDataset(profileKey, today = new Date(), { includeTransa
   const built = structuralRecords(profileKey, today);
   if (!built) throw new Error('Unknown demo profile.');
   const { base, mortgages } = built;
+  // The existing expense model adds bills and budget caps. Keep sample caps
+  // discretionary rather than budgeting the same fixed obligation twice.
+  if (profileKey === 'early_career') base.bill.push({name:'City Power & Water',amount:78,frequency:'monthly',next_due_date:upcomingDay(today,10),category:'Utilities',recurrence_day:10,...DEMO_TAGGED(profileKey)});
+  const fixedCategories = new Set(base.bill.map(b => b.category));
+  base.budgetCategory = base.budgetCategory.filter(category => !fixedCategories.has(category.name));
   const dataset = { ...base };
 
   if (includeTransactionData) {
@@ -401,10 +406,10 @@ export function buildDemoDataset(profileKey, today = new Date(), { includeTransa
 /**
  * Ordering-aware seeding helper: mortgages need the saved Property ids.
  * Creates every entity in the dataset; returns what was created.
- * Household and job profiles are skipped when an ordinary (untagged) one
- * already exists, so demo data never displaces a user's real profile.
+ * Demo household and job profiles remain separate from ordinary profiles;
+ * dataset filters select them without overwriting ordinary records.
  */
-export async function createDemoRecords(dataset, createRows, hasOrdinaryRecord) {
+export async function createDemoRecords(dataset, createRows) {
   const created = { property: [] };
   /* Properties first so mortgage builders can reference their ids. */
   if (dataset.property?.length) {
@@ -416,10 +421,10 @@ export async function createDemoRecords(dataset, createRows, hasOrdinaryRecord) 
   for (const key of ['transaction', 'account', 'incomeSource', 'bill', 'budgetCategory', 'goal']) {
     if (dataset[key]?.length) await createRows(key, dataset[key]);
   }
-  if (dataset.householdProfile?.length && !(await hasOrdinaryRecord('householdProfile'))) {
+  if (dataset.householdProfile?.length) {
     await createRows('householdProfile', dataset.householdProfile);
   }
-  if (dataset.jobProfile?.length && !(await hasOrdinaryRecord('jobProfile'))) {
+  if (dataset.jobProfile?.length) {
     await createRows('jobProfile', dataset.jobProfile);
   }
   return created;

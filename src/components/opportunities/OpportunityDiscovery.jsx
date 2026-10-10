@@ -7,7 +7,7 @@ import OpportunityProfileForm from './OpportunityProfileForm';
 import ProfileSummary from './ProfileSummary';
 import ResumeUpload from './ResumeUpload';
 import OpportunityResults from './OpportunityResults';
-import { listRecords, createRecord, updateRecord } from '@/services/dataService';
+import { getJobProfile, createRecord, updateRecord } from '@/services/dataService';
 
 /**
  * Income-opportunity discovery: a saved, read-until-edited work profile plus
@@ -15,6 +15,7 @@ import { listRecords, createRecord, updateRecord } from '@/services/dataService'
  */
 export default function OpportunityDiscovery() {
   const [profile, setProfile] = useState(null);
+  const [draftProfile,setDraftProfile] = useState(null);
   const [editing, setEditing] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -25,7 +26,7 @@ export default function OpportunityDiscovery() {
 
   /** Resume suggestions land in the editable form; nothing saves until the user confirms. */
   const applySuggestions = (suggestions) => {
-    setProfile((p) => ({ ...(p ?? {}), ...suggestions }));
+    setDraftProfile({...(profile ?? {}),...suggestions});
     setEditing(true);
     setApplyKey((k) => k + 1);
   };
@@ -34,9 +35,9 @@ export default function OpportunityDiscovery() {
     let cancelled = false;
     setLoaded(false);
     setLoadError(false);
-    listRecords('jobProfile')
-      .then((items) => {
-        if (!cancelled) setProfile(items[0] ?? null);
+    getJobProfile()
+      .then((savedProfile) => {
+        if (!cancelled) setProfile(savedProfile);
       })
       .catch(() => {
         if (!cancelled) setLoadError(true);
@@ -54,11 +55,13 @@ export default function OpportunityDiscovery() {
     setSaving(true);
     setSaveError(false);
     try {
-      // Resume suggestions can sit on `profile` before any record exists, so key off the saved id.
+      // Update only the persisted profile; resume suggestions remain an unsaved draft.
       const saved = profile?.id
         ? await updateRecord('jobProfile', profile.id, values)
         : await createRecord('jobProfile', values);
-      setProfile(saved);
+      if (!saved?.id) throw new Error('Profile save was not confirmed');
+      setProfile({...profile,...values,...saved});
+      setDraftProfile(null);
       setEditing(false);
     } catch {
       setSaveError(true);
@@ -94,6 +97,7 @@ export default function OpportunityDiscovery() {
             profile={profile}
             onEdit={() => {
               setSaveError(false);
+              setDraftProfile(null);
               setEditing(true);
             }}
           />
@@ -102,10 +106,10 @@ export default function OpportunityDiscovery() {
             <ResumeUpload onApply={applySuggestions} />
             <OpportunityProfileForm
               key={applyKey}
-              profile={profile}
+              profile={draftProfile ?? profile}
               saving={saving}
               onSave={save}
-              onCancel={profile?.id ? () => setEditing(false) : undefined}
+              onCancel={profile?.id ? () => {setDraftProfile(null);setEditing(false);} : undefined}
             />
           </div>
         ) : (

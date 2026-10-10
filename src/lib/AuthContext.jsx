@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { queryClientInstance } from '@/lib/query-client';
 import { appParams } from '@/lib/app-params';
+import { setModeOwner, clearDataMode } from '@/lib/mode';
 
 const AuthContext = createContext(null);
 
@@ -37,7 +38,7 @@ export const AuthProvider = ({ children }) => {
         }
         setIsLoadingPublicSettings(false);
       } catch (appError) {
-        console.error('App state check failed:', appError);
+        console.error('App state check failed');
         
         // Handle app-level errors
         if (appError.status === 403 && appError.data?.extra_data?.reason) {
@@ -68,7 +69,7 @@ export const AuthProvider = ({ children }) => {
         setIsLoadingAuth(false);
       }
     } catch (error) {
-      console.error('Unexpected error:', error);
+      console.error('App state check failed unexpectedly');
       setAuthError({
         type: 'unknown',
         message: error.message || 'An unexpected error occurred'
@@ -85,12 +86,14 @@ export const AuthProvider = ({ children }) => {
       const currentUser = await base44.auth.me();
       if (!currentUser?.id) throw new Error('Account verification failed');
       setAuthError(null);
+      setModeOwner(currentUser.id);
       setUser(currentUser);
       setIsAuthenticated(true);
       setIsLoadingAuth(false);
       setAuthChecked(true);
     } catch (error) {
-      console.error('User auth check failed:', error);
+      console.error('User auth check failed');
+      setModeOwner(null);
       setUser(null);
       setIsLoadingAuth(false);
       setIsAuthenticated(false);
@@ -109,6 +112,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = (shouldRedirect = true) => {
+    clearDataMode();
+    setModeOwner(null);
     setUser(null);
     setIsAuthenticated(false);
     setAuthChecked(true);

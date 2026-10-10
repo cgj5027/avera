@@ -5,6 +5,7 @@
  * anchors on created_by_id). Source labels travel with every record.
  */
 import { base44 } from '@/api/base44Client';
+import { setModeOwner, getDataMode, getDemoWorkspace } from '@/lib/mode';
 
 export const DATA_STAGE = 'live';
 
@@ -32,18 +33,38 @@ const ent = (key) => {
 async function currentUser() {
   const user = await base44.auth.me();
   if (!user?.id) throw new Error('Sign in to access your financial records.');
+  setModeOwner(user.id);
   return user;
 }
 
-/** Explicit owner filtering complements, and never replaces, server RLS. */
-export async function listPage(key, query = {}, opts = {}) {
-  const user = await currentUser();
-  return ent(key).filter({ ...query, created_by_id: user.id }, { limit: 100, ...opts });
+/** Dataset filters supplement, never replace, authenticated server RLS. */
+function financialScope(user, key, query, allDatasets = false) {
+  const scoped = { ...query, created_by_id:user.id };
+  if (!allDatasets && key !== 'plaidItem') {
+    if (getDataMode() === 'demo') {
+      const ws=getDemoWorkspace();
+      if (!ws) throw new Error('Select a demo profile.');
+      scoped.demo_profile=ws.profile;
+    } else {
+      // Optional schema fields can be stored as null or an empty string.
+      const ordinary = {$or:[{demo_profile:{$exists:false}},{demo_profile:null},{demo_profile:''}]};
+      if (scoped.$or) {
+        const {$or,...rest}=scoped;
+        return {...rest,$and:[...(scoped.$and || []),{$or},ordinary]};
+      }
+      return {...scoped,...ordinary};
+    }
+  }
+  return scoped;
 }
-
-export async function listRecords(key, query = {}) {
+export async function listPage(key, query = {}, opts = {}) {
+  const user=await currentUser();
+  const {allDatasets=false,...options}=opts;
+  return ent(key).filter(financialScope(user,key,query,allDatasets), {limit:100,...options});
+}
+export async function listRecords(key, query = {}, { allDatasets = false } = {}) {
   const user = await currentUser();
-  const scoped = { ...query, created_by_id: user.id };
+  const scoped=financialScope(user,key,query,allDatasets);
   const items = [];
   const cursors = new Set();
   let cursor;
@@ -73,7 +94,13 @@ async function owned(key, id) {
 export async function createRecord(key, data) {
   await currentUser();
   if (key === 'budgetCategory' && (await listRecords(key, { name: data.name })).length) throw new Error('A category with this name already exists.');
-  return ent(key).create(writable(data));
+  const fields = writable(data);
+  if (key !== 'plaidItem') {
+    const workspace = getDemoWorkspace();
+    if (getDataMode() === 'demo' && !workspace) throw new Error('Select a demo profile.');
+    fields.demo_profile = getDataMode() === 'demo' ? workspace.profile : '';
+  }
+  return ent(key).create(fields);
 }
 export async function updateRecord(key, id, data) {
   const before = await owned(key, id);
@@ -110,9 +137,9 @@ export async function createRecords(key, rows) {
 /** Deletes every owned record matching the query, in small batches.
  *  Callers keep the query narrow (e.g. a demo_profile tag) on purpose. */
 export async function deleteRecordsWhere(key, query) {
-  const rows = await listRecords(key, query);
+  const rows = await listRecords(key, query, {allDatasets:true});
   for (const batch of chunk(rows, 10)) {
-    await Promise.allSettled(batch.map((row) => ent(key).delete(row.id)));
+    await Promise.all(batch.map((row) => ent(key).delete(row.id)));
   }
   return rows.length;
 }
@@ -123,4 +150,13 @@ export async function getHouseholdProfile() {
 export async function saveHouseholdProfile(data) {
   const profile = await getHouseholdProfile();
   return profile ? updateRecord('householdProfile', profile.id, data) : createRecord('householdProfile', data);
+}
+/** Use the most recently saved work profile if older duplicates exist. */
+export async function getJobProfile() {
+  const profiles = await listRecords('jobProfile');
+  const timestamp = profile => {
+    const date = Date.parse(profile.updated_date || profile.created_date || '');
+    return Number.isFinite(date) ? date : 0;
+  };
+  return profiles.sort((a,b) => timestamp(b)-timestamp(a))[0] ?? null;
 }

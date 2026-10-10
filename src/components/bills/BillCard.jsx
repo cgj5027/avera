@@ -29,7 +29,7 @@ export default function BillCard({ bill, onEdit, onDelete, onMarkPaid, busy }) {
           Reminder {bill.reminder_days ?? 3} days before
         </span>
       </div>
-      <div className="mt-3"><SourceChip source="Manual" /></div>
+      <div className="mt-3"><SourceChip source={bill.source || 'Manual'} /></div>
       <div className="mt-4 flex flex-wrap gap-2">
         {status.key !== 'paid' && (
           <Button size="sm" variant="outline" onClick={() => { void onMarkPaid(bill).catch(() => {}); }} disabled={busy}>

@@ -6,7 +6,7 @@ import InfoHint from '@/components/states/InfoHint';
  * subheading; longer explanations live in hover info icons. The income and
  * recurring cards pair the projected figure with the tracked month activity.
  */
-function FlowCard({ title, subtitle, projected, tracked }) {
+function FlowCard({ title, subtitle, projected, tracked = undefined }) {
   return (
     <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
       <div>

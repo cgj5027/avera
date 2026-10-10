@@ -32,7 +32,7 @@ export default function GoalCard({ goal, monthlyCapacity, onEdit, onDelete, onLo
         </p>
       )}
       <div className="mt-3">
-        <SourceChip source="Manual" />
+        <SourceChip source={goal.source || 'Manual'} />
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
         <Button size="sm" variant="outline" onClick={() => onLogContribution(goal)} disabled={busy}>

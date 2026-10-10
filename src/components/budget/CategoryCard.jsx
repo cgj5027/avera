@@ -32,7 +32,7 @@ export default function CategoryCard({ category, spent, onEdit, onDelete, onLogS
         )}
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <SourceChip source="Manual" />
+        <SourceChip source={category.source || 'Manual'} />
         {remaining < 0 && <StatusPill tone="danger" icon={CircleDollarSign}>Over limit</StatusPill>}
       </div>
       <div className="mt-4 flex flex-wrap gap-2">

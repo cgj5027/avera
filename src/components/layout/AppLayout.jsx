@@ -1,10 +1,11 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import SidebarNav from './SidebarNav';
 import MobileNav from './MobileNav';
 import DemoModeBar from './DemoModeBar';
 
 /** App shell: forest sidebar on desktop, labeled bar + More sheet on mobile. */
 export default function AppLayout() {
+  const isChat = useLocation().pathname.replace(/\/$/, '') === '/ask-avera';
   return (
     <div className="min-h-dvh bg-background">
       <a
@@ -14,10 +15,10 @@ export default function AppLayout() {
         Skip to main content
       </a>
       <SidebarNav />
-      <div className="lg:pl-60">
+      <div className={isChat ? 'flex h-dvh flex-col lg:pl-60' : 'lg:pl-60'}>
         <MobileNav />
-        <main id="main-content" className="pb-28 lg:pb-12">
-          <DemoModeBar />
+        <main id="main-content" className={isChat ? 'flex min-h-0 flex-1 flex-col pb-16 lg:pb-0' : 'pb-28 lg:pb-12'}>
+          <DemoModeBar compact={isChat} />
           <Outlet />
         </main>
       </div>

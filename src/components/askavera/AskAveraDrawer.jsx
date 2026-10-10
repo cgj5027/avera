@@ -9,8 +9,8 @@ import AskAveraConversation from './AskAveraConversation';
 export default function AskAveraDrawer({ open, onOpenChange }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-lg">
-        <SheetHeader className="border-b border-border p-4 text-left">
+      <SheetContent side="right" className="flex h-dvh w-full flex-col gap-0 p-0 sm:max-w-2xl">
+        <SheetHeader className="shrink-0 border-b border-border p-4 pr-12 text-left sm:p-6 sm:pr-12">
           <SheetTitle className="flex items-center gap-2 text-lg font-semibold text-foreground">
             <Sparkles className="h-5 w-5 text-primary" aria-hidden="true" />
             Ask Avera

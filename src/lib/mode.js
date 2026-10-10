@@ -15,6 +15,9 @@ export const DATA_MODES = {
   manual: { indicator: 'Manual' },
 };
 
+let ownerId = null;
+export function setModeOwner(id) { ownerId = id || null; }
+const scopedKey = key => ownerId ? `${key}:${ownerId}` : key;
 const listeners = new Set();
 function emit() {
   for (const listener of listeners) listener();
@@ -22,7 +25,7 @@ function emit() {
 
 export function getDataMode() {
   try {
-    return sessionStorage.getItem(KEY);
+    return sessionStorage.getItem(scopedKey(KEY));
   } catch {
     return null;
   }
@@ -31,7 +34,7 @@ export function getDataMode() {
 export function setDataMode(mode) {
   if (!DATA_MODES[mode]) return;
   try {
-    sessionStorage.setItem(KEY, mode);
+    sessionStorage.setItem(scopedKey(KEY), mode);
   } catch {
     /* storage unavailable — mode stays ephemeral */
   }
@@ -40,7 +43,7 @@ export function setDataMode(mode) {
 
 export function clearDataMode() {
   try {
-    sessionStorage.removeItem(KEY);
+    sessionStorage.removeItem(scopedKey(KEY));
   } catch {
     /* ignore */
   }
@@ -50,7 +53,7 @@ export function clearDataMode() {
 /** The active demo workspace: { profile, plaid_item_id } or null. */
 export function getDemoWorkspace() {
   try {
-    const raw = localStorage.getItem(WORKSPACE_KEY);
+    const raw = localStorage.getItem(scopedKey(WORKSPACE_KEY));
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     return parsed && DEMO_PROFILES[parsed.profile] ? parsed : null;
@@ -61,7 +64,7 @@ export function getDemoWorkspace() {
 
 export function setDemoWorkspace(workspace) {
   try {
-    localStorage.setItem(WORKSPACE_KEY, JSON.stringify(workspace));
+    localStorage.setItem(scopedKey(WORKSPACE_KEY), JSON.stringify(workspace));
   } catch {
     /* storage unavailable — workspace stays ephemeral */
   }
@@ -70,7 +73,7 @@ export function setDemoWorkspace(workspace) {
 
 export function clearDemoWorkspace() {
   try {
-    localStorage.removeItem(WORKSPACE_KEY);
+    localStorage.removeItem(scopedKey(WORKSPACE_KEY));
   } catch {
     /* ignore */
   }

@@ -12,7 +12,14 @@ export const PLAID_SOURCE_LABEL = 'Plaid Sandbox';
 
 /** Transactions imported from a linked Plaid Item (manual/demo records excluded). */
 export function importedTransactions(transactions = []) {
-  return transactions.filter((t) => Boolean(t.plaid_item_id) || t.source === 'Plaid Sandbox');
+  const seen=new Set();
+  return transactions.filter(t => {
+    if (t.exclude_from_cashflow || !(t.plaid_item_id || t.source === 'Plaid Sandbox') || typeof t.amount !== 'number' || !Number.isFinite(t.amount) || t.amount < 0 || !/^\d{4}-\d{2}-\d{2}$/.test(t.date || '')) return false;
+    if (!t.plaid_transaction_id) return true;
+    const key=`${t.plaid_item_id}:${t.plaid_transaction_id}`;
+    if (seen.has(key)) return false;
+    seen.add(key);return true;
+  });
 }
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -72,7 +79,7 @@ export function estimateBillCandidates(transactions = [], { minMonths = 2 } = {}
   );
   const groups = new Map();
   for (const t of transactions) {
-    if (t.type === 'income') continue;
+    if (t.exclude_from_cashflow || t.type === 'income') continue;
     const key = normalizeName(t.description || t.category);
     if (!key || notRecurringNames.has(key)) continue;
     const group = groups.get(key) ?? [];
@@ -133,7 +140,7 @@ export function estimateFromTransactions(transactions = []) {
 export function incomePatternGroups(transactions = [], { minMonths = 2 } = {}) {
   const groups = new Map();
   for (const t of transactions) {
-    if (t.type !== 'income') continue;
+    if (t.exclude_from_cashflow || t.type !== 'income') continue;
     const key = normalizeName(t.description || t.category);
     if (!key) continue;
     const group = groups.get(key) ?? [];

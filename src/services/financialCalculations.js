@@ -101,7 +101,16 @@ export function totalMonthlyExpenses({ bills = [], budgetCategories = [], proper
 }
 
 export function availableCash(accounts = []) {
-  return round2(accounts.reduce((s, a) => s + num(a.balance), 0));
+  return round2(accounts.filter(a => ['checking','savings','cash'].includes(a.type ?? 'checking')).reduce((s, a) => s + num(a.balance), 0));
+}
+
+/** Imported credit balances are signed assets; manual credit entries are amounts owed. */
+export function totalDebt(mortgages = [], accounts = []) {
+  return round2(
+    mortgages.reduce((sum, m) => sum + Math.max(0, num(m.outstanding_balance)), 0) +
+    accounts.filter(a => a.type === 'credit_card').reduce((sum, a) => sum +
+      (a.source === 'Plaid Sandbox' || a.plaid_item_id ? Math.max(0, -num(a.balance)) : Math.abs(num(a.balance))), 0)
+  );
 }
 
 /** [start, end] ISO date strings (YYYY-MM-DD) covering the month of `date`. */
@@ -122,7 +131,7 @@ export function spentInMonth(transactions = [], category, range = monthRange()) 
     transactions
       .filter(
         (t) =>
-          t.type !== 'income' &&
+          !t.exclude_from_cashflow && t.type !== 'income' &&
           (category ? t.category === category : true) &&
           t.date >= range.start &&
           t.date <= range.end
@@ -135,7 +144,7 @@ export function spentInMonth(transactions = [], category, range = monthRange()) 
 export function incomeInMonth(transactions = [], range = monthRange()) {
   return round2(
     transactions
-      .filter((t) => t.type === 'income' && t.date >= range.start && t.date <= range.end)
+      .filter((t) => !t.exclude_from_cashflow && t.type === 'income' && t.date >= range.start && t.date <= range.end)
       .reduce((s, t) => s + num(t.amount), 0)
   );
 }
@@ -151,7 +160,7 @@ export function recurringPaidInMonth(transactions = [], bills = [], range = mont
     transactions
       .filter(
         (t) =>
-          t.type !== 'income' &&
+          !t.exclude_from_cashflow && t.type !== 'income' &&
           t.date >= range.start &&
           t.date <= range.end &&
           (names.has(normalizeName(t.description || t.category)) || categories.has(t.category))

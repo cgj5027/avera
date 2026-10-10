@@ -1,10 +1,12 @@
 import { base44 } from '@/api/base44Client';
+import { getDataMode, getDemoWorkspace } from '@/lib/mode';
 
 // Browser checks complement server authorization; they cannot establish AI grounding.
 export const SERVICE_TIMEOUT_MS = 20000;
+export const JOB_SEARCH_TIMEOUT_MS = 60000;
 export const MAX_QUESTION_LENGTH = 2000;
 
-async function authenticatedInvoke(name, payload) {
+async function authenticatedInvoke(name, payload, timeoutMs = SERVICE_TIMEOUT_MS) {
   const user = await base44.auth.me();
   if (!user?.id) throw new Error('Sign in to continue.');
   let timer;
@@ -12,7 +14,7 @@ async function authenticatedInvoke(name, payload) {
     const response = await Promise.race([
       base44.functions.invoke(name, payload),
       new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error('Service timed out.')), SERVICE_TIMEOUT_MS);
+        timer = setTimeout(() => reject(new Error('Service timed out.')), timeoutMs);
       }),
     ]);
     const current = await base44.auth.me();
@@ -28,7 +30,7 @@ export async function askAvera(question) {
     throw new Error('Enter a question of up to 2,000 characters.');
   }
   // Never accept user IDs, financial context, or system instructions from the UI.
-  const data = await authenticatedInvoke('askAvera', { question: question.trim() });
+  const data = await authenticatedInvoke('askAvera', { question: question.trim(), dataset: getDataMode() === 'demo' ? {mode:'demo',profile:getDemoWorkspace()?.profile} : {mode:'ordinary'} });
   if (typeof data?.answer !== 'string' || !data.answer.trim() || data.answer.length > 20000) {
     throw new Error('Invalid assistant response.');
   }
@@ -49,7 +51,7 @@ export function sourceListingUrl(value) {
   }
 }
 
-export async function searchOpportunities(profile) {
+export async function searchOpportunities(profile, { includeMetadata = false } = {}) {
   const data = await authenticatedInvoke('searchJobOpportunities', {
     skills: profile?.skills ?? '',
     experience: profile?.experience ?? '',
@@ -58,7 +60,7 @@ export async function searchOpportunities(profile) {
     job_type: profile?.job_type ?? 'any',
     work_mode: profile?.work_mode ?? 'any',
     location: profile?.location ?? '',
-  });
+  }, JOB_SEARCH_TIMEOUT_MS);
   if (!Array.isArray(data?.opportunities)) throw new Error('Invalid search response.');
   const items = data.opportunities.filter(item =>
     item && typeof item.title === 'string' && item.title.trim() &&
@@ -78,5 +80,5 @@ export async function searchOpportunities(profile) {
       : [],
   }));
   if (items.length !== data.opportunities.length) throw new Error('Search returned unverified listing data.');
-  return items;
+  return includeMetadata ? {items,relatedRolesSearched:data.related_roles_searched === true} : items;
 }

@@ -1,5 +1,9 @@
 # Audit validation
 
+For Ask Avera layout checks, build the frontend and start `npm run preview -- --host 127.0.0.1 --port 4173`, then run `node tests/chat-layout-browser.cjs` (override `AUDIT_BASE_URL` if the port changes). The fixture runner checks wider page/drawer layouts, a composer anchored above navigation, long-reply scrolling, Enter/Shift+Enter, drawer Escape/focus restoration and WCAG A/AA in light/dark themes, including short viewports and Demo Mode. No live AI calls are made.
+
+For the persistence follow-up, build the frontend, start `npm run preview -- --host 127.0.0.1 --port 4173`, then run `node tests/persistence-followup-browser.cjs`. This runner uses durable in-memory API fixtures and checks save/edit/page-return workflows plus opportunity success/empty/failure states at four widths in both themes. See `docs/STAGE3_FOLLOWUP.md`; fixture checks do not certify hosted persistence or web-search availability.
+
 Run `npm ci`, then `npm test`, `npm run lint`, `npm run typecheck`, and `npm run build` from the repository root.
 
 Unit tests cover calculations, money/date handling, recurrence, and redirect security. Integration tests exercise the actual React components and persistence service using an in-memory Base44 SDK fixture. They do not prove deployed RLS, email delivery, OAuth, or durable cloud persistence.
@@ -13,3 +17,11 @@ The browser script uses fixture API responses and checks populated pages and fin
 Stage 1 acceptance still requires an authenticated live two-user run: register, verify email, log in, enter/edit/delete financial records, reload and re-login to confirm persistence, attempt access to the other user's record IDs (including an admin), and log out. Apply the revised schemas to a test Base44 app before certifying authorization. Do not use production data for these destructive fixture workflows.
 
 Stage 2 coverage in `tests/stage2.test.jsx` tests allocated goal gaps, compensation assumptions, authenticated function-call boundaries, session changes, response validation, source URL restrictions, and assistant/profile recovery states. Backend functions are absent; SDK fixtures do not certify model grounding or external employment API integration. Browser checks now include Ask Avera replies, source-linked opportunity results, and drawer Escape/focus restoration. See `docs/STAGE2_AUDIT.md`.
+
+## Stage 3 audit
+
+The current backend functions are present. `tests/stage3-backend.test.js` executes the actual Plaid/demo/Ask handlers with SDK and provider fixtures; those fixtures do not certify hosted RLS or real Plaid. See `docs/STAGE3_AUDIT.md` for current acceptance results and residual risks; the older Stage 2 absence statement above describes its earlier audit revision.
+
+Run `npm run typecheck:backend` in addition to the frontend checks. Start `npm run dev -- --host 127.0.0.1` and run `npm run test:stage3:browser` for the current six-route demo/Sandbox UI audit, with all four widths, both themes, populated tabs, reset confirmation, sync failure and disconnect states. External API calls are fixture-intercepted. The older generic browser runner references a retired combined goals/opportunities route and was not used as current Stage 3 evidence.
+
+For actual programmatic Sandbox testing, securely configure `BASE44_TEST_APP_ID` and `BASE44_TEST_USER_TOKEN`, then run `node tests/live-sandbox.mjs`. The linked test app must have the revised schemas/functions and server-side Sandbox Plaid secrets deployed. Without bindings the script exits 2 without making network calls. It creates and removes only its new demo-tagged Item; it does not print tokens, record contents or IDs. This does not replace manual real Plaid Link or two-user authorization validation.

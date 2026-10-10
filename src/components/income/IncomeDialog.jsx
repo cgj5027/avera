@@ -61,12 +61,12 @@ export default function IncomeDialog({ open, onOpenChange, income, defaultFreque
           <DialogTitle>{income ? 'Edit income source' : 'Add income source'}</DialogTitle>
           <DialogDescription>Multiple sources are supported — each is normalized to a monthly figure.</DialogDescription>
         </DialogHeader>
-        <form className="space-y-4" onSubmit={submit}>
+        <form className="space-y-4" onSubmit={submit} aria-busy={saving}>
           <div className="space-y-1.5">
             <Label htmlFor="income-name">Source name</Label>
             <Input id="income-name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Primary salary" className="min-h-11 rounded-xl" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="IncomeDialog-select-1">Type</Label>
               <Select value={form.type} onValueChange={(v) => setForm((f) => ({ ...f, type: v }))}>
@@ -97,7 +97,7 @@ export default function IncomeDialog({ open, onOpenChange, income, defaultFreque
           {error && <p role="alert" className="text-base text-danger-text">{error}</p>}
           <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{income ? 'Save changes' : 'Add income source'}</Button>
+            <Button type="submit" disabled={saving}>{saving ? 'Saving…' : income ? 'Save changes' : 'Add income source'}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

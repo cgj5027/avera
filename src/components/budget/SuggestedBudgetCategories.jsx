@@ -64,7 +64,7 @@ export default function SuggestedBudgetCategories({ categories, busy, onConfirm 
         {(expanded ? suggestions : suggestions.slice(0, 4)).map((s) => (
           <li
             key={s.name}
-            className="flex items-center gap-2 rounded-full border border-border bg-surface-subtle py-1.5 pl-3 pr-1.5"
+            className="flex max-w-full flex-wrap items-center gap-2 rounded-xl border border-border bg-surface-subtle p-2"
           >
             <span className="text-sm font-medium text-foreground">{s.name}</span>
             <span className="text-xs tabular-nums text-muted-foreground">{formatCurrency(s.monthly_limit)}/mo</span>
@@ -73,7 +73,7 @@ export default function SuggestedBudgetCategories({ categories, busy, onConfirm 
               variant="secondary"
               onClick={() => onConfirm(s.name, s.monthly_limit)}
               disabled={busy}
-              className="min-h-7 gap-1 rounded-full px-2 text-xs"
+              className="min-h-11 gap-1 rounded-xl px-2 text-xs"
             >
               <Check className="h-3.5 w-3.5" aria-hidden="true" />
               Confirm
@@ -83,7 +83,7 @@ export default function SuggestedBudgetCategories({ categories, busy, onConfirm 
               variant="ghost"
               onClick={() => setDeclined((d) => [...d, s.name])}
               aria-label={`Decline ${s.name}`}
-              className="min-h-7 w-7 rounded-full p-0 text-muted-foreground hover:text-foreground"
+              className="min-h-11 w-11 rounded-xl p-0 text-muted-foreground hover:text-foreground"
             >
               <X className="h-3.5 w-3.5" aria-hidden="true" />
             </Button>
@@ -95,7 +95,7 @@ export default function SuggestedBudgetCategories({ categories, busy, onConfirm 
           variant="ghost"
           size="sm"
           onClick={() => setExpanded((v) => !v)}
-          className="mt-3 min-h-8"
+          className="mt-3 min-h-11 rounded-xl"
         >
           {expanded ? 'Show fewer' : `Show all ${suggestions.length} suggestions`}
           <ChevronDown

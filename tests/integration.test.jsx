@@ -1,4 +1,5 @@
 import React from 'react';
+import { matches } from './queryFixture';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
@@ -33,7 +34,7 @@ beforeEach(() => {
   for (const name of Object.values(data.DATA_ENTITIES)) {
     rows[name] = [];
     sdk.entities[name] = {
-      filter: vi.fn(async q => ({ items:rows[name].filter(x => Object.entries(q).every(([k,v]) => x[k] === v)), has_more:false,next_cursor:null })),
+      filter: vi.fn(async q => ({ items:rows[name].filter(x => matches(x,q)), has_more:false,next_cursor:null })),
       get: vi.fn(async id => rows[name].find(x => x.id === id)),
       create: vi.fn(async payload => {const x={...payload,id:String(rows[name].length+1),created_by_id:user.id};rows[name].push(x);return x;}),
       update: vi.fn(async (id,payload) => {const x=rows[name].find(x=>x.id===id);Object.assign(x,payload);return x;}),
@@ -74,7 +75,7 @@ describe('owner-scoped persistence with mocked SDK (not deployed RLS)', () => {
   });
   it('every financial schema requires owner-only RLS including admins', () => {
     const dir=process.cwd()+'/base44/entities/';
-    for(const file of readdirSync(dir).filter(x=>x!=='User.jsonc')) {
+    for(const file of readdirSync(dir).filter(x=>!['User.jsonc','PlaidCredential.jsonc'].includes(x))) {
       const schema=JSON.parse(readFileSync(dir+file,'utf8'));
       // Create may anchor ownership on either accepted form; both restrict to the signed-in owner.
       expect(

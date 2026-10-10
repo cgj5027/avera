@@ -114,16 +114,20 @@ function OpportunityItem({ item }) {
 export default function OpportunityResults({ profile }) {
   const [status, setStatus] = useState('idle'); // idle | loading | live | none | unavailable
   const [items, setItems] = useState([]);
+  const [relatedRolesSearched,setRelatedRolesSearched] = useState(false);
+  const hasProfile = Boolean(profile?.skills?.trim());
 
   const search = async () => {
-    if (status === 'loading') return;
+    if (status === 'loading' || !hasProfile) return;
     setStatus('loading');
     try {
-      const opportunities = await searchOpportunities(profile);
-      setItems(opportunities);
-      setStatus(opportunities.length === 0 ? 'none' : 'live');
+      const result = await searchOpportunities(profile,{includeMetadata:true});
+      setItems(result.items);
+      setRelatedRolesSearched(result.relatedRolesSearched);
+      setStatus(result.items.length === 0 ? 'none' : 'live');
     } catch {
       setItems([]);
+      setRelatedRolesSearched(false);
       setStatus('unavailable');
     }
   };
@@ -131,7 +135,7 @@ export default function OpportunityResults({ profile }) {
   return (
     <div className="mt-4" aria-live="polite" aria-busy={status === 'loading'}>
       <div className="flex flex-wrap items-center gap-3">
-        <Button onClick={search} disabled={status === 'loading'} className="min-h-11 rounded-xl px-4">
+        <Button onClick={search} disabled={status === 'loading' || !hasProfile} className="min-h-11 rounded-xl px-4">
           {status === 'loading' ? (
             <span className="inline-flex items-center gap-2">
               <span
@@ -150,7 +154,10 @@ export default function OpportunityResults({ profile }) {
         {status === 'live' && <StatusPill tone="success">Source-linked results</StatusPill>}
         {status === 'unavailable' && <StatusPill tone="warning">Not connected</StatusPill>}
         {status === 'none' && <StatusPill tone="neutral">No matches found</StatusPill>}
+        {relatedRolesSearched && (status === 'live' || status === 'none') && <StatusPill tone="neutral">Also searched related roles</StatusPill>}
       </div>
+
+      {!hasProfile && <p className="mt-3 text-base text-muted-foreground">Save your work profile above before searching for opportunities.</p>}
 
       {status === 'unavailable' && (
         <div className="mt-4 rounded-2xl border border-border bg-info-surface p-4">
@@ -191,8 +198,7 @@ export default function OpportunityResults({ profile }) {
 
       {status === 'none' && (
         <p className="mt-4 text-base text-muted-foreground">
-          The search returned no matches for this profile. Try broadening your skills, roles, or
-          location.
+          No matching postings were found for this profile. Try another preferred role or location in your work profile. A search can return no results; Avera does not create listings to fill the list.
         </p>
       )}
     </div>
