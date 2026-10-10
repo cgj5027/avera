@@ -15,9 +15,9 @@ const OPTIONS = [
     mode: 'sandbox',
     icon: Building2,
     title: 'Connect a Test Bank',
-    description: 'View connection information. Plaid Sandbox linking arrives in a later stage.',
+    description: 'Link a simulated bank through the Plaid Sandbox and import sample accounts and transactions.',
     destination: '/settings',
-    cta: 'View connection status',
+    cta: 'Connect',
   },
   {
     mode: 'manual',
@@ -48,7 +48,7 @@ export default function ModeEntry() {
           Get started with Avera
         </h1>
         <p className="mt-3 max-w-xl text-base text-muted-foreground">
-          Enter your finances manually to get started. Demo data and test-bank connections arrive in later stages.
+          Enter your finances manually to get started, or connect a simulated test bank to see your data flow in.
         </p>
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {OPTIONS.map((o) => (

@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
-import { Plug, Info } from 'lucide-react';
+import { Info } from 'lucide-react';
 import PageHeader from '@/components/layout/PageHeader';
 import SettingSection from '@/components/settings/SettingSection';
 import ThemeSelect from '@/components/settings/ThemeSelect';
 import HouseholdForm from '@/components/settings/HouseholdForm';
-import StatusPill from '@/components/states/StatusPill';
+import BankConnections from '@/components/settings/BankConnections';
 import ModeIndicator from '@/components/layout/ModeIndicator';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/AuthContext';
@@ -46,15 +46,7 @@ export default function Settings() {
         </SettingSection>
 
         <SettingSection title="Bank connections" description="Simulated connections only in this stage.">
-          <div className="flex flex-wrap items-center gap-3">
-            <StatusPill tone="neutral" icon={Plug}>
-              Not connected
-            </StatusPill>
-          </div>
-          <p className="mt-3 text-base text-muted-foreground">
-            Bank connections arrive in a later stage. When enabled, Avera uses the Plaid Sandbox — Test account
-            flow with simulated institutions only. Credentials live in secure server-side secrets, never in this app.
-          </p>
+          <BankConnections />
         </SettingSection>
 
         <SettingSection title="Demo controls" description="Data mode for this session.">
