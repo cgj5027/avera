@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -16,11 +16,16 @@ import { todayISO } from '@/utils/format';
 
 const EMPTY = { name: '', amount: '', frequency: 'monthly', next_due_date: '', category: '', reminder_days: '3' };
 
-/** Add-or-edit dialog for a recurring bill. */
+/**
+ * Add-or-edit dialog for a recurring bill.
+ * For a new bill, typed values survive an accidental dismissal (outside click,
+ * Escape) so nothing is lost; the draft clears on Cancel or a successful save.
+ */
 export default function BillDialog({ open, onOpenChange, bill, onSave }) {
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const draftRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
@@ -34,12 +39,22 @@ export default function BillDialog({ open, onOpenChange, bill, onSave }) {
             category: bill.category ?? '',
             reminder_days: String(bill.reminder_days ?? 3),
           }
-        : { ...EMPTY, next_due_date: todayISO() }
+        : draftRef.current ?? { ...EMPTY, next_due_date: todayISO() }
     );
     setError('');
   }, [open, bill]);
 
+  /* Keep the newest typed values as the draft while adding. */
+  useEffect(() => {
+    if (open && !bill) draftRef.current = form;
+  }, [open, bill, form]);
+
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  const closeAndDiscard = () => {
+    draftRef.current = null;
+    onOpenChange(false);
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -52,16 +67,16 @@ export default function BillDialog({ open, onOpenChange, bill, onSave }) {
     setSaving(true);
     try {
       await onSave({
-      name,
-      amount: round2(amount),
-      frequency: form.frequency,
-      recurrence_day: bill && form.next_due_date === bill.next_due_date ? (bill.recurrence_day ?? Number(form.next_due_date.slice(-2))) : Number(form.next_due_date.slice(-2)),
-      next_due_date: form.next_due_date,
-      category: form.category.trim() || undefined,
-      reminder_days: Number(form.reminder_days) || 3,
-      source: 'Manual',
-    });
-      onOpenChange(false);
+        name,
+        amount: round2(amount),
+        frequency: form.frequency,
+        recurrence_day: bill && form.next_due_date === bill.next_due_date ? (bill.recurrence_day ?? Number(form.next_due_date.slice(-2))) : Number(form.next_due_date.slice(-2)),
+        next_due_date: form.next_due_date,
+        category: form.category.trim() || undefined,
+        reminder_days: Number(form.reminder_days) || 3,
+        source: 'Manual',
+      });
+      closeAndDiscard();
     } catch {
       setError('Unable to save. Please try again.');
     } finally {
@@ -114,7 +129,7 @@ export default function BillDialog({ open, onOpenChange, bill, onSave }) {
           </div>
           {error && <p role="alert" className="text-base text-danger-text">{error}</p>}
           <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={closeAndDiscard}>Cancel</Button>
             <Button type="submit" disabled={saving}>{bill ? 'Save changes' : 'Add bill'}</Button>
           </DialogFooter>
         </form>

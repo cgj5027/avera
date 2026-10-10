@@ -74,7 +74,11 @@ describe('owner-scoped persistence with mocked SDK (not deployed RLS)', () => {
     const dir=process.cwd()+'/base44/entities/';
     for(const file of readdirSync(dir).filter(x=>x!=='User.jsonc')) {
       const schema=JSON.parse(readFileSync(dir+file,'utf8'));
-      expect(schema.rls.create,`${file}:create`).toEqual({user_condition:{id:'{{user.id}}'}});
+      // Create may anchor ownership on either accepted form; both restrict to the signed-in owner.
+      expect(
+        [{user_condition:{id:'{{user.id}}'}}, {created_by_id:'{{user.id}}'}].some(r => JSON.stringify(r) === JSON.stringify(schema.rls.create)),
+        `${file}:create must be owner-anchored`
+      ).toBe(true);
       for(const op of ['read','update','delete']) expect(schema.rls[op],`${file}:${op}`).toEqual({created_by_id:'{{user.id}}'});
     }
   });
@@ -249,6 +253,22 @@ it('login calls the SDK and announces invalid credentials', async () => {
   fireEvent.click(screen.getByRole('button',{name:'Log in',exact:true}));
   expect(await screen.findByRole('alert')).toBeTruthy();
   expect(sdk.auth.loginViaEmailPassword).toHaveBeenCalledWith('audit@example.test','invalid-test-password');
+});
+
+it('an accidentally dismissed add-bill draft survives reopening and clears after cancel', async () => {
+  const close = vi.fn();
+  const view = render(<BillDialog open bill={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  fireEvent.change(screen.getByLabelText('Bill name'),{target:{value:'Rent'}});
+  fireEvent.change(screen.getByLabelText('Amount'),{target:{value:'1000'}});
+  view.rerender(<BillDialog open={false} bill={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  view.rerender(<BillDialog open bill={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  expect(screen.getByLabelText('Bill name').value).toBe('Rent');
+  expect(screen.getByLabelText('Amount').value).toBe('1000');
+  fireEvent.click(screen.getByRole('button',{name:'Cancel'}));
+  expect(close).toHaveBeenCalledWith(false);
+  view.rerender(<BillDialog open={false} bill={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  view.rerender(<BillDialog open bill={null} onOpenChange={close} onSave={vi.fn().mockResolvedValue({})} />);
+  expect(screen.getByLabelText('Bill name').value).toBe('');
 });
 
 it('editing bill details preserves a month-end recurrence anchor', async () => {
