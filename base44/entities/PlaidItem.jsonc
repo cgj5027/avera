@@ -1,0 +1,70 @@
+{
+  "name": "PlaidItem",
+  "type": "object",
+  "properties": {
+    "item_id": {
+      "type": "string",
+      "description": "Plaid's stable Item identifier. Used as the idempotency key (upsert key) so one connection is never stored twice."
+    },
+    "institution_id": {
+      "type": "string",
+      "description": "Plaid institution id of the connected simulated institution."
+    },
+    "institution_name": {
+      "type": "string",
+      "description": "Display name of the connected institution."
+    },
+    "access_token": {
+      "type": "string",
+      "description": "Plaid access token for this Item. Owner-scoped by RLS; only backend functions acting with the service role send it to Plaid. Never rendered in the UI."
+    },
+    "products": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Plaid products enabled for this Item (e.g. transactions, auth, balance)."
+    },
+    "sync_cursor": {
+      "type": "string",
+      "description": "Persistent /transactions/sync cursor for this Item; empty string means a fresh Item with no sync yet."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "error",
+        "needs_reauth",
+        "disconnected"
+      ],
+      "default": "active",
+      "description": "Connection status shown in the UI. Never color-only \u2014 always paired with the status icon and label."
+    },
+    "last_synced_at": {
+      "type": "string",
+      "description": "ISO timestamp of the last successful /transactions/sync run."
+    },
+    "last_sync_error": {
+      "type": "string",
+      "description": "Human-readable error from the last failed sync, empty when healthy."
+    }
+  },
+  "required": [
+    "item_id",
+    "access_token"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

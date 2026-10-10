@@ -30,6 +30,22 @@
     },
     "notes": {
       "type": "string"
+    },
+    "plaid_item_id": {
+      "type": "string",
+      "description": "Plaid Item this imported account belongs to. Empty for manual accounts \u2014 this is the reconciliation boundary between manual and imported accounts."
+    },
+    "plaid_account_id": {
+      "type": "string",
+      "description": "Plaid's stable account identifier. Used as the upsert key so a reconnected or re-synced account is never duplicated; empty for manual accounts."
+    },
+    "balance_available": {
+      "type": "number",
+      "description": "Plaid available balance for imported accounts; empty for manual accounts."
+    },
+    "balance_limit": {
+      "type": "number",
+      "description": "Plaid credit limit for imported liability accounts; empty otherwise."
     }
   },
   "required": [
