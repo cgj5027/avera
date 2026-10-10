@@ -36,7 +36,7 @@ export default function OverviewChart({ rows }) {
         </ResponsiveContainer>
       </div>
       <p className="mt-3 text-sm text-muted-foreground">
-        Projected from your saved income, bills, budget limits, and property costs. Source: Estimated.
+        Projected from your saved records and linked-account estimates. Source: Estimated.
       </p>
     </section>
   );

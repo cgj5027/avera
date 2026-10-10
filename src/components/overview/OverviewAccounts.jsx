@@ -10,7 +10,7 @@ export default function OverviewAccounts({ accounts, onDelete, dialog, onOpenDia
     <section className="rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6">
       <PageHeader
         title="Accounts"
-        subtitle="Manual balances that feed your available cash."
+        subtitle="Balances that feed your available cash."
         className="mb-0"
         actions={
           <Button onClick={() => onOpenDialog(null)} className="min-h-11 rounded-xl px-4">
@@ -26,7 +26,14 @@ export default function OverviewAccounts({ accounts, onDelete, dialog, onOpenDia
           {accounts.map((a) => (
             <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
               <div>
-                <p className="text-base font-medium text-foreground">{a.name}</p>
+                <p className="text-base font-medium text-foreground">
+                  {a.name}
+                  <span
+                    className="ml-2 inline-flex items-center rounded-full bg-surface-subtle px-2 py-0.5 align-middle text-xs font-medium text-muted-foreground"
+                  >
+                    {a.plaid_item_id ? 'Synced via Plaid' : 'Manual'}
+                  </span>
+                </p>
                 <p className="text-sm text-muted-foreground">
                   {ACCOUNT_TYPES[a.type] ?? 'Other'}
                   {a.institution ? ` · ${a.institution}` : ''}

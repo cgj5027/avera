@@ -155,7 +155,16 @@ export default function Overview() {
   const remaining = calc.calculateProjectedRemaining(monthlyIncome + linkedIncome, monthlyExpenses + linkedExpenses);
   const suggestions = est.hasData ? pendingCandidates(est.billCandidates, bills) : [];
   const upcoming = calc.upcomingBills(bills, 30);
-  const projection = calc.projectYearlyPlan({ incomes, bills, budgetCategories, properties, mortgages, accounts, months: 6 });
+  const projection = calc.projectYearlyPlan({
+    incomes,
+    bills,
+    budgetCategories,
+    properties,
+    mortgages,
+    accounts,
+    months: 6,
+    estimate: { income: est.hasData ? est.monthlyIncome : 0, expenses: est.hasData ? est.monthlyExpenses : 0 },
+  });
   const hasData = accounts.length || incomes.length || bills.length || budgetCategories.length || properties.length;
 
   const SUMMARY = [
