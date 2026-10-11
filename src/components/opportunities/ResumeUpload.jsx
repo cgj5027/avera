@@ -43,8 +43,19 @@ export default function ResumeUpload({ onApply }) {
     setError('');
     setStatus('parsing');
     try {
-      const { file_uri } = await base44.integrations.Core.UploadPrivateFile({ file });
-      const response = await base44.functions.invoke('parseResume', { file_uri });
+      // The file bytes go straight to the parser; the storage location is
+      // decided server-side, so no caller-chosen private URI is ever involved.
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error('read-failed'));
+        reader.readAsDataURL(file);
+      });
+      const file_base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+      const response = await base44.functions.invoke('parseResume', {
+        file_name: file.name,
+        file_base64,
+      });
       const sug = response.data?.suggestions;
       if (!sug || typeof sug.skills !== 'string' || !sug.skills.trim()) {
         throw new Error('No profile fields found in this document.');
