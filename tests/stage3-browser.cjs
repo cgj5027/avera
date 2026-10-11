@@ -42,7 +42,7 @@ const assert=require('node:assert/strict');
    await check(path);
    if(path==='/bills-budget') {for(const tab of ['Budget','Goals','Transactions']) {await page.getByRole('tab',{name:tab,exact:true}).click();await check(path,tab+' tab');}}
    if(path==='/ask-avera') await page.locator('summary').filter({hasText:'Demo Mode'}).click();
-   await page.getByRole('button',{name:'Reset demo profile'}).click();await page.getByRole('dialog').waitFor();await check(path,'reset confirmation');await page.keyboard.press('Escape');await page.getByRole('dialog').waitFor({state:'hidden'});
+   await page.getByRole('button',{name:'Reset demo profile'}).click();await page.getByRole('dialog',{name:'Reset demo profile?'}).waitFor();await page.getByRole('button',{name:'Reset demo',exact:true}).waitFor();await check(path,'reset confirmation');await page.keyboard.press('Escape');await page.getByRole('dialog').waitFor({state:'hidden'});
    await page.getByRole('button',{name:'Exit Demo Mode'}).click();
    const exitDialog=page.getByRole('dialog',{name:'Exit demo mode?'});
    await exitDialog.waitFor();

@@ -34,7 +34,7 @@
 | askAvera | 6 | 60 |
 | parseResume | 2 | 10 |
 | searchJobOpportunities | 3 | 30 |
-| demoSandboxConnect | 6 | 30 |
+| demoSandboxConnect | 12 | 120 |
 | suggestBills / suggestCategories (each) | 6 | 60 |
 
 Counters include all authenticated attempts, including rejected payloads and
@@ -103,7 +103,7 @@ These source changes do not change repository visibility or deploy the app.
 The profile connection now polls the same Item through PRODUCT_NOT_READY and
 empty successful syncs, with bounded backoff over 31 seconds. It no longer
 interprets initial transaction preparation as a terminal failure. The connection
-quota allows six attempts per minute and thirty per day, covering all three
+quota allows twelve attempts per minute and 120 per day, covering all three
 profiles plus retries. Failures remain explicit; sample-data fallback never
 claims a successful Plaid import.
 
@@ -126,3 +126,29 @@ accessibility violations were reported. Mobile and desktop confirmation screensh
 were visually reviewed. Provider preparation and native SDK error-format regressions
 use fixtures; a hosted Plaid connection cannot be certified without isolated test
 credentials and deployed ServiceUsage/functions.
+
+## Reported connection throttling and reset wording
+
+The reported "too many connection attempts" error is a request-limit refusal
+before the Plaid call. Sandbox profile limits now permit 12 attempts per minute
+and 120 per UTC day, supporting repeated selection/reset testing while retaining
+bounded provider usage. Existing counters are preserved; they are not cleared or
+reset to bypass limits. Unset/null counters are initialized using a conditional
+server update before incrementing, preventing empty counter values from being
+mistaken for exhaustion. Malformed or unavailable quota operations still fail closed.
+
+Quota responses include the actual remaining window delay in retry_after and
+Retry-After. The UI distinguishes minute cooldowns from longer daily resets.
+Reset confirmation uses "Reset demo profile?", "Start fresh with the original
+demo data. Your own financial records stay safe.", and "Reset demo"/"Keep exploring".
+Safe connection references distinguish token creation, exchange and import
+failures; unknown provider messages are never displayed. Apply backend function
+changes together with the frontend before retesting. Live provider verification
+still requires authenticated hosted test access.
+
+Latest reset/throttle validation: 326 tests passed, along with lint, both type
+checks and production build. The focused browser matrix passed 32 checks across
+four widths and both themes with no reported accessibility violations. Null
+counter initialization, preserved counts, real daily retry timing and sanitized
+failure-stage references have regression coverage. These are local/fixture
+results, not a completed hosted Plaid connection.

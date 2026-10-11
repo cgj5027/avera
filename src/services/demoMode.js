@@ -1,4 +1,4 @@
-import { sandboxErrorMessage } from './sandboxErrors';
+import { sandboxErrorMessage, sandboxErrorReference } from './sandboxErrors';
 /**
  * Demo Mode orchestration — Stage 3B.
  *
@@ -69,9 +69,9 @@ async function connectPlaidDemo(profileKey) {
   for (let attempt = 0; attempt <= delays.length; attempt++) {
     const result = await base44.functions.invoke('plaidSync', { item_id: itemId });
     const own = result.data?.results?.find(r => r.item_id === itemId);
-    if (!own) throw new Error('Demo sync failed');
+    if (!own) throw Object.assign(new Error('Demo sync failed'), { code: 'SANDBOX_SYNC_FAILED' });
     if (own.status === 'synced' && own.transactions > 0) return itemId;
-    if (own.status !== 'synced' && own.error !== 'PRODUCT_NOT_READY') throw new Error('Demo sync failed');
+    if (own.status !== 'synced' && own.error !== 'PRODUCT_NOT_READY') throw Object.assign(new Error('Demo sync failed'), { code: 'SANDBOX_SYNC_FAILED' });
     if (attempt < delays.length) await new Promise(resolve => setTimeout(resolve, delays[attempt]));
   }
   const pending = Object.assign(new Error('Demo transactions are not ready'), { code: 'SANDBOX_DATA_PENDING' });
@@ -100,7 +100,7 @@ export async function loadDemoProfile(profileKey, { viaPlaid = false } = {}) {
     } catch (error) {
       await removeDemoData(profileKey);
       plaidItemId = null;
-      warning = `${sandboxErrorMessage(error)} You can explore sample data in the meantime.`;
+      warning = `${sandboxErrorMessage(error)} You can explore sample data in the meantime.${sandboxErrorReference(error)}`;
     }
   }
 

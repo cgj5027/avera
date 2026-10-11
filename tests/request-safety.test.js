@@ -16,8 +16,13 @@ function quotaClient() {
     // A synchronous predicate/increment models the documented server operation;
     // live verification of platform atomicity remains an explicit release gate.
     updateMany: vi.fn(async (query, change) => {
-      const row=rows.get(query.usage_key), maximum=query.$or[1].used.$lt;
-      if (!row || row.owner_id!==query.owner_id || (row.used??0)>=maximum) return {updated:0,has_more:false};
+      const row=rows.get(query.usage_key);
+      if (change.$set) {
+        if (!row || row.owner_id!==query.owner_id || row.used != null) return {updated:0,has_more:false};
+        row.used=0; return {updated:1,has_more:false};
+      }
+      const maximum=query.used.$lt;
+      if (!row || row.owner_id!==query.owner_id || !Number.isFinite(row.used) || row.used<0 || row.used>=maximum) return {updated:0,has_more:false};
       row.used=(row.used??0)+change.$inc.used;return {updated:1,has_more:false};
     }),
   };
@@ -142,8 +147,22 @@ describe("DOCX structural validation",()=>{
  it("rejects traversal entries",()=>expect(()=>validateResume({file_name:"resume.docx",consent:true,file_base64:"UEsDBBQAAAAAAD2xS13HHBc8CAAAAAgAAAATAAAAW0NvbnRlbnRfVHlwZXNdLnhtbDxUeXBlcy8+UEsDBBQAAAAAAD2xS11fW9FMCwAAAAsAAAARAAAAd29yZC9kb2N1bWVudC54bWw8ZG9jdW1lbnQvPlBLAwQUAAAAAAA9sUtd+zkrggMAAAADAAAADgAAAC4uL3BheWxvYWQudHh0YmFkUEsBAhQDFAAAAAAAPbFLXcccFzwIAAAACAAAABMAAAAAAAAAAAAAAIABAAAAAFtDb250ZW50X1R5cGVzXS54bWxQSwECFAMUAAAAAAA9sUtdX1vRTAsAAAALAAAAEQAAAAAAAAAAAAAAgAE5AAAAd29yZC9kb2N1bWVudC54bWxQSwECFAMUAAAAAAA9sUtd+zkrggMAAAADAAAADgAAAAAAAAAAAAAAgAFzAAAALi4vcGF5bG9hZC50eHRQSwUGAAAAAAMAAwC8AAAAogAAAAAA"})).toThrow(RequestFailure));
 });
 
-it('allows testing all three Sandbox profiles twice while retaining a connection quota',async()=>{
+it('allows repeated Sandbox profile/reset testing while retaining a connection quota',async()=>{
  const {client}=quotaClient();
- for(let i=0;i<6;i++) await claimUsage(client,{id:'a'},'demoSandboxConnect',0);
+ for(let i=0;i<12;i++) await claimUsage(client,{id:'a'},'demoSandboxConnect',0);
  await expect(claimUsage(client,{id:'a'},'demoSandboxConnect',0)).rejects.toMatchObject({status:429,code:'REQUEST_LIMITED'});
+});
+
+it('initializes a persisted null counter instead of treating it as exhausted',async()=>{
+ const {client,rows}=quotaClient();
+ rows.set('a:demoSandboxConnect:60000:0',{usage_key:'a:demoSandboxConnect:60000:0',owner_id:'a',used:null});
+ await claimUsage(client,{id:'a'},'demoSandboxConnect',0);
+ expect(rows.get('a:demoSandboxConnect:60000:0').used).toBe(1);
+ await claimUsage(client,{id:'a'},'demoSandboxConnect',0);
+ expect(rows.get('a:demoSandboxConnect:60000:0').used).toBe(2);
+});
+it('returns the actual daily reset delay rather than a misleading one-minute cooldown',async()=>{
+ const {client,rows}=quotaClient();
+ rows.set('a:askAvera:86400000:0',{usage_key:'a:askAvera:86400000:0',owner_id:'a',used:60});
+ await expect(claimUsage(client,{id:'a'},'askAvera',3600000)).rejects.toMatchObject({status:429,retryAfter:82800});
 });

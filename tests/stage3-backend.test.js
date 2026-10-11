@@ -222,3 +222,17 @@ it('does not log upstream exception contents during Plaid sync failure',async()=
   expect(JSON.stringify(spy.mock.calls)).not.toContain('synthetic-private-marker');
  } finally {spy.mockRestore();}
 });
+
+it.each([
+ ['/sandbox/public_token/create','SANDBOX_TOKEN_FAILED'],
+ ['/item/public_token/exchange','SANDBOX_EXCHANGE_FAILED'],
+ ['/accounts/get','SANDBOX_IMPORT_FAILED'],
+])('identifies a failed %s without exposing upstream diagnostics',async(path,code)=>{
+ const original=fetchMock.getMockImplementation();
+ fetchMock.mockImplementation(async(url,options)=>new URL(url).pathname===path
+  ? Response.json({error_code:'INVALID_REQUEST',error_message:'synthetic-private-diagnostic'},{status:400})
+  : original(url,options));
+ const response=await demoConnect(req({profile_key:'early_career'}));
+ expect(response.status).toBe(502);const body=await response.json();
+ expect(body.code).toBe(code);expect(JSON.stringify(body)).not.toContain('synthetic-private-diagnostic');
+});

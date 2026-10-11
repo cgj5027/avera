@@ -186,3 +186,25 @@ it('handles the real SDK Base44Error shape for Sandbox setup and request limits'
  const result=await loadDemoProfile('early_career',{viaPlaid:true});
  expect(result.warning).toContain('Wait a minute');expect(result.warning).not.toContain('sensitive');
 });
+
+it('uses concise reset wording and an explicit reset action',()=>{
+ setDemoWorkspace({profile:'early_career'});setDataMode('demo');
+ render(<MemoryRouter><DemoModeBar/></MemoryRouter>);
+ fireEvent.click(screen.getByRole('button',{name:'Reset demo profile'}));
+ expect(screen.getByRole('dialog',{name:'Reset demo profile?'})).toBeTruthy();
+ expect(screen.getByText('Start fresh with the original demo data. Your own financial records stay safe.')).toBeTruthy();
+ expect(screen.getByRole('button',{name:'Reset demo',exact:true})).toBeTruthy();
+ expect(screen.queryByRole('button',{name:'Delete',exact:true})).toBeNull();
+});
+it('shows only allowlisted connection references for a failed hosted step',async()=>{
+ sdk.functions.invoke.mockRejectedValueOnce(new Base44Error('private provider diagnostic',502,'SANDBOX_IMPORT_FAILED',{}));
+ const result=await loadDemoProfile('early_career',{viaPlaid:true});
+ expect(result.warning).toContain('Connection reference: SANDBOX_IMPORT_FAILED');
+ expect(result.warning).not.toContain('private provider diagnostic');
+});
+
+it('reports a daily Sandbox cooldown accurately using the native SDK response',async()=>{
+ sdk.functions.invoke.mockRejectedValueOnce(new Base44Error('raw diagnostic',429,'REQUEST_LIMITED',{retry_after:7200}));
+ const result=await loadDemoProfile('early_career',{viaPlaid:true});
+ expect(result.warning).toContain('about 2 hours');expect(result.warning).not.toContain('Wait a minute');
+});

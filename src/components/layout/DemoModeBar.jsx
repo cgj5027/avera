@@ -79,7 +79,7 @@ export default function DemoModeBar({ compact = false }) {
         </Button>
       </div>
       </div>
-      <ConfirmDeleteDialog open={resetOpen} onOpenChange={setResetOpen} title="Reset this demo profile?" description="This removes and replaces this account’s demo records. Ordinary financial records are preserved." onConfirm={reset} busy={busy} />
+      <ConfirmDeleteDialog open={resetOpen} onOpenChange={setResetOpen} title="Reset demo profile?" description="Start fresh with the original demo data. Your own financial records stay safe." confirmLabel="Reset demo" cancelLabel="Keep exploring" onConfirm={reset} busy={busy} />
       <ConfirmDeleteDialog
         open={exitOpen}
         onOpenChange={setExitOpen}
