@@ -88,7 +88,7 @@ export default function ResumeUpload({ onApply }) {
     <div className="mt-4 rounded-2xl border border-border bg-surface-subtle p-4" aria-live="polite" aria-busy={status === 'parsing'}>
       <label className="mb-3 flex min-h-11 items-start gap-3 text-base">
         <input type="checkbox" checked={consent} disabled={status === 'parsing'} onChange={e => setConsent(e.target.checked)} className="mt-1 h-5 w-5 shrink-0" />
-        <span>I agree to send my resume to the AI service for profile suggestions. Text resumes are processed without file storage. PDF and Word files are stored privately; discarding suggestions does not delete them. Contact the app team for deletion and retention details. Use sample documents until retention settings are verified.</span>
+        <span>I agree to send my resume to the AI service for profile suggestions. Text resumes are processed without file storage. PDF and Word files are stored privately.</span>
       </label>
       <div className="flex flex-wrap items-center gap-3">
         <Button
