@@ -75,11 +75,25 @@ const assert = require('node:assert/strict');
       }
       if (path === '/opportunities') {
         await page.keyboard.press('Escape');
+        await page.getByRole('button',{name:'Edit profile'}).click();
+        const uploadButton=page.getByRole('button',{name:'Upload resume (optional)'});
+        assert(await uploadButton.isDisabled(),'resume processing requires consent');
+        const consent=page.getByRole('checkbox',{name:/I agree to send my resume/});
+        await consent.check();
+        assert(await uploadButton.isEnabled(),'resume upload enabled after consent');
+        await consent.uncheck();
+        assert(await uploadButton.isDisabled(),'consent can be withdrawn before upload');
+        await page.getByRole('button',{name:'Cancel',exact:true}).click();
         await page.getByRole('button',{name:'Find opportunities'}).click();
         await page.getByText('Source-linked results',{exact:true}).waitFor();
         await feedbackTrigger.click();
       }
       assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`response overflow ${theme} ${width} ${path}`);
+      // Measure the settled UI, not intermediate foreground/background colors
+      // while the feedback dialog and overlay are fading into view.
+      await page.evaluate(async()=>{
+        await Promise.all(document.getAnimations().filter(a=>a.effect?.getTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{})));
+      });
       await page.addScriptTag({path:require.resolve('axe-core/axe.min.js')});
       const accessibility=await page.evaluate(async()=>{const r=await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}});return r.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}));});
       if(accessibility.length)violations.push({theme,width,path,accessibility});

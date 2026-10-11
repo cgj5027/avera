@@ -1,5 +1,5 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
-import { allRecords, plaidRequest } from '../../shared/plaid.ts';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.53';
+import { allRecords, plaidRequest, PlaidFailure } from '../../shared/plaid.ts';
 import { credentialFor } from '../../shared/plaidRecords.ts';
 
 export default async function(req) {
@@ -23,6 +23,7 @@ export default async function(req) {
     });
     return Response.json({ link_token: token.link_token, expiration: token.expiration });
   } catch (error) {
+    if (error instanceof PlaidFailure && error.code === 'NOT_CONFIGURED') return Response.json({ error: 'Sandbox connections are not configured.', code: 'SANDBOX_NOT_CONFIGURED' }, { status: 503 });
     return Response.json({ error: 'Sandbox Link is unavailable. Please retry.' }, { status: 502 });
   }
 }

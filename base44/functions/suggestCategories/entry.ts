@@ -1,4 +1,6 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { readJsonLimited, requestFailureResponse } from '../../shared/requestSafety.ts';
+import { claimUsage } from '../../shared/usageLimits.ts';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.53';
 import { datasetQuery } from '../../shared/dataset.ts';
 import { allRecords } from '../../shared/plaid.ts';
 
@@ -18,9 +20,10 @@ export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!user?.id) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const body=await req.json().catch(()=>({}));
+    await claimUsage(base44, user, 'suggestCategories');
+    const body=await readJsonLimited(req);
     let scope; try {scope=datasetQuery(user,body.dataset);} catch {return Response.json({error:'Invalid dataset'},{status:400});}
     const expenseRows=await allRecords(base44.entities.Transaction,{...scope,type:'expense'});
     const candidates = expenseRows.filter((t) => {
@@ -76,6 +79,7 @@ export default async function(req) {
     }
     return Response.json({ updated: updates.length, suggested: names.length });
   } catch (error) {
+    const failure = requestFailureResponse(error); if (failure) return failure;
     return Response.json({ error: 'Category suggestions could not be completed. Please retry.' }, { status: 503 });
   }
 }

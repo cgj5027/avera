@@ -1,0 +1,13 @@
+{
+  "name": "ServiceUsage",
+  "type": "object",
+  "properties": {
+    "usage_key": { "type": "string" },
+    "owner_id": { "type": "string" },
+    "endpoint": { "type": "string" },
+    "expires_at": { "type": "string" },
+    "used": { "type": "integer", "minimum": 0 }
+  },
+  "required": ["usage_key", "owner_id", "endpoint", "expires_at"],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
+}

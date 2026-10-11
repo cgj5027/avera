@@ -171,3 +171,10 @@ container is required; the same codebase targets web and native mobile shells.
 - [ ] Navigation labels match page titles; compact nav on desktop, 4–5 actions on mobile
 - [ ] Destructive actions require confirmation naming affected scope
 - [ ] Charts have labels/legends and ordered palette only
+
+## Public-release security controls
+
+See [security remediation](docs/SECURITY_REMEDIATION.md) for request limits,
+resume validation, processing disclosures, deployment prerequisites and remaining
+hosted verification. Deploy the private `ServiceUsage` schema with the functions;
+quota failures intentionally prevent provider work. Licensing remains undecided.
