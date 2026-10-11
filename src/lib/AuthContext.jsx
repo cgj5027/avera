@@ -115,6 +115,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateAccountName = async (name) => {
+    const normalized = typeof name === 'string' ? name.trim() : '';
+    if (!normalized || normalized.length > 100) throw new Error('Enter a name of up to 100 characters.');
+    if (!user?.id) throw new Error('Sign in to update your name.');
+    const epoch = authEpoch.current;
+    const updated = await base44.auth.updateMe({ display_name: normalized });
+    if (epoch !== authEpoch.current || updated?.id !== user.id) throw new Error('Your account changed. Please sign in again.');
+    if (updated.display_name !== normalized) throw new Error('Your name could not be saved. Please retry.');
+    setUser(current => current?.id === updated.id ? { ...current, ...updated } : current);
+    return updated;
+  };
+
   const logout = (shouldRedirect = true) => {
     authEpoch.current++;
     setIsLoadingAuth(false);
@@ -149,6 +161,7 @@ export const AuthProvider = ({ children }) => {
       appPublicSettings,
       authChecked,
       logout,
+      updateAccountName,
       navigateToLogin,
       checkUserAuth,
       checkAppState

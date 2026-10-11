@@ -178,3 +178,11 @@ See [security remediation](docs/SECURITY_REMEDIATION.md) for request limits,
 resume validation, processing disclosures, deployment prerequisites and remaining
 hosted verification. Deploy the private `ServiceUsage` schema with the functions;
 quota failures intentionally prevent provider work. Licensing remains undecided.
+
+## Account name
+
+Signed-in users can edit their Avera name in Settings → Account. The editor
+prefills the existing name, saves with confirmation, and retains the draft on
+failure. Names are trimmed and limited to 100 characters. This uses the custom
+User.display_name field because Base44's built-in full_name is not editable
+through auth.updateMe. Deploy the updated User schema with the frontend.

@@ -7,6 +7,12 @@
         "admin",
         "user"
       ]
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "description": "The name the user chooses to display in Avera."
     }
   },
   "required": [

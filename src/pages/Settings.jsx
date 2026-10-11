@@ -1,3 +1,4 @@
+import AccountNameForm from '@/components/settings/AccountNameForm';
 import { Link } from 'react-router-dom';
 import { Info } from 'lucide-react';
 import PageHeader from '@/components/layout/PageHeader';
@@ -15,18 +16,15 @@ export default function Settings() {
     <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
       <PageHeader title="Settings" subtitle="Profile, household, connections, and appearance." />
       <div className="space-y-4">
-        <SettingSection title="Profile" description="Your Avera account details.">
+        <SettingSection title="Account" description="Your Avera account details.">
           {user ? (
-            <dl className="grid gap-3 text-base sm:grid-cols-2">
+            <div className="space-y-4">
+              <AccountNameForm key={user.id} />
               <div>
-                <dt className="text-sm text-muted-foreground">Name</dt>
-                <dd className="mt-0.5 font-medium text-foreground">{user.full_name || 'Not set'}</dd>
+                <p className="text-sm text-muted-foreground">Email</p>
+                <p className="mt-0.5 text-base font-medium text-foreground">{user.email}</p>
               </div>
-              <div>
-                <dt className="text-sm text-muted-foreground">Email</dt>
-                <dd className="mt-0.5 font-medium text-foreground">{user.email}</dd>
-              </div>
-            </dl>
+            </div>
           ) : (
             <p className="text-base text-muted-foreground">Loading your profile…</p>
           )}
