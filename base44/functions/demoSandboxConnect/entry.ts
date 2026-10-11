@@ -4,7 +4,7 @@ import { claimUsage } from '../../shared/usageLimits.ts';
 // Uses the real Sandbox flow (public token → exchange → accounts), stores the
 // Item demo-tagged so reset can remove only this demo workspace's data.
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.53';
-import { plaidRequest } from '../../shared/plaid.ts';
+import { plaidRequest, PlaidFailure } from '../../shared/plaid.ts';
 import { storeConnection } from '../../shared/plaidRecords.ts';
 import { demoSandboxConfig } from '../../shared/demoPlaidConfigs.ts';
 
@@ -40,6 +40,7 @@ export default async function(req) {
     return Response.json({...result,profile_key:profileKey});
   } catch (error) {
     const failure = requestFailureResponse(error); if (failure) return failure;
+    if (error instanceof PlaidFailure && error.code === 'NOT_CONFIGURED') return Response.json({ error: 'Sandbox connections are not configured.', code: 'SANDBOX_NOT_CONFIGURED' }, { status: 503 });
     return Response.json({error:'Demo Sandbox connection could not be completed.'},{status:502});
   }
 }

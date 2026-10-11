@@ -1,3 +1,6 @@
+import { Base44Error } from '@base44/sdk';
+import ModeEntry from '../src/pages/ModeEntry';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import React from 'react';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
@@ -91,7 +94,7 @@ describe('demo and UI fixtures, distinct from real Plaid Sandbox',()=>{
     render(<BankConnections />);expect(await screen.findByRole('button',{name:'Retry loading connections'})).toBeTruthy();
   });
   it('confirms demo reset and distinguishes mixed Sandbox plus sample planning data',()=>{
-    setDemoWorkspace({profile:'early_career',plaid_item_id:'item'});setDataMode('demo');render(<DemoModeBar />);
+    setDemoWorkspace({profile:'early_career',plaid_item_id:'item'});setDataMode('demo');render(<MemoryRouter><DemoModeBar /></MemoryRouter>);
     expect(screen.getByText('Dataset: Plaid Sandbox + Avera sample plans')).toBeTruthy();fireEvent.click(screen.getByRole('button',{name:'Reset demo profile'}));expect(screen.getByRole('dialog')).toBeTruthy();
   });
   it('orchestrates Link open, public-token exchange and destroy with a widget fixture',async()=>{
@@ -121,4 +124,65 @@ it('demo reset removes only this user demo contributions, retaining ordinary and
  ];
  await removeDemoData('early_career');
  expect(rows.GoalContribution.map(r=>r.id)).toEqual(['ordinary','foreign']);
+});
+
+it('retries Sandbox preparation errors and empty syncs without replacing the connection',async()=>{
+ vi.useFakeTimers();
+ try {
+  sdk.functions.invoke.mockResolvedValueOnce({data:{item_id:'preparing-item'}})
+   .mockResolvedValueOnce({data:{results:[{item_id:'preparing-item',status:'error',error:'PRODUCT_NOT_READY'}]}})
+   .mockResolvedValueOnce({data:{results:[{item_id:'preparing-item',status:'synced',transactions:0}]}})
+   .mockResolvedValueOnce({data:{results:[{item_id:'preparing-item',status:'synced',transactions:12}]}});
+  const pending=loadDemoProfile('early_career',{viaPlaid:true});
+  await vi.advanceTimersByTimeAsync(3000);
+  expect(await pending).toEqual({plaid_used:true,warning:''});
+  expect(sdk.functions.invoke.mock.calls.filter(([name])=>name==='demoSandboxConnect')).toHaveLength(1);
+  expect(getDemoWorkspace().plaid_item_id).toBe('preparing-item');
+  expect(rows.Transaction).toEqual([]);
+ } finally {vi.useRealTimers();}
+});
+it('keeps a clear setup explanation when quotas are unavailable',async()=>{
+ sdk.functions.invoke.mockRejectedValueOnce({response:{status:503,data:{code:'SERVICE_LIMITS_UNAVAILABLE',error:'sensitive diagnostic'}}});
+ const result=await loadDemoProfile('early_career',{viaPlaid:true});
+ expect(result.plaid_used).toBe(false);expect(result.warning).toContain('needs an app update');
+ expect(result.warning).not.toContain('sensitive');expect(getDemoWorkspace().plaid_item_id).toBeNull();
+});
+it('maps safe Link setup errors for the user instead of Axios diagnostics',async()=>{
+ sdk.functions.invoke.mockRejectedValueOnce({response:{status:503,data:{code:'SANDBOX_NOT_CONFIGURED',error:'sensitive diagnostic'}}});
+ await expect(connectBank()).rejects.toThrow('not configured');
+});
+it('exits directly from a non-overview page to Get Started and preserves ordinary records',async()=>{
+ setDemoWorkspace({profile:'early_career'});setDataMode('demo');
+ rows.Account=[{id:'demo-account',created_by_id:'a',demo_profile:'early_career'},{id:'ordinary',created_by_id:'a'}];
+ render(<MemoryRouter initialEntries={['/bills-budget']}><Routes><Route path="/bills-budget" element={<DemoModeBar/>}/><Route path="/welcome" element={<h1>Get started with Avera</h1>}/></Routes></MemoryRouter>);
+ fireEvent.click(screen.getByRole('button',{name:'Exit Demo Mode'}));
+ expect(screen.getByRole('dialog',{name:'Exit demo mode?'})).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Exit demo',exact:true}));
+ expect(await screen.findByRole('heading',{name:'Get started with Avera'})).toBeTruthy();
+ expect(getDataMode()).toBeNull();expect(getDemoWorkspace()).toBeNull();
+ expect(rows.Account.map(r=>r.id)).toEqual(['ordinary']);
+});
+it('stays in demo mode if cleanup fails',async()=>{
+ setDemoWorkspace({profile:'early_career'});setDataMode('demo');
+ rows.Account=[{id:'demo-account',created_by_id:'a',demo_profile:'early_career'}];
+ sdk.entities.Account.delete.mockRejectedValue(new Error('network unavailable'));
+ render(<MemoryRouter initialEntries={['/properties']}><Routes><Route path="/properties" element={<DemoModeBar/>}/><Route path="/welcome" element={<h1>Get started with Avera</h1>}/></Routes></MemoryRouter>);
+ fireEvent.click(screen.getByRole('button',{name:'Exit Demo Mode'}));fireEvent.click(screen.getByRole('button',{name:'Exit demo',exact:true}));
+ await waitFor(()=>expect(screen.getByRole('button',{name:'Keep exploring'}).disabled).toBe(false));
+ expect(screen.queryByRole('heading',{name:'Get started with Avera'})).toBeNull();
+ expect(getDataMode()).toBe('demo');expect(getDemoWorkspace().profile).toBe('early_career');
+});
+it('places the ready-to-start manual option last and opens the personal budget',async()=>{
+ render(<MemoryRouter initialEntries={['/welcome']}><Routes><Route path="/welcome" element={<ModeEntry/>}/><Route path="/bills-budget" element={<h1>Your budget</h1>}/></Routes></MemoryRouter>);
+ const buttons=screen.getAllByRole('button');expect(buttons.map(b=>b.textContent)).toEqual(['Choose a profile','Pick a profile','Enter my information']);
+ fireEvent.click(screen.getByRole('button',{name:'Enter my information'}));
+ expect(await screen.findByRole('heading',{name:'Your budget'})).toBeTruthy();expect(getDataMode()).toBe('manual');
+});
+
+it('handles the real SDK Base44Error shape for Sandbox setup and request limits',async()=>{
+ sdk.functions.invoke.mockRejectedValueOnce(new Base44Error('sensitive diagnostic',503,'SANDBOX_NOT_CONFIGURED',{}));
+ await expect(connectBank()).rejects.toThrow('not configured');
+ sdk.functions.invoke.mockRejectedValueOnce(new Base44Error('sensitive diagnostic',429,undefined,{}));
+ const result=await loadDemoProfile('early_career',{viaPlaid:true});
+ expect(result.warning).toContain('Wait a minute');expect(result.warning).not.toContain('sensitive');
 });

@@ -34,7 +34,7 @@
 | askAvera | 6 | 60 |
 | parseResume | 2 | 10 |
 | searchJobOpportunities | 3 | 30 |
-| demoSandboxConnect | 2 | 10 |
+| demoSandboxConnect | 6 | 30 |
 | suggestBills / suggestCategories (each) | 6 | 60 |
 
 Counters include all authenticated attempts, including rejected payloads and
@@ -97,3 +97,32 @@ These source changes do not change repository visibility or deploy the app.
 - Live isolation and Sandbox harnesses reported blocked prerequisites and made no
   requests: no isolated app ID/disposable user tokens were configured. Local SDK,
   provider and browser fixtures are not proof of hosted enforcement or retention.
+
+## Sandbox and demo exit follow-up
+
+The profile connection now polls the same Item through PRODUCT_NOT_READY and
+empty successful syncs, with bounded backoff over 31 seconds. It no longer
+interprets initial transaction preparation as a terminal failure. The connection
+quota allows six attempts per minute and thirty per day, covering all three
+profiles plus retries. Failures remain explicit; sample-data fallback never
+claims a successful Plaid import.
+
+A SERVICE_LIMITS_UNAVAILABLE response means the ServiceUsage schema or its
+server-only upsert/updateMany capability is unavailable. Deploy the schema and
+functions together and verify the persisted counter operations; the app does
+not bypass failed quota enforcement. SANDBOX_NOT_CONFIGURED identifies missing
+Sandbox credentials. Neither code exposes provider diagnostics or secrets.
+
+Exit confirmation now uses viewport-centered positioning with concise action labels.
+After successful scoped cleanup, it navigates directly to /welcome using history
+replacement rather than reloading the current financial page. Cleanup failure
+keeps the active demo mode and permits retry. Manual entry is the last onboarding
+option and is described as starting a personal financial plan today.
+
+Follow-up validation: 318 unit/integration tests, lint, frontend/backend type checks
+and production build passed. General browser smoke passed 72 page cases; the demo
+suite passed 200 checks, and focused centering/exit checks passed 32 cases. No
+accessibility violations were reported. Mobile and desktop confirmation screenshots
+were visually reviewed. Provider preparation and native SDK error-format regressions
+use fixtures; a hosted Plaid connection cannot be certified without isolated test
+credentials and deployed ServiceUsage/functions.

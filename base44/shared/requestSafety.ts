@@ -1,6 +1,6 @@
 // Limit bytes while reading, before JSON.parse; never trust Content-Length alone.
 export class RequestFailure extends Error {
-  constructor(public status: number, message: string) { super(message); }
+  constructor(public status: number, message: string, public code?: string) { super(message); }
 }
 export async function readJsonLimited(req: Request, maxBytes = 16384, timeoutMs = 10000) {
   const length = req.headers.get('content-length');
@@ -45,6 +45,6 @@ export async function readJsonLimited(req: Request, maxBytes = 16384, timeoutMs 
 }
 export function requestFailureResponse(error: unknown) {
   return error instanceof RequestFailure
-    ? Response.json({ error: error.message }, { status: error.status,
+    ? Response.json({ error: error.message, ...(error.code ? { code: error.code } : {}) }, { status: error.status,
         ...(error.status === 429 ? { headers: { 'Retry-After': '60' } } : {}) }) : null;
 }

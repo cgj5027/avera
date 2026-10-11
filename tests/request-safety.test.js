@@ -141,3 +141,9 @@ describe("DOCX structural validation",()=>{
  it("accepts a minimal Word archive",()=>expect(validateResume({file_name:"resume.docx",consent:true,file_base64:"UEsDBBQAAAAAAD2xS13HHBc8CAAAAAgAAAATAAAAW0NvbnRlbnRfVHlwZXNdLnhtbDxUeXBlcy8+UEsDBBQAAAAAAD2xS11fW9FMCwAAAAsAAAARAAAAd29yZC9kb2N1bWVudC54bWw8ZG9jdW1lbnQvPlBLAQIUAxQAAAAAAD2xS13HHBc8CAAAAAgAAAATAAAAAAAAAAAAAACAAQAAAABbQ29udGVudF9UeXBlc10ueG1sUEsBAhQDFAAAAAAAPbFLXV9b0UwLAAAACwAAABEAAAAAAAAAAAAAAIABOQAAAHdvcmQvZG9jdW1lbnQueG1sUEsFBgAAAAACAAIAgAAAAHMAAAAAAA=="}).mimeType).toContain("wordprocessingml"));
  it("rejects traversal entries",()=>expect(()=>validateResume({file_name:"resume.docx",consent:true,file_base64:"UEsDBBQAAAAAAD2xS13HHBc8CAAAAAgAAAATAAAAW0NvbnRlbnRfVHlwZXNdLnhtbDxUeXBlcy8+UEsDBBQAAAAAAD2xS11fW9FMCwAAAAsAAAARAAAAd29yZC9kb2N1bWVudC54bWw8ZG9jdW1lbnQvPlBLAwQUAAAAAAA9sUtd+zkrggMAAAADAAAADgAAAC4uL3BheWxvYWQudHh0YmFkUEsBAhQDFAAAAAAAPbFLXcccFzwIAAAACAAAABMAAAAAAAAAAAAAAIABAAAAAFtDb250ZW50X1R5cGVzXS54bWxQSwECFAMUAAAAAAA9sUtdX1vRTAsAAAALAAAAEQAAAAAAAAAAAAAAgAE5AAAAd29yZC9kb2N1bWVudC54bWxQSwECFAMUAAAAAAA9sUtd+zkrggMAAAADAAAADgAAAAAAAAAAAAAAgAFzAAAALi4vcGF5bG9hZC50eHRQSwUGAAAAAAMAAwC8AAAAogAAAAAA"})).toThrow(RequestFailure));
 });
+
+it('allows testing all three Sandbox profiles twice while retaining a connection quota',async()=>{
+ const {client}=quotaClient();
+ for(let i=0;i<6;i++) await claimUsage(client,{id:'a'},'demoSandboxConnect',0);
+ await expect(claimUsage(client,{id:'a'},'demoSandboxConnect',0)).rejects.toMatchObject({status:429,code:'REQUEST_LIMITED'});
+});

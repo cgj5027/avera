@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 
 /** Shared delete confirmation. */
-export default function ConfirmDeleteDialog({ open, onOpenChange, title, description, onConfirm, busy }) {
+export default function ConfirmDeleteDialog({ open, onOpenChange, title, description, onConfirm, busy, confirmLabel = 'Delete', cancelLabel = 'Cancel' }) {
   const [error, setError] = useState('');
   const confirm = async () => {
     setError('');
@@ -25,11 +25,11 @@ export default function ConfirmDeleteDialog({ open, onOpenChange, title, descrip
         </DialogHeader>
         {error && <p role="alert" className="text-base text-danger-text">{error}</p>}
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+            {cancelLabel}
           </Button>
           <Button variant="destructive" onClick={confirm} disabled={busy}>
-            Delete
+            {busy ? 'Please wait…' : confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

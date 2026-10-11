@@ -1,3 +1,4 @@
+import { sandboxErrorMessage } from './sandboxErrors';
 /**
  * Demo Mode orchestration — Stage 3B.
  *
@@ -62,22 +63,19 @@ async function connectPlaidDemo(profileKey) {
   const res = await base44.functions.invoke('demoSandboxConnect', { profile_key: profileKey });
   const itemId = res.data?.item_id ?? null;
   if (!itemId) throw new Error(res.data?.error || 'Plaid Sandbox connection failed.');
-  /* The first sync can return before the sandbox publishes the custom
-     transactions; retry once after a short wait so the profile loads fully. */
-  const syncResult = await base44.functions.invoke('plaidSync', {item_id:itemId});
-  const check = result => {
+  // Sandbox transaction preparation is asynchronous. Both an empty successful
+  // sync and PRODUCT_NOT_READY are transient; never discard the Item after one poll.
+  const delays = [1000, 2000, 4000, 8000, 16000];
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    const result = await base44.functions.invoke('plaidSync', { item_id: itemId });
     const own = result.data?.results?.find(r => r.item_id === itemId);
-    if (!own || own.status !== 'synced') throw new Error('Demo sync failed');
-    return own.transactions || 0;
-  };
-  let imported = check(syncResult);
-  if (imported === 0) {
-    await new Promise((resolve) => setTimeout(resolve, 4000));
-    const retry = await base44.functions.invoke('plaidSync', {item_id:itemId});
-    imported = check(retry);
+    if (!own) throw new Error('Demo sync failed');
+    if (own.status === 'synced' && own.transactions > 0) return itemId;
+    if (own.status !== 'synced' && own.error !== 'PRODUCT_NOT_READY') throw new Error('Demo sync failed');
+    if (attempt < delays.length) await new Promise(resolve => setTimeout(resolve, delays[attempt]));
   }
-  if (!imported) throw new Error('Demo transactions are not ready');
-  return itemId;
+  const pending = Object.assign(new Error('Demo transactions are not ready'), { code: 'SANDBOX_DATA_PENDING' });
+  throw pending;
 }
 
 /**
@@ -99,10 +97,10 @@ export async function loadDemoProfile(profileKey, { viaPlaid = false } = {}) {
   if (viaPlaid) {
     try {
       plaidItemId = await connectPlaidDemo(profileKey);
-    } catch {
+    } catch (error) {
       await removeDemoData(profileKey);
       plaidItemId = null;
-      warning = 'Plaid Sandbox connection failed — loaded the labeled Avera sample dataset instead.';
+      warning = `${sandboxErrorMessage(error)} You can explore sample data in the meantime.`;
     }
   }
 
