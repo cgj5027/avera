@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.53';
 import { allRecords, plaidRequest } from '../../shared/plaid.ts';
 import { credentialFor } from '../../shared/plaidRecords.ts';
 

@@ -1,7 +1,9 @@
+import { readJsonLimited, requestFailureResponse } from '../../shared/requestSafety.ts';
+import { claimUsage } from '../../shared/usageLimits.ts';
 // Demo Mode: connects the selected profile's Plaid Sandbox custom user.
 // Uses the real Sandbox flow (public token → exchange → accounts), stores the
 // Item demo-tagged so reset can remove only this demo workspace's data.
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.53';
 import { plaidRequest } from '../../shared/plaid.ts';
 import { storeConnection } from '../../shared/plaidRecords.ts';
 import { demoSandboxConfig } from '../../shared/demoPlaidConfigs.ts';
@@ -12,7 +14,8 @@ export default async function(req) {
     const user = await base44.auth.me();
     if (!user?.id) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const body = await req.json().catch(() => ({}));
+    await claimUsage(base44, user, 'demoSandboxConnect');
+    const body = await readJsonLimited(req);
     const profileKey = typeof body.profile_key === 'string' ? body.profile_key : '';
     let config;
     try {
@@ -35,7 +38,8 @@ export default async function(req) {
 
     const result = await storeConnection(base44,user,exchanged,{institution_id:config.institution_id,institution_name:config.institution_name,demo_profile:profileKey});
     return Response.json({...result,profile_key:profileKey});
-  } catch {
+  } catch (error) {
+    const failure = requestFailureResponse(error); if (failure) return failure;
     return Response.json({error:'Demo Sandbox connection could not be completed.'},{status:502});
   }
 }

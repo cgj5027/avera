@@ -6,7 +6,7 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { readFileSync, readdirSync } from 'node:fs';
 const sdk = vi.hoisted(() => ({ auth: { me: vi.fn(), logout: vi.fn(), loginViaEmailPassword: vi.fn(), register: vi.fn(), verifyOtp: vi.fn(), setToken: vi.fn(), resendOtp: vi.fn(), loginWithProvider: vi.fn() }, app: { getPublicSettings: vi.fn() }, entities: {}, functions:{invoke:vi.fn()} }));
 vi.mock('@/api/base44Client', () => ({ base44: sdk }));
-vi.mock('npm:@base44/sdk@0.8.52',()=>({createClientFromRequest:()=>sdk}));
+vi.mock('npm:@base44/sdk@0.8.53',()=>({createClientFromRequest:()=>sdk}));
 import contributionHandler from '../base44/functions/logGoalContribution/entry.ts';
 vi.mock('@/lib/app-params', () => ({ appParams: { token: 'test-token' } }));
 import { appParams } from '@/lib/app-params';
@@ -79,7 +79,7 @@ describe('owner-scoped persistence with mocked SDK (not deployed RLS)', () => {
   });
   it('every financial schema requires owner-only RLS including admins', () => {
     const dir=process.cwd()+'/base44/entities/';
-    for(const file of readdirSync(dir).filter(x=>!['User.jsonc','PlaidCredential.jsonc'].includes(x))) {
+    for(const file of readdirSync(dir).filter(x=>!['User.jsonc','PlaidCredential.jsonc','ServiceUsage.jsonc'].includes(x))) {
       const schema=JSON.parse(readFileSync(dir+file,'utf8'));
       // Create may anchor ownership on either accepted form; both restrict to the signed-in owner.
       expect(

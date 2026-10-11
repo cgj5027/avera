@@ -1,8 +1,9 @@
+// Existing handler fixtures isolate provider/data behavior; durable limits are exercised in request-safety.test.js.
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { matches } from './queryFixture';
 const fixture=vi.hoisted(()=>({client:null}));
-vi.mock('npm:@base44/sdk@0.8.52',()=>({createClientFromRequest:()=>fixture.client}));
+vi.mock('npm:@base44/sdk@0.8.53',()=>({createClientFromRequest:()=>fixture.client}));
 vi.mock('base44:runtime',()=>({secrets:{get:key=>key==='PLAID_CLIENT_ID'?'fixture-client':'fixture-secret'}}));
 import sync from '../base44/functions/plaidSync/entry.ts';
 import exchange from '../base44/functions/plaidExchangeToken/entry.ts';
@@ -208,4 +209,16 @@ describe('actual backend handlers with SDK/Plaid fixtures; NOT real Sandbox requ
     await sync(req());expect(rows.Account[0].balance).toBe(40);expect(rows.Account[0].type).toBe('credit_card');
   });
 
+});
+
+vi.mock('../base44/shared/usageLimits.ts',()=>({claimUsage:vi.fn(async()=>{})}));
+
+it('does not log upstream exception contents during Plaid sync failure',async()=>{
+ const spy=vi.spyOn(console,'error').mockImplementation(()=>{});
+ try {
+  fetchMock.mockRejectedValue(new Error('synthetic-private-marker'));
+  await sync(req());
+  expect(spy).toHaveBeenCalledWith('Sandbox sync failed',{code:'SYNC_FAILED'});
+  expect(JSON.stringify(spy.mock.calls)).not.toContain('synthetic-private-marker');
+ } finally {spy.mockRestore();}
 });

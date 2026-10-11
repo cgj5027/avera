@@ -15,11 +15,12 @@ const FIELDS = [
 ];
 
 /**
- * Optional resume upload. The file is stored privately (no public URL);
+ * Optional resume processing. Text bypasses storage; document uploads are private.
  * Avera extracts field suggestions only, and nothing is saved to the profile
  * until the user reviews them and chooses to apply.
  */
 export default function ResumeUpload({ onApply }) {
+  const [consent, setConsent] = useState(false);
   const [status, setStatus] = useState('idle'); // idle | parsing | suggestions | error
   const [error, setError] = useState('');
   const [suggestions, setSuggestions] = useState(null);
@@ -28,15 +29,15 @@ export default function ResumeUpload({ onApply }) {
   const pick = async (event) => {
     const file = event.target.files?.[0];
     event.target.value = '';
-    if (!file) return;
+    if (!file || !consent) return;
     const ext = (file.name.split('.').pop() || '').toLowerCase();
     if (!ACCEPTED_EXTENSIONS.includes(ext)) {
       setError('Use a PDF, Word, or text file up to 5 MB.');
       setStatus('error');
       return;
     }
-    if (file.size > MAX_BYTES) {
-      setError('That file is larger than 5 MB. Try a smaller copy.');
+    if (file.size > MAX_BYTES || (ext === 'txt' && file.size > 60000)) {
+      setError('Use a file up to 5 MB, or a UTF-8 text resume up to 60 KB.');
       setStatus('error');
       return;
     }
@@ -55,6 +56,7 @@ export default function ResumeUpload({ onApply }) {
       const response = await base44.functions.invoke('parseResume', {
         file_name: file.name,
         file_base64,
+        consent: true,
       });
       const sug = response.data?.suggestions;
       if (!sug || typeof sug.skills !== 'string' || !sug.skills.trim()) {
@@ -84,12 +86,16 @@ export default function ResumeUpload({ onApply }) {
 
   return (
     <div className="mt-4 rounded-2xl border border-border bg-surface-subtle p-4" aria-live="polite" aria-busy={status === 'parsing'}>
+      <label className="mb-3 flex min-h-11 items-start gap-3 text-base">
+        <input type="checkbox" checked={consent} disabled={status === 'parsing'} onChange={e => setConsent(e.target.checked)} className="mt-1 h-5 w-5 shrink-0" />
+        <span>I agree to send my resume to the AI service for profile suggestions. Text resumes are processed without file storage. PDF and Word files are stored privately; discarding suggestions does not delete them. Contact the app team for deletion and retention details. Use sample documents until retention settings are verified.</span>
+      </label>
       <div className="flex flex-wrap items-center gap-3">
         <Button
           type="button"
           variant="outline"
           onClick={() => inputRef.current?.click()}
-          disabled={status === 'parsing'}
+          disabled={status === 'parsing' || !consent}
           className="min-h-11 rounded-xl px-4"
         >
           {status === 'parsing'

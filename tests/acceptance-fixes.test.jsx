@@ -4,7 +4,7 @@ import {fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {matches} from './queryFixture';
 const fixture=vi.hoisted(()=>({client:null}));
 const sdk=vi.hoisted(()=>({functions:{invoke:vi.fn()}}));
-vi.mock('npm:@base44/sdk@0.8.52',()=>({createClientFromRequest:()=>fixture.client}));
+vi.mock('npm:@base44/sdk@0.8.53',()=>({createClientFromRequest:()=>fixture.client}));
 vi.mock('@/api/base44Client',()=>({base44:sdk}));
 import contribute from '../base44/functions/logGoalContribution/entry.ts';
 import feedback from '../base44/functions/submitFeedback/entry.ts';
@@ -105,3 +105,5 @@ it('Ask Avera and the frontend normalize half-cent boundary values identically',
 it('preserves cent precision when combining legacy starting savings and ledger rows',()=>{
  expect(withGoalContributions([{id:'g',saved_amount:1.005}],[{goal_id:'g',amount:0.01,contribution_key:'key'}])[0].saved_amount).toBe(1.02);
 });
+
+vi.mock('../base44/shared/usageLimits.ts',()=>({claimUsage:vi.fn(async()=>{})}));

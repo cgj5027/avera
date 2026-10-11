@@ -1,0 +1,4 @@
+# Historical linkedIncome/linkedExpenses UI expressions falsely match LinkedIn IDs.
+# Ignore only these exact historical findings; keep the provider rule enabled.
+4c9131271e0aa6ca0b54e50fbe7369ffaa806936:src/pages/Overview.jsx:linkedin-client-id:190
+4c9131271e0aa6ca0b54e50fbe7369ffaa806936:src/pages/Overview.jsx:linkedin-client-id:192
