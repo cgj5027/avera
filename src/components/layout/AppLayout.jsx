@@ -3,6 +3,7 @@ import SidebarNav from './SidebarNav';
 import MobileNav from './MobileNav';
 import DemoModeBar from './DemoModeBar';
 import ModeIndicator from './ModeIndicator';
+import SignOutButton from '@/components/SignOutButton';
 import FeedbackDialog from '@/components/settings/FeedbackDialog';
 
 /** App shell: forest sidebar on desktop, labeled bar + More sheet on mobile. */
@@ -19,14 +20,15 @@ export default function AppLayout() {
       <SidebarNav />
       <div className={isChat ? 'flex h-dvh flex-col lg:pl-60' : 'lg:pl-60'}>
         <header className="sticky top-0 z-40 shrink-0 border-b border-border bg-surface/95 backdrop-blur">
-          <div className="flex min-h-14 items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:justify-end">
+          <div className="flex min-h-14 flex-wrap items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:justify-end">
             <div className="flex shrink-0 items-center gap-2.5 lg:hidden">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">A</span>
               <span className="text-base font-semibold tracking-tight text-foreground">Avera</span>
             </div>
-            <div className="flex min-w-0 items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
               <div className="lg:hidden"><ModeIndicator variant="inline" /></div>
               <FeedbackDialog />
+              <SignOutButton />
             </div>
           </div>
         </header>

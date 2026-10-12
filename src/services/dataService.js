@@ -178,3 +178,17 @@ export async function logGoalContribution(goalId, amount, requestId) {
   const response=await base44.functions.invoke('logGoalContribution',{goal_id:goalId,amount,request_id:requestId,dataset});
   if (response.data?.saved!==true) throw new Error('Contribution was not saved.');
 }
+
+/** Assign a transaction and ensure a custom name has a budget card. */
+export async function assignTransactionCategory(id, category) {
+  await owned('transaction', id);
+  const name = String(category ?? '').trim();
+  let target = name;
+  if (name) {
+    const categories = await listRecords('budgetCategory');
+    const existing = categories.find(row => row.name.trim().toLowerCase() === name.toLowerCase());
+    if (existing) target = existing.name;
+    else await createRecord('budgetCategory', {name, monthly_limit: 0});
+  }
+  return updateRecord('transaction', id, {category: target});
+}
