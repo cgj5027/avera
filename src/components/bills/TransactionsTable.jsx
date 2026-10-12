@@ -548,7 +548,7 @@ export default function TransactionsTable({
                 />
               )}
               <p className="text-xs text-muted-foreground">
-                Budget categories count this transaction toward that category's monthly spending in the Budget tab.
+                Spending counts in the transaction’s month in the Budget tab. A new category creates a budget card with a $0 limit; edit its limit in Budget.
               </p>
             </div>
             {saveError && <p role="alert" className="text-base text-danger-text">{saveError}</p>}

@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef, useCallback } from 'react';
+import { useIdleLogout, clearActivity } from '@/lib/useIdleLogout';
 import { base44 } from '@/api/base44Client';
 import { queryClientInstance } from '@/lib/query-client';
 import { appParams } from '@/lib/app-params';
@@ -115,7 +116,8 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = (shouldRedirect = true) => {
+  const logout = useCallback((shouldRedirect = true) => {
+    if (user?.id) clearActivity(user.id);
     authEpoch.current++;
     setIsLoadingAuth(false);
     clearDataMode();
@@ -127,12 +129,14 @@ export const AuthProvider = ({ children }) => {
     sessionStorage.removeItem('avera_data_mode');
     if (shouldRedirect) {
       // Use the SDK's logout method which handles token cleanup and redirect
-      base44.auth.logout(window.location.href);
+      base44.auth.logout(new URL('/login', window.location.origin).href);
     } else {
       // Just remove the token without redirect
       base44.auth.logout();
     }
-  };
+  }, [user?.id]);
+
+  useIdleLogout(isAuthenticated ? user?.id : null, logout);
 
   const navigateToLogin = () => {
     // Use the SDK's redirectToLogin method

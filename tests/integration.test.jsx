@@ -347,3 +347,41 @@ it('editing bill details preserves a month-end recurrence anchor', async () => {
   fireEvent.click(screen.getByRole('button',{name:'Save changes'}));
   await waitFor(()=>expect(save).toHaveBeenCalled());expect(save.mock.calls[0][0].recurrence_day).toBe(31);
 });
+it('recategorization moves spending between budget cards and persists after reload', async () => {
+  const month = new Date();
+  const date = `${month.getFullYear()}-${String(month.getMonth()+1).padStart(2,'0')}-05`;
+  await data.createRecord('budgetCategory', {name:'Food',monthly_limit:100});
+  await data.createRecord('budgetCategory', {name:'Travel',monthly_limit:200});
+  const transaction = await data.createRecord('transaction', {description:'Lunch',category:'Food',amount:25,type:'expense',date});
+  await data.assignTransactionCategory(transaction.id, ' Travel ');
+  let view = render(<BillsBudget />);
+  await screen.findByRole('tab', {name:'Budget'});
+  fireEvent.mouseDown(screen.getByRole('tab', {name:'Budget'}), {button:0,ctrlKey:false});
+  await waitFor(() => expect(screen.getByRole('heading', {name:'Travel'})).toBeTruthy());
+  expect(screen.getByRole('heading', {name:'Travel'}).closest('.rounded-2xl').textContent).toContain('$25.00');
+  expect(screen.getByRole('heading', {name:'Food'}).closest('.rounded-2xl').textContent).toContain('$0.00');
+  view.unmount();
+  await data.assignTransactionCategory(transaction.id, ' Hobbies ');
+  expect(rows.BudgetCategory.find(row => row.name === 'Hobbies').monthly_limit).toBe(0);
+  expect(rows.Transaction[0].category).toBe('Hobbies');
+  await data.assignTransactionCategory(transaction.id, 'hobbies');
+  expect(rows.BudgetCategory.filter(row => row.name === 'Hobbies')).toHaveLength(1);
+  view = render(<BillsBudget />);
+  await screen.findByRole('tab', {name:'Budget'});
+  fireEvent.mouseDown(screen.getByRole('tab', {name:'Budget'}), {button:0,ctrlKey:false});
+  await waitFor(() => expect(screen.getByRole('heading', {name:'Hobbies'})).toBeTruthy());
+  expect(screen.getByRole('heading', {name:'Hobbies'}).closest('.rounded-2xl').textContent).toContain('$25.00');
+});
+it('failed category assignment retains the transaction category', async () => {
+  const tx = await data.createRecord('transaction', {category:'Food',amount:25,type:'expense',date:'2026-10-05'});
+  sdk.entities.BudgetCategory.create.mockRejectedValueOnce(new Error('offline'));
+  await expect(data.assignTransactionCategory(tx.id, 'Travel')).rejects.toThrow('offline');
+  expect(rows.Transaction[0].category).toBe('Food');
+});
+
+it.each(['/welcome', '/bills-budget'])('offers sign out directly on %s', async path => {
+  render(<MemoryRouter initialEntries={[path]}><AuthProvider><AuthenticatedApp /></AuthProvider></MemoryRouter>);
+  fireEvent.click(await screen.findByRole('button', {name:'Sign out'}));
+  expect(sdk.auth.logout).toHaveBeenCalledWith(new URL('/login', window.location.origin).href);
+  expect(screen.queryByRole('button', {name:'Sign out'})).toBeNull();
+});

@@ -1,3 +1,4 @@
+import SignOutButton from '@/components/SignOutButton';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, FlaskConical, PencilLine, ShieldCheck, LoaderCircle } from 'lucide-react';
@@ -99,7 +100,7 @@ export default function ModeEntry() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-background">
-      <header className="flex items-center gap-3 px-4 py-5 sm:px-8">
+      <header className="flex flex-wrap items-center gap-3 px-4 py-5 sm:px-8">
         <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-lg font-semibold text-primary-foreground">
           A
         </span>
@@ -107,6 +108,7 @@ export default function ModeEntry() {
           <p className="text-lg font-semibold tracking-tight text-foreground">Avera</p>
           <p className="text-sm text-muted-foreground">Your finances. Your rules. Your control.</p>
         </div>
+        <div className="ml-auto"><SignOutButton /></div>
       </header>
       <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-4 pb-12 pt-8 sm:px-8">
         <h1 className="font-heading text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">

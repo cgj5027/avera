@@ -24,7 +24,7 @@ import LinkedTransactionsDialog from '@/components/budget/LinkedTransactionsDial
 import CategoryDialog from '@/components/budget/CategoryDialog';
 import LogSpendingDialog from '@/components/budget/LogSpendingDialog';
 import GoalsSection from '@/components/goals/GoalsSection';
-import { listRecords, createRecord, updateRecord, deleteRecord, logGoalContribution } from '@/services/dataService';
+import { listRecords, createRecord, updateRecord, deleteRecord, logGoalContribution, assignTransactionCategory } from '@/services/dataService';
 import * as calc from '@/services/financialCalculations';
 import { importedTransactions, estimateBillCandidates, normalizeName } from '@/services/plaidEstimates';
 import { formatCurrency, monthLabel, todayISO } from '@/utils/format';
@@ -147,7 +147,10 @@ export default function BillsBudget() {
     run(() => createRecord('budgetCategory', { name, monthly_limit }), 'Category added');
 
   const saveTransactionRow = (id, payload) =>
-    run(() => updateRecord('transaction', id, payload), 'Transaction updated');
+    run(async () => {
+      const saved = await assignTransactionCategory(id, payload.category);
+      setTransactions(rows => rows.map(row => row.id === id ? {...row, ...saved, category: saved.category} : row));
+    }, 'Transaction updated');
 
   const suggestCategories = () =>
     run(async () => {
@@ -240,7 +243,7 @@ export default function BillsBudget() {
   /* Transactions linked to a budget category (by name) within the selected month, newest first. */
   const linkedForCategory = (name) =>
     transactions
-      .filter((t) => t.type !== 'income' && t.category === name && t.date >= range.start && t.date <= range.end)
+      .filter((t) => !t.exclude_from_cashflow && t.type !== 'income' && t.category === name && t.date >= range.start && t.date <= range.end)
       .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
 
   return (
