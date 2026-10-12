@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { ChevronDown, FlaskConical, RotateCcw, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import { getDemoWorkspace, clearDataMode } from '@/lib/mode';
  * demo workspace) and exit. Ordinary financial records are never touched.
  */
 export default function DemoModeBar({ compact = false }) {
+  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
   const [resetOpen,setResetOpen]=useState(false);
@@ -41,8 +43,8 @@ export default function DemoModeBar({ compact = false }) {
     setBusy(true);
     try {
       await exitDemoMode(clearDataMode);
-      toast({ title: 'Exited Demo Mode', description: 'The sample data for this profile was removed.' });
-      window.location.reload();
+      setExitOpen(false);
+      navigate('/welcome', { replace: true });
     } catch {
       setBusy(false);
       toast({ title: 'Exit failed', description: 'Please try again.', variant: 'destructive' });
@@ -77,12 +79,14 @@ export default function DemoModeBar({ compact = false }) {
         </Button>
       </div>
       </div>
-      <ConfirmDeleteDialog open={resetOpen} onOpenChange={setResetOpen} title="Reset this demo profile?" description="This removes and replaces this account’s demo records. Ordinary financial records are preserved." onConfirm={reset} busy={busy} />
+      <ConfirmDeleteDialog open={resetOpen} onOpenChange={setResetOpen} title="Reset demo profile?" description="Start fresh with the original demo data. Your own financial records stay safe." confirmLabel="Reset demo" cancelLabel="Keep exploring" onConfirm={reset} busy={busy} />
       <ConfirmDeleteDialog
         open={exitOpen}
         onOpenChange={setExitOpen}
-        title="Exit Demo Mode and remove the sample data?"
-        description="This removes the selected demo profile's data for your account only. Your ordinary financial records are never touched."
+        title="Exit demo mode?"
+        description="Your demo data will be cleared. Your own financial records stay safe."
+        confirmLabel="Exit demo"
+        cancelLabel="Keep exploring"
         onConfirm={exit}
         busy={busy}
       />

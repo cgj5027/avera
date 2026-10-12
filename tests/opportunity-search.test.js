@@ -1,6 +1,7 @@
+// Existing handler fixtures isolate provider/data behavior; durable limits are exercised in request-safety.test.js.
 import {beforeEach,describe,it,expect,vi} from 'vitest';
 const fixture=vi.hoisted(()=>({client:null}));
-vi.mock('npm:@base44/sdk@0.8.52',()=>({createClientFromRequest:()=>fixture.client}));
+vi.mock('npm:@base44/sdk@0.8.53',()=>({createClientFromRequest:()=>fixture.client}));
 import search from '../base44/functions/searchJobOpportunities/entry.ts';
 import {searchListings} from '../base44/shared/opportunitySource.ts';
 import {searchOpportunities,JOB_SEARCH_TIMEOUT_MS,SERVICE_TIMEOUT_MS} from '../src/services/assistantService';
@@ -51,3 +52,5 @@ describe('actual web-search adapter/handler with provider fixtures, not live pos
     } finally {vi.useRealTimers();}
   });
 });
+
+vi.mock('../base44/shared/usageLimits.ts',()=>({claimUsage:vi.fn(async()=>{})}));

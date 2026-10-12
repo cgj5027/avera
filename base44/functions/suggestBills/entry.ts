@@ -1,4 +1,6 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { readJsonLimited, requestFailureResponse } from '../../shared/requestSafety.ts';
+import { claimUsage } from '../../shared/usageLimits.ts';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.53';
 import { datasetQuery } from '../../shared/dataset.ts';
 import { allRecords } from '../../shared/plaid.ts';
 import { recurringCandidates, merchantKey } from '../../shared/recurringBills.ts';
@@ -6,7 +8,8 @@ export default async function(req) {
   try {
     const client = createClientFromRequest(req); const user = await client.auth.me();
     if (!user?.id) return Response.json({error:'Unauthorized'},{status:401});
-    const body = await req.json();
+    await claimUsage(client, user, 'suggestBills');
+    const body = await readJsonLimited(req);
     let scope; try { scope=datasetQuery(user,body.dataset); } catch { return Response.json({error:'Invalid dataset'},{status:400}); }
     const [transactions,bills,mortgages,dismissed] = await Promise.all(['Transaction','Bill','MortgageRecord','BillSuggestionDismissal'].map(name=>allRecords(client.entities[name],scope)));
     const candidates = recurringCandidates(transactions,bills,mortgages,dismissed);
@@ -35,5 +38,6 @@ export default async function(req) {
       suggestions=candidates.filter((_,i)=>result.accepted.includes(i));
     } catch { ai_available=false; }
     return Response.json({suggestions,ai_available,mortgages_tracked:mortgages.filter(m=>Number(m.monthly_payment)>0).length});
-  } catch { return Response.json({error:'Bill suggestions are unavailable. Your records were not changed.'},{status:503}); }
+  } catch (error) {
+    const failure = requestFailureResponse(error); if (failure) return failure; return Response.json({error:'Bill suggestions are unavailable. Your records were not changed.'},{status:503}); }
 }

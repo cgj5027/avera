@@ -1,12 +1,15 @@
+import { readJsonLimited, requestFailureResponse } from '../../shared/requestSafety.ts';
+import { claimUsage } from '../../shared/usageLimits.ts';
 // Ask Avera: answers a money question using ONLY the signed-in user's own
 // financial records (demo workspaces included — demo records are ordinary
-// records, demo-tagged). Read-only: the assistant never writes anything.
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+// records, demo-tagged). Financial records stay read-only; private usage
+// counters are written to enforce request limits.
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.53';
 import { datasetQuery } from '../../shared/dataset.ts';
 import { assistantInsights, assistantPrompt } from '../../shared/assistantInsights.ts';
 import { planningTotal, planningRound } from '../../shared/planning.ts';
 import { withGoalContributions } from '../../shared/goalSavings.ts';
-import { allRecords } from '../../shared/plaid.ts';
+import { allRecords, recentRecords } from '../../shared/plaid.ts';
 
 const num = (v) => (typeof v !== 'boolean' && Number.isFinite(Number(v)) ? Number(v) : 0);
 
@@ -16,7 +19,8 @@ export default async function(req) {
     const user = await base44.auth.me();
     if (!user?.id) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const body = await req.json().catch(() => ({}));
+    await claimUsage(base44, user, 'askAvera');
+    const body = await readJsonLimited(req);
     const question = typeof body.question === 'string' ? body.question.trim() : '';
     if (!question || question.length > 2000) {
       return Response.json({ error: 'Enter a question of up to 2,000 characters.' }, { status: 400 });
@@ -26,7 +30,7 @@ export default async function(req) {
     // Read-only, user-scoped pulls. Field lists keep the context small.
     const [txnPage, accounts, bills, categories, goals, incomes, properties, mortgages, household, job] =
       await Promise.all([
-        allRecords(base44.entities.Transaction, scope, {
+        recentRecords(base44.entities.Transaction, scope, {
           sort: '-date', limit: 120,
           fields: ['description', 'amount', 'type', 'category', 'date', 'source', 'exclude_from_cashflow']
         }),
@@ -97,13 +101,16 @@ export default async function(req) {
       mortgages: mortgageRows,
       job_profile: jobRows[0] ?? null,
       recent_transactions: txnPage.slice(0, 120),
-      recent_transactions_note: `Showing ${Math.min(txnPage.length, 120)} of ${txnPage.length} stored transactions, newest first. This is not a complete spending total.`,
+      recent_transactions_note: `Showing up to ${txnPage.length} recent stored transactions, newest first. This is not a complete spending total.`,
     };
 
     context['insights'] = assistantInsights({ incomes: incomeRows, bills: billRows.map(b => ({...b, monthly_equivalent: typeof b.amount === 'number' && Number.isFinite(b.amount) && b.amount >= 0 ? monthlyFromFrequency(b.amount, b.frequency) : null})), categories: categoryRows, accounts: accountRows, properties: propertyRows, mortgages: mortgageRows, goals: goalRows, monthlyIncome: context.income.monthly_total, monthlyExpenses: context.planned_monthly_expenses });
 
+    const prompt = assistantPrompt(context, question);
+    if (new TextEncoder().encode(prompt).byteLength > 100000) return Response.json({ error: 'Your dataset is too large for the assistant. No partial planning totals were sent.' }, { status: 413 });
+
     const llm = await base44.asServiceRole.integrations.Core.InvokeLLM({
-      prompt: assistantPrompt(context, question),
+      prompt,
       response_json_schema: {
         type: 'object',
         properties: { answer: { type: 'string' } },
@@ -115,6 +122,7 @@ export default async function(req) {
     if (!answer.trim() || answer.length > 20000) return Response.json({ error: 'The assistant could not answer. Please try again.' }, { status: 502 });
     return Response.json({ answer });
   } catch (error) {
+    const failure = requestFailureResponse(error); if (failure) return failure;
     return Response.json({ error: 'The assistant is unavailable. Please retry.' }, { status: 502 });
   }
 }

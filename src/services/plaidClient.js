@@ -1,3 +1,4 @@
+import { sandboxErrorMessage } from './sandboxErrors';
 /**
  * Plaid Sandbox client — frontend seam. Every credential-bearing call runs in
  * a Base44 backend function (base44/functions/plaid*), so the browser never
@@ -71,7 +72,10 @@ export function connectBank({ itemId = undefined } = {}) {
           handler.open();
         })
     )
-  );
+  ).catch(error => {
+    if (error?.response || error?.name === 'Base44Error') throw new Error(sandboxErrorMessage(error));
+    throw error;
+  });
 }
 
 /** Syncs all connected test banks: refreshes balances and imports transactions. */

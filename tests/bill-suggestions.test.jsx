@@ -1,10 +1,11 @@
+// Existing handler fixtures isolate provider/data behavior; durable limits are exercised in request-safety.test.js.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { matches } from './queryFixture';
 import { recurringCandidates } from '../base44/shared/recurringBills.ts';
 const fixture=vi.hoisted(()=>({client:null,request:vi.fn()}));
-vi.mock('npm:@base44/sdk@0.8.52',()=>({createClientFromRequest:()=>fixture.client}));
+vi.mock('npm:@base44/sdk@0.8.53',()=>({createClientFromRequest:()=>fixture.client}));
 vi.mock('@/services/billSuggestions',()=>({billSuggestionRequest:fixture.request}));
 import handler from '../base44/functions/suggestBills/entry.ts';
 import BillSuggestions from '../src/components/bills/BillSuggestions';
@@ -99,3 +100,5 @@ describe('individual review UI',()=>{
  });
  it('dismisses individual suggestions and keeps failed dismissals visible',async()=>{const c=candidates()[0];fixture.request.mockResolvedValueOnce({suggestions:[c],ai_available:true}).mockRejectedValueOnce(new Error('Network unavailable'));render(<BillSuggestions onAdded={()=>{}}/>);fireEvent.click(screen.getByRole('button',{name:'Suggest bills'}));await screen.findByText('Power');fireEvent.click(screen.getByRole('button',{name:'Dismiss'}));await screen.findByRole('alert');expect(screen.getByText('Power')).toBeTruthy();});
 });
+
+vi.mock('../base44/shared/usageLimits.ts',()=>({claimUsage:vi.fn(async()=>{})}));

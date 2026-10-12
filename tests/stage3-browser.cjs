@@ -42,7 +42,18 @@ const assert=require('node:assert/strict');
    await check(path);
    if(path==='/bills-budget') {for(const tab of ['Budget','Goals','Transactions']) {await page.getByRole('tab',{name:tab,exact:true}).click();await check(path,tab+' tab');}}
    if(path==='/ask-avera') await page.locator('summary').filter({hasText:'Demo Mode'}).click();
-   await page.getByRole('button',{name:'Reset demo profile'}).click();await page.getByRole('dialog').waitFor();await check(path,'reset confirmation');await page.keyboard.press('Escape');await page.getByRole('dialog').waitFor({state:'hidden'});
+   await page.getByRole('button',{name:'Reset demo profile'}).click();await page.getByRole('dialog',{name:'Reset demo profile?'}).waitFor();await page.getByRole('button',{name:'Reset demo',exact:true}).waitFor();await check(path,'reset confirmation');await page.keyboard.press('Escape');await page.getByRole('dialog').waitFor({state:'hidden'});
+   await page.getByRole('button',{name:'Exit Demo Mode'}).click();
+   const exitDialog=page.getByRole('dialog',{name:'Exit demo mode?'});
+   await exitDialog.waitFor();
+   await exitDialog.evaluate(async el=>Promise.all(el.getAnimations({subtree:true}).filter(a=>a.effect?.getTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{}))));
+   const rect=await exitDialog.boundingBox();
+   assert(Math.abs(rect.x+rect.width/2-width/2)<2,'exit dialog horizontally centered');
+   assert(Math.abs(rect.y+rect.height/2-450)<2,'exit dialog vertically centered');
+   if(path==='/properties') await page.screenshot({path:`/tmp/avera-exit-${theme}-${width}.png`,animations:'disabled'});
+   await check(path,'exit confirmation');
+   await page.getByRole('button',{name:'Keep exploring'}).click();
+   await exitDialog.waitFor({state:'hidden'});
    if(path==='/ask-avera') await page.locator('summary').filter({hasText:'Demo Mode'}).click();
    if(path==='/settings') {
     await page.getByRole('button',{name:'Reconnect',exact:true}).waitFor();
@@ -53,6 +64,14 @@ const assert=require('node:assert/strict');
     await page.screenshot({path:`/tmp/avera-stage3-settings-${theme}-${width}.png`,fullPage:true,animations:'disabled'});
    }
   }
+  if(!process.env.AUDIT_PATHS) await page.locator('summary').filter({hasText:'Demo Mode'}).click();
+  await page.getByRole('button',{name:'Exit Demo Mode'}).click();
+  await page.getByRole('button',{name:'Exit demo',exact:true}).click();
+  await page.getByRole('heading',{name:'Get started with Avera'}).waitFor();
+  assert(new URL(page.url()).pathname==='/welcome','exit navigates directly to Get Started');
+  const choices=await page.locator('main .mt-8.grid button').allTextContents();
+  assert.deepEqual(choices,['Choose a profile','Pick a profile','Enter my information']);
+  await check('/welcome','after exit');
   assert.deepEqual(errors,[],`page exceptions ${theme} ${width}`);await page.close();
  }
  await browser.close();console.log(JSON.stringify({checks:outcomes.length,violations,outcomes},null,2));assert.equal(violations.length,0);

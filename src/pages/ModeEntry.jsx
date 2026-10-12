@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { Building2, FlaskConical, PencilLine, ShieldCheck, LoaderCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import StatusPill from '@/components/states/StatusPill';
 import { setDataMode as setMode } from '@/lib/mode';
 import { DEMO_PROFILES, DEMO_PROFILE_KEYS } from '@/services/demoProfiles';
 import { loadDemoProfile } from '@/services/demoMode';
@@ -79,22 +78,22 @@ export default function ModeEntry() {
       expandable: true,
     },
     {
-      key: 'manual',
-      icon: PencilLine,
-      title: 'Enter Financial Information Manually',
-      description: 'Type in income and bills yourself. You stay in control of every figure.',
-      onClick: () => {
-        setMode('manual');
-        navigate('/bills-budget');
-      },
-    },
-    {
       key: 'profiles',
       icon: FlaskConical,
       title: 'Explore a Preconfigured Demo Profile',
       description:
         'Load one of three ready-made financial scenarios as labeled Avera sample data and explore every feature.',
       expandable: true,
+    },
+    {
+      key: 'manual',
+      icon: PencilLine,
+      title: 'Start using Avera today',
+      description: 'Ready to get started? Enter your own income and bills to build your financial plan.',
+      onClick: () => {
+        setMode('manual');
+        navigate('/bills-budget');
+      },
     },
   ];
 
@@ -115,9 +114,8 @@ export default function ModeEntry() {
           Get started with Avera
         </h1>
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <StatusPill tone="info">Demo Mode</StatusPill>
           <p className="max-w-xl text-base text-muted-foreground">
-            Experience Avera using simulated financial data. No real banking credentials are required.
+            Explore with sample data, connect a test bank, or get started with your own information.
           </p>
         </div>
 
@@ -142,7 +140,7 @@ export default function ModeEntry() {
               >
                 {card.key === 'plaid' && (expanded === 'plaid' ? 'Hide profiles' : 'Choose a profile')}
                 {card.key === 'profiles' && (expanded === 'profiles' ? 'Hide profiles' : 'Pick a profile')}
-                {card.key === 'manual' && 'Enter manually'}
+                {card.key === 'manual' && 'Enter my information'}
               </Button>
             </div>
           ))}

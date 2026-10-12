@@ -7,7 +7,8 @@ const assert = require('node:assert/strict');
   const results=[]; const violations=[];
   for (const theme of ['light','dark']) for(const width of [320,390,768,1440]) {
     const page=await browser.newPage({viewport:{width,height:Number(process.env.AUDIT_HEIGHT)||900}});
-    const feedbackPayloads=[];
+    const feedbackPayloads=[]; const nameUpdates=[];
+    let accountUser={id:'audit-user',email:'audit@example.test',full_name:'Audit User',role:'user'};
     const errors=[];page.on('pageerror',e=>errors.push(e.message));
     await page.addInitScript(({theme})=>{localStorage.setItem('base44_access_token','audit-fixture');localStorage.setItem('theme',theme);sessionStorage.setItem('avera_data_mode:audit-user','manual');},{theme});
     await page.route('https://**/*',route=>route.abort());
@@ -16,7 +17,13 @@ const assert = require('node:assert/strict');
       if (!path.startsWith('/api/')) return route.continue();
       let body;
       if(path.includes('public-settings'))body={id:'audit',public_settings:{}};
-      else if(path.endsWith('/User/me'))body={id:'audit-user',email:'audit@example.test',full_name:'Audit User',role:'user'};
+      else if(path.endsWith('/User/me')) {
+        if(route.request().method()==='PUT') {
+          const update=route.request().postDataJSON();nameUpdates.push(update);
+          accountUser={...accountUser,...update};
+        }
+        body=accountUser;
+      }
       else if(path.includes('/functions/submitFeedback')) {
         feedbackPayloads.push(route.request().postDataJSON());
         if(feedbackPayloads.length===1) return route.fulfill({status:503,contentType:'application/json',body:'{"error":"fixture network failure"}'});
@@ -75,11 +82,25 @@ const assert = require('node:assert/strict');
       }
       if (path === '/opportunities') {
         await page.keyboard.press('Escape');
+        await page.getByRole('button',{name:'Edit profile'}).click();
+        const uploadButton=page.getByRole('button',{name:'Upload resume (optional)'});
+        assert(await uploadButton.isDisabled(),'resume processing requires consent');
+        const consent=page.getByRole('checkbox',{name:/I agree to send my resume/});
+        await consent.check();
+        assert(await uploadButton.isEnabled(),'resume upload enabled after consent');
+        await consent.uncheck();
+        assert(await uploadButton.isDisabled(),'consent can be withdrawn before upload');
+        await page.getByRole('button',{name:'Cancel',exact:true}).click();
         await page.getByRole('button',{name:'Find opportunities'}).click();
         await page.getByText('Source-linked results',{exact:true}).waitFor();
         await feedbackTrigger.click();
       }
       assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`response overflow ${theme} ${width} ${path}`);
+      // Measure the settled UI, not intermediate foreground/background colors
+      // while the feedback dialog and overlay are fading into view.
+      await page.evaluate(async()=>{
+        await Promise.all(document.getAnimations().filter(a=>a.effect?.getTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{})));
+      });
       await page.addScriptTag({path:require.resolve('axe-core/axe.min.js')});
       const accessibility=await page.evaluate(async()=>{const r=await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa','wcag22aa']}});return r.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary}))}));});
       if(accessibility.length)violations.push({theme,width,path,accessibility});
@@ -89,6 +110,17 @@ const assert = require('node:assert/strict');
         assert(await feedbackTrigger.evaluate(el=>document.activeElement===el),'feedback focus restored');
       }
       results.push({theme,width,path,title,overflow:false});
+      if(path==='/settings') {
+        const name=page.getByLabel('Name',{exact:true});
+        await name.fill('  Updated User  ');
+        await page.getByRole('button',{name:'Save name',exact:true}).click();
+        await page.getByRole('status').filter({hasText:'Name updated.'}).waitFor();
+        assert.deepEqual(nameUpdates,[{display_name:'Updated User'}],'only editable name is sent');
+        assert(await name.inputValue()==='Updated User','saved name appears immediately');
+        await page.reload();
+        await page.getByLabel('Name',{exact:true}).waitFor();
+        assert(await page.getByLabel('Name',{exact:true}).inputValue()==='Updated User','name persists after reload');
+      }
       const dialogs = {
         '/': ['Add account'], '/bills-budget': ['Add bill','Add goal','Log contribution'],
         '/yearly-plan': ['Add income source'], '/opportunities': [],

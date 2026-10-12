@@ -8,7 +8,7 @@ import {
 } from "./image-helpers"
 
 const FALLBACK_IMAGE_URL =
-  "https://static.wixstatic.com/media/12d367_4f26ccd17f8f4e3a8958306ea08c2332~mv2.png"
+  "/image-placeholder.svg"
 
 /**
  * Image with built-in Wix Media Platform support: canonical public images on

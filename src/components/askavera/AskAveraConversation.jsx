@@ -19,7 +19,7 @@ const SERVICE_UNAVAILABLE =
   'Ask Avera could not reach its AI service just now. No changes were requested to your financial records. Data may already have been sent to the service. Please try again — if this keeps happening, the AI service may not be configured yet.';
 
 const READ_ONLY_NOTE =
-  'Ask Avera requests explanations from an external assistant. Response grounding is not yet verified. Check financial figures against your saved records. This interface requests no changes to records or movement of money.';
+  'Sending a question shares your question and relevant saved financial records with an external AI service. Provider retention settings need verification. Response grounding is not yet verified. Check financial figures against your saved records. This interface requests no changes to records or movement of money.';
 
 /**
  * Shared page/drawer conversation. The backend remains responsible for
