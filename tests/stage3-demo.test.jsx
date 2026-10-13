@@ -1,11 +1,11 @@
 import { Base44Error } from '@base44/sdk';
 import ModeEntry from '../src/pages/ModeEntry';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import React from 'react';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from './test-utils';
 import { matches } from './queryFixture';
-const sdk=vi.hoisted(()=>({auth:{me:vi.fn()},entities:{},functions:{invoke:vi.fn()}}));
+const sdk=vi.hoisted(()=>({auth:{me:vi.fn()},app:{getPublicSettings:vi.fn()},entities:{},functions:{invoke:vi.fn()}}));
 vi.mock('@/api/base44Client',()=>({base44:sdk}));
 import * as data from '../src/services/dataService';
 import { buildDemoDataset, DEMO_PROFILE_KEYS, createDemoRecords } from '../src/services/demoProfiles';
@@ -19,7 +19,7 @@ import BankConnections from '../src/components/settings/BankConnections';
 import DemoModeBar from '../src/components/layout/DemoModeBar';
 let rows,user;
 beforeEach(()=>{
-  vi.clearAllMocks();user={id:'a'};rows={};setModeOwner('a');sdk.auth.me.mockImplementation(async()=>user);
+  vi.clearAllMocks();sdk.app.getPublicSettings.mockResolvedValue({id:'fixture',public_settings:{}});user={id:'a'};rows={};setModeOwner('a');sdk.auth.me.mockImplementation(async()=>user);
   for(const name of Object.values(data.DATA_ENTITIES)) {
     rows[name]=[];sdk.entities[name]={
       filter:vi.fn(async q=>({items:rows[name].filter(r=>matches(r,q)),has_more:false})),
@@ -94,7 +94,7 @@ describe('demo and UI fixtures, distinct from real Plaid Sandbox',()=>{
     render(<BankConnections />);expect(await screen.findByRole('button',{name:'Retry loading connections'})).toBeTruthy();
   });
   it('confirms demo reset and distinguishes mixed Sandbox plus sample planning data',()=>{
-    setDemoWorkspace({profile:'early_career',plaid_item_id:'item'});setDataMode('demo');render(<MemoryRouter><DemoModeBar /></MemoryRouter>);
+    setDemoWorkspace({profile:'early_career',plaid_item_id:'item'});setDataMode('demo');render(<DemoModeBar />);
     expect(screen.getByText('Dataset: Plaid Sandbox + Avera sample plans')).toBeTruthy();fireEvent.click(screen.getByRole('button',{name:'Reset demo profile'}));expect(screen.getByRole('dialog')).toBeTruthy();
   });
   it('orchestrates Link open, public-token exchange and destroy with a widget fixture',async()=>{
@@ -154,7 +154,7 @@ it('maps safe Link setup errors for the user instead of Axios diagnostics',async
 it('exits directly from a non-overview page to Get Started and preserves ordinary records',async()=>{
  setDemoWorkspace({profile:'early_career'});setDataMode('demo');
  rows.Account=[{id:'demo-account',created_by_id:'a',demo_profile:'early_career'},{id:'ordinary',created_by_id:'a'}];
- render(<MemoryRouter initialEntries={['/bills-budget']}><Routes><Route path="/bills-budget" element={<DemoModeBar/>}/><Route path="/welcome" element={<h1>Get started with Avera</h1>}/></Routes></MemoryRouter>);
+ render(<Routes><Route path="/bills-budget" element={<DemoModeBar/>}/><Route path="/welcome" element={<h1>Get started with Avera</h1>}/></Routes>,{route:'/bills-budget'});
  fireEvent.click(screen.getByRole('button',{name:'Exit Demo Mode'}));
  expect(screen.getByRole('dialog',{name:'Exit demo mode?'})).toBeTruthy();
  fireEvent.click(screen.getByRole('button',{name:'Exit demo',exact:true}));
@@ -166,15 +166,15 @@ it('stays in demo mode if cleanup fails',async()=>{
  setDemoWorkspace({profile:'early_career'});setDataMode('demo');
  rows.Account=[{id:'demo-account',created_by_id:'a',demo_profile:'early_career'}];
  sdk.entities.Account.delete.mockRejectedValue(new Error('network unavailable'));
- render(<MemoryRouter initialEntries={['/properties']}><Routes><Route path="/properties" element={<DemoModeBar/>}/><Route path="/welcome" element={<h1>Get started with Avera</h1>}/></Routes></MemoryRouter>);
+ render(<Routes><Route path="/properties" element={<DemoModeBar/>}/><Route path="/welcome" element={<h1>Get started with Avera</h1>}/></Routes>,{route:'/properties'});
  fireEvent.click(screen.getByRole('button',{name:'Exit Demo Mode'}));fireEvent.click(screen.getByRole('button',{name:'Exit demo',exact:true}));
  await waitFor(()=>expect(screen.getByRole('button',{name:'Keep exploring'}).disabled).toBe(false));
  expect(screen.queryByRole('heading',{name:'Get started with Avera'})).toBeNull();
  expect(getDataMode()).toBe('demo');expect(getDemoWorkspace().profile).toBe('early_career');
 });
 it('places the ready-to-start manual option last and opens the personal budget',async()=>{
- render(<MemoryRouter initialEntries={['/welcome']}><Routes><Route path="/welcome" element={<ModeEntry/>}/><Route path="/bills-budget" element={<h1>Your budget</h1>}/></Routes></MemoryRouter>);
- const buttons=screen.getAllByRole('button');expect(buttons.map(b=>b.textContent)).toEqual(['Choose a profile','Pick a profile','Enter my information']);
+ render(<Routes><Route path="/welcome" element={<ModeEntry/>}/><Route path="/bills-budget" element={<h1>Your budget</h1>}/></Routes>,{route:'/welcome'});
+ const buttons=within(screen.getByRole('main')).getAllByRole('button');expect(buttons.map(b=>b.textContent)).toEqual(['Choose a profile','Pick a profile','Enter my information']);
  fireEvent.click(screen.getByRole('button',{name:'Enter my information'}));
  expect(await screen.findByRole('heading',{name:'Your budget'})).toBeTruthy();expect(getDataMode()).toBe('manual');
 });
@@ -189,7 +189,7 @@ it('handles the real SDK Base44Error shape for Sandbox setup and request limits'
 
 it('uses concise reset wording and an explicit reset action',()=>{
  setDemoWorkspace({profile:'early_career'});setDataMode('demo');
- render(<MemoryRouter><DemoModeBar/></MemoryRouter>);
+ render(<DemoModeBar/>);
  fireEvent.click(screen.getByRole('button',{name:'Reset demo profile'}));
  expect(screen.getByRole('dialog',{name:'Reset demo profile?'})).toBeTruthy();
  expect(screen.getByText('Start fresh with the original demo data. Your own financial records stay safe.')).toBeTruthy();
