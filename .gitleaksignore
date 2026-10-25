@@ -2,3 +2,5 @@
 # Ignore only these exact historical findings; keep the provider rule enabled.
 4c9131271e0aa6ca0b54e50fbe7369ffaa806936:src/pages/Overview.jsx:linkedin-client-id:190
 4c9131271e0aa6ca0b54e50fbe7369ffaa806936:src/pages/Overview.jsx:linkedin-client-id:192
+# Module import identifiers falsely match a LinkedIn client ID; no credential is present.
+4a0c09c1ee64449104b30caf28eb4deb6bf9fb24:base44/shared/opportunitySource.ts:linkedin-client-id:1
