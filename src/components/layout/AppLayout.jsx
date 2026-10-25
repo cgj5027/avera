@@ -34,7 +34,7 @@ export default function AppLayout() {
             : 'border-border bg-surface text-foreground hover:bg-surface-subtle'
         )}
       >
-        <Menu className="h-5 w-5" aria-hidden="true" />
+        <Menu className={cn('h-5 w-5', navigationOpen && 'text-white')} aria-hidden="true" />
       </button>
       <SidebarNav open={navigationOpen} />
       <div className={cn(

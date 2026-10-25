@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -19,7 +18,6 @@ import MonthlyFlowCards from '@/components/overview/MonthlyFlowCards';
 import OverviewAccounts from '@/components/overview/OverviewAccounts';
 import AccountDialog from '@/components/accounts/AccountDialog';
 import AskAveraDrawer from '@/components/askavera/AskAveraDrawer';
-import { hasChosenMode } from '@/lib/mode';
 import { listRecords, createRecord, updateRecord, deleteRecord } from '@/services/dataService';
 import * as calc from '@/services/financialCalculations';
 import { estimateFromTransactions } from '@/services/plaidEstimates';
@@ -29,7 +27,6 @@ import { monthlyAllocation } from '@/services/overviewAllocation';
 
 /** Overview dashboard — every figure is calculated from the user's saved records. */
 export default function Overview() {
-  const navigate = useNavigate();
   const launcherRef = useRef(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [data, setData] = useState(null);
@@ -39,11 +36,6 @@ export default function Overview() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [busy, setBusy] = useState(false);
   const { toast } = useToast();
-
-  /* First-run: route to the mode-entry screen before showing the shell. */
-  useEffect(() => {
-    if (!hasChosenMode()) navigate('/welcome', { replace: true });
-  }, [navigate]);
 
   useEffect(() => {
     let cancelled = false;
