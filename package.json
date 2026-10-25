@@ -16,8 +16,8 @@
     "test:stage3:browser": "node tests/stage3-browser.cjs"
   },
   "dependencies": {
-    "@base44/sdk": "^0.8.53",
-    "@base44/vite-plugin": "^1.0.44",
+    "@base44/sdk": "^0.8.57",
+    "@base44/vite-plugin": "^1.0.48",
     "@hello-pangea/dnd": "^17.0.0",
     "@hookform/resolvers": "^4.1.2",
     "@radix-ui/react-accordion": "^1.2.3",
