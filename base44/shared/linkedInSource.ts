@@ -1,3 +1,4 @@
+import { RequestFailure } from './requestSafety.ts';
 import { secrets } from 'base44:runtime';
 
 const HOST = 'https://api.openwebninja.com';
@@ -50,9 +51,10 @@ async function requestLinkedIn(url, key) {
     headers: { 'x-api-key': key, Accept: 'application/json' },
     redirect: 'manual', signal: AbortSignal.timeout(20000),
   });
-  if (!response.ok || response.status >= 300) throw new Error('LinkedIn search failed');
+  if (!response.ok || response.status >= 300) throw new RequestFailure(503, 'LinkedIn search failed',
+    response.status === 401 || response.status === 403 ? 'LINKEDIN_AUTH_FAILED' : response.status === 429 ? 'LINKEDIN_RATE_LIMITED' : 'LINKEDIN_UNAVAILABLE');
   const payload = await response.json();
-  if (payload?.status !== 'OK' || !Array.isArray(payload.data)) throw new Error('Invalid LinkedIn search response');
+  if (payload?.status !== 'OK' || !Array.isArray(payload.data)) throw new RequestFailure(502, 'Invalid LinkedIn search response', 'LINKEDIN_INVALID_RESPONSE');
   return payload.data;
 }
 

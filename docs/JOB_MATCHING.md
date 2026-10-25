@@ -136,3 +136,34 @@ capacity before high-volume production use. It requires no API key. Geocoder
 HTTP failures fail closed rather than returning unrestricted matches. This
 cloud's policy denied a live request (403), so geocoding was validated with
 fixtures in `tests/job-distance.test.js`, not a live production check.
+
+## Troubleshooting “Not connected” / search unavailable
+
+The former “Not connected” badge was displayed for every exception, including
+validation, quota, geocoding and provider failures. It was not a reliable
+statement about the LinkedIn connection. The UI now shows safe, actionable
+messages based on the backend error code, with generic guidance only for
+unrecognized failures. Raw provider responses, keys and personal data are never
+shown. Individual failed posting lookups no longer discard other valid matches;
+partial results are labeled. Origin lookup failures still preserve the radius
+and stop search rather than silently broadening it.
+
+Check `searchJobOpportunities` logs for `job_search_failed` and
+`job_search_sources_unavailable`. Logs contain safe codes and source states,
+not secret values or profile data:
+
+| Code | Resolution |
+| --- | --- |
+| `LOCATION_REQUIRED` | Save a specific city and state or postal code instead of a country/state alone. |
+| `LOCATION_UNAVAILABLE` | Verify backend access to `photon.komoot.io` and geocoder health. Network failures, HTTP denials and malformed lookup responses use this code. |
+| `LINKEDIN_AUTH_FAILED` | Verify the backend `OPENWEBNINJA_API_KEY` binding and an active subscription to Real-Time LinkedIn Data. Never put the key in the browser. |
+| `LINKEDIN_RATE_LIMITED` | Check the provider allowance and retry after its reset. |
+| `SERVICE_LIMITS_UNAVAILABLE` | Deploy the private `ServiceUsage` schema and verify backend service-role quota operations. Do not bypass limits. |
+| `REQUEST_LIMITED` | Wait for the user's quota reset. |
+| `SOURCE_UNAVAILABLE` / `JOB_SOURCES_UNAVAILABLE` | Inspect source-state logs, Base44 integration availability and the deployed function/shared-file version. |
+
+Deploy the updated function, shared modules, schemas and frontend together.
+A message copied from the old fallback cannot identify the deployed root cause;
+obtain the error code or logs for the actual failed request. A denied request
+from this development cloud does not prove the deployed Base44 backend has the
+same network restrictions.

@@ -3,7 +3,7 @@ import { ExternalLink, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import StatusPill from '@/components/states/StatusPill';
 import SourceChip from '@/components/states/SourceChip';
-import { searchOpportunities } from '@/services/assistantService';
+import { searchOpportunities, jobSearchErrorMessage } from '@/services/assistantService';
 import { jobTypeLabel } from './jobTypes';
 
 /**
@@ -124,6 +124,7 @@ function OpportunityItem({ item }) {
 export default function OpportunityResults({ profile }) {
   const [status, setStatus] = useState('idle'); // idle | loading | live | none | unavailable
   const [items, setItems] = useState([]);
+  const [failureMessage, setFailureMessage] = useState('');
   const [partialResults, setPartialResults] = useState(false);
   const [sources, setSources] = useState([]);
   const [visibleCount, setVisibleCount] = useState(6);
@@ -141,7 +142,8 @@ export default function OpportunityResults({ profile }) {
       setVisibleCount(6);
       setRelatedRolesSearched(result.relatedRolesSearched);
       setStatus(result.items.length === 0 ? 'none' : 'live');
-    } catch {
+    } catch (error) {
+      setFailureMessage(jobSearchErrorMessage(error));
       setItems([]);
       setRelatedRolesSearched(false);
       setStatus('unavailable');
@@ -168,7 +170,7 @@ export default function OpportunityResults({ profile }) {
           )}
         </Button>
         {status === 'live' && <StatusPill tone="success">Source-linked results</StatusPill>}
-        {status === 'unavailable' && <StatusPill tone="warning">Not connected</StatusPill>}
+        {status === 'unavailable' && <StatusPill tone="warning">Search unavailable</StatusPill>}
         {status === 'none' && <StatusPill tone="neutral">No matches found</StatusPill>}
         {relatedRolesSearched && (status === 'live' || status === 'none') && <StatusPill tone="neutral">Also searched related roles</StatusPill>}
       </div>
@@ -180,10 +182,10 @@ export default function OpportunityResults({ profile }) {
 
       {status === 'unavailable' && (
         <div className="mt-4 rounded-2xl border border-border bg-info-surface p-4">
+          <p role="alert" className="mb-3 text-base text-info">{failureMessage}</p>
           <StatusPill tone="info">Demonstration listings</StatusPill>
           <p className="mt-2 text-base text-info">
-            Job search could not be completed or its results could not be validated. The service may be unavailable or unconfigured. The listings below are clearly labeled samples for layout only and are never presented as live
-            postings.
+            These sample listings illustrate the layout only. They are not live postings and do not represent search results.
           </p>
           <ul className="mt-4 space-y-3">
             {SAMPLE_OPPORTUNITIES.map((item) => (

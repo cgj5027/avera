@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { askAvera, searchOpportunities, sourceListingUrl, SERVICE_TIMEOUT_MS } from '../src/services/assistantService';
+import { askAvera, searchOpportunities, sourceListingUrl, SERVICE_TIMEOUT_MS, jobSearchErrorMessage } from '../src/services/assistantService';
 import { calculateIncomeGapAllocated } from '../src/services/financialCalculations';
 import AskAveraConversation from '../src/components/askavera/AskAveraConversation';
 import OpportunityResults from '../src/components/opportunities/OpportunityResults';
@@ -145,6 +145,14 @@ describe('critical function invocation boundaries (mocked, not backend authoriza
     fireEvent.click(screen.getByRole('button',{name:'Find opportunities'}));await screen.findByText('Source-linked results');
     expect(screen.queryByText('Pay range')).toBeNull();expect(screen.queryByText('Role type')).toBeNull();
   });
+  it('shows a specific location failure rather than incorrectly saying not connected', async () => {
+    sdk.functions.invoke.mockRejectedValue({response:{status:503,data:{code:'LOCATION_UNAVAILABLE',error:'private provider detail'}}});
+    render(<OpportunityResults profile={{skills:'Bookkeeping'}} />);
+    fireEvent.click(screen.getByRole('button',{name:'Find opportunities'}));
+    expect(await screen.findByRole('alert')).toHaveProperty('textContent','Location lookup is temporarily unavailable. Your distance limit has been kept. Please retry shortly.');
+    expect(screen.queryByText('Not connected')).toBeNull();expect(screen.queryByText('private provider detail')).toBeNull();
+    expect(screen.getByText('Search unavailable')).toBeTruthy();
+  });
   it('rejects fabricated entries without a source and labels fallback samples', async () => {
     sdk.functions.invoke.mockResolvedValue({data:{opportunities:[{title:'Invented',company:'Employer'}]}});
     render(<OpportunityResults profile={{skills:'Bookkeeping'}} />);fireEvent.click(screen.getByRole('button',{name:'Find opportunities'}));
@@ -251,5 +259,18 @@ describe('critical function invocation boundaries (mocked, not backend authoriza
     await expect(data.updateRecord('jobProfile','other',{})).rejects.toThrow('cannot access');
     await expect(data.deleteRecord('jobProfile','other')).rejects.toThrow('cannot access');
     expect(sdk.entities.JobProfile.update).not.toHaveBeenCalled();expect(sdk.entities.JobProfile.delete).not.toHaveBeenCalled();
+  });
+});
+
+describe('safe job-search error guidance', () => {
+  it.each([
+    {response:{data:{code:'LOCATION_REQUIRED'}}},
+    {status:422,code:'LOCATION_REQUIRED'},
+    {data:{code:'LOCATION_REQUIRED'}},
+  ])('handles both Base44 SDK and Axios error shapes',error => {
+    expect(jobSearchErrorMessage(error)).toContain('city and state or postal code');
+  });
+  it('does not display unknown upstream details',()=>{
+    expect(jobSearchErrorMessage({code:'__proto__',message:'private provider response'})).toBe('Job search could not be completed. Please retry. If it keeps failing, contact support.');
   });
 });

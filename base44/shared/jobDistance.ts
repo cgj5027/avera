@@ -18,6 +18,7 @@ export function createJobArea(profile) {
   const radius = profile.distance_miles ?? DEFAULT_DISTANCE_MILES;
   if (!validDistance(radius)) throw new Error('Invalid search distance');
   const cache = new Map();
+  let lookupFailures = false;
   const locate = input => {
     const query = text(input).replace(/\b(remote|hybrid|on[- ]?site)\b/gi, '').replace(/^[\s,–-]+|[\s,–-]+$/g, '').trim();
     if (!query) return Promise.resolve(null);
@@ -26,10 +27,13 @@ export function createJobArea(profile) {
     if (!cache.has(key)) cache.set(key, (async () => {
       const url = new URL('https://photon.komoot.io/api/');
       url.searchParams.set('q', query); url.searchParams.set('limit', '2');
-      const response = await fetch(url.toString(), {redirect:'manual',signal:AbortSignal.timeout(2000)});
-      if (!response.ok || response.status >= 300) throw new RequestFailure(503, 'Location lookup is unavailable. Please retry.');
-      const body = await response.json();
-      if (!Array.isArray(body?.features)) throw new RequestFailure(503, 'Location lookup is unavailable. Please retry.');
+      let response;
+      try { response = await fetch(url.toString(), {redirect:'manual',signal:AbortSignal.timeout(5000)}); }
+      catch { throw new RequestFailure(503, 'Location lookup is unavailable. Please retry.', 'LOCATION_UNAVAILABLE'); }
+      if (!response.ok || response.status >= 300) throw new RequestFailure(503, 'Location lookup is unavailable. Please retry.', 'LOCATION_UNAVAILABLE');
+      let body;
+      try { body = await response.json(); } catch { throw new RequestFailure(503, 'Location lookup is unavailable. Please retry.', 'LOCATION_UNAVAILABLE'); }
+      if (!Array.isArray(body?.features)) throw new RequestFailure(503, 'Location lookup is unavailable. Please retry.', 'LOCATION_UNAVAILABLE');
       const places = body.features.filter(feature => {
         const point=feature?.geometry?.coordinates;
         const kind=feature?.properties?.type;
@@ -50,11 +54,12 @@ export function createJobArea(profile) {
     if (!location) return null;
     origin ??= locate(location);
     const centre = await origin;
-    if (!centre) throw new RequestFailure(422, 'Enter a specific city and state or postal code for distance-limited search.');
+    if (!centre) throw new RequestFailure(422, 'Enter a specific city and state or postal code for distance-limited search.', 'LOCATION_REQUIRED');
     return centre;
   };
   return {
     validate,
+    get partial() { return lookupFailures; },
     async filter(listings) {
       if (!location) return listings;
       const centre = await validate();
@@ -62,13 +67,15 @@ export function createJobArea(profile) {
       // Small batches and a shared 12-destination budget bound lookup cost/latency.
       for (let offset = 0; offset < listings.length; offset += 3) {
         const batch = await Promise.all(listings.slice(offset, offset + 3).map(async listing => {
-          const point = await locate(listing.location);
+          let point;
+          try { point = await locate(listing.location); } catch { lookupFailures = true; return null; }
           if (!point) return null;
           const distance = milesBetween(centre, point);
           return distance <= radius ? {...listing, distance_miles:Math.round(distance * 10) / 10} : null;
         }));
         output.push(...batch.filter(Boolean));
       }
+      if (!output.length && lookupFailures) throw new RequestFailure(503, 'Location lookup is unavailable. Please retry.', 'LOCATION_UNAVAILABLE');
       return output;
     },
   };

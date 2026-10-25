@@ -96,3 +96,19 @@ export async function searchOpportunities(profile, { includeMetadata = false } =
   if (items.length !== data.opportunities.length) throw new Error('Search returned unverified listing data.');
   return includeMetadata ? {items,relatedRolesSearched:data.related_roles_searched === true,partialResults:data.partial_results === true,sources:Array.isArray(data.sources) ? data.sources.filter(source => ['web_search','linkedin'].includes(source?.provider) && ['searched','unavailable'].includes(source?.status)) : []} : items;
 }
+/** Translate only known codes; never display raw upstream responses or credentials. */
+export function jobSearchErrorMessage(error) {
+  const code = error?.response?.data?.code ?? error?.data?.code ?? error?.code;
+  const messages = {
+    LOCATION_REQUIRED: 'Update your work profile with a specific city and state or postal code, then search again.',
+    LOCATION_UNAVAILABLE: 'Location lookup is temporarily unavailable. Your distance limit has been kept. Please retry shortly.',
+    REQUEST_LIMITED: 'Your search limit has been reached. Please wait before trying again.',
+    SERVICE_LIMITS_UNAVAILABLE: 'Search availability could not be checked. Please retry later.',
+    LINKEDIN_AUTH_FAILED: 'LinkedIn search could not connect. Please try again later.',
+    LINKEDIN_RATE_LIMITED: 'LinkedIn search is temporarily at its request limit. Please retry later.',
+  };
+  if (typeof code === 'string' && Object.hasOwn(messages, code)) return messages[code];
+  if (error?.message === 'Service timed out.') return 'The search took too long. Please retry.';
+  if (error?.message === 'Sign in to continue.' || (error?.status === 401 || error?.response?.status === 401)) return 'Sign in again before searching for opportunities.';
+  return 'Job search could not be completed. Please retry. If it keeps failing, contact support.';
+}

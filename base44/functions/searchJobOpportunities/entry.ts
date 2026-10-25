@@ -1,4 +1,4 @@
-import { readJsonLimited, requestFailureResponse } from '../../shared/requestSafety.ts';
+import { readJsonLimited, requestFailureResponse, RequestFailure } from '../../shared/requestSafety.ts';
 import { validDistance, DEFAULT_DISTANCE_MILES } from '../../shared/jobDistance.ts';
 import { claimUsage } from '../../shared/usageLimits.ts';
 // Employment discovery: finds real, current job/gig listings matching the
@@ -37,6 +37,7 @@ export default async function(req) {
     const result = await searchListings(base44, profile, 'combined');
     return Response.json(result);
   } catch (error) {
+    console.error('job_search_failed', {code:error instanceof RequestFailure ? error.code ?? 'INVALID_REQUEST' : 'JOB_SEARCH_FAILED'});
     const failure = requestFailureResponse(error); if (failure) return failure;
     return Response.json({ error: 'Job search is unavailable. Please retry.' }, { status: 502 });
   }

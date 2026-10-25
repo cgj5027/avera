@@ -58,3 +58,15 @@ it('validates the origin before invoking paid sources',async()=>{
   await expect(searchListings(client,{skills:'Bookkeeping',location:'Origin'})).rejects.toMatchObject({status:503});
   expect(llm).not.toHaveBeenCalled();
 });
+
+it('retains nearby matches if another listing lookup fails',async()=>{
+  const original=fetchMock.getMockImplementation();
+  fetchMock.mockImplementation(async address=>new URL(address).searchParams.get('q')==='Broken' ? new Response('unavailable',{status:503}) : original(address));
+  const area=createJobArea({location:'Origin'});
+  const result=await area.filter([{location:'Near'},{location:'Broken'}]);
+  expect(result.map(item=>item.location)).toEqual(['Near']);expect(area.partial).toBe(true);
+});
+it('returns an actionable error code on a location network timeout',async()=>{
+  fetchMock.mockRejectedValue(new Error('upstream detail must not escape'));
+  await expect(createJobArea({location:'Origin'}).validate()).rejects.toMatchObject({status:503,code:'LOCATION_UNAVAILABLE'});
+});

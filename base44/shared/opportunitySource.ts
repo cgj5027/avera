@@ -1,3 +1,4 @@
+import { RequestFailure } from './requestSafety.ts';
 import { createJobArea } from './jobDistance.ts';
 import { linkedInConfigured, searchLinkedIn } from './linkedInSource.ts';
 
@@ -304,14 +305,15 @@ export async function searchListings(base44, profile, providerId = 'web_search',
       partial_results = true;
     }
   }
-  return { source_provider: providerId, experience_level: level, job_type: jobType, related_roles_searched, partial_results, opportunities };
+  return { source_provider: providerId, experience_level: level, job_type: jobType, related_roles_searched, partial_results: partial_results || Boolean(area.partial), opportunities };
 }
 /** LinkedIn is primary. Web search fills remaining slots or handles source failures. */
 async function searchCombined(base44, profile) {
   const providers = linkedInConfigured() ? ['linkedin', 'web_search'] : ['web_search'];
   const area = createJobArea(profile);
   await area.validate();
-  const sources: Array<{provider:string; status:string}> = [];
+  const sources: Array<{provider:string; status:string; code?:string}> = [];
+  let lastFailure;
   let opportunities = [];
   let related_roles_searched = false;
   let partial_results = false;
@@ -325,12 +327,17 @@ async function searchCombined(base44, profile) {
       opportunities = rankListings([...opportunities, ...result.opportunities], profile, 'linkedin');
       related_roles_searched ||= result.related_roles_searched;
       partial_results ||= result.partial_results;
-    } catch {
-      sources.push({provider, status:'unavailable'});
+    } catch (error) {
+      lastFailure = error;
+      sources.push({provider, status:'unavailable', code:error instanceof RequestFailure ? error.code : 'SOURCE_UNAVAILABLE'});
       partial_results = true;
     }
   }
-  if (!succeeded) throw new Error('Job sources unavailable');
+  if (!succeeded) {
+    console.error('job_search_sources_unavailable', {sources});
+    if (lastFailure instanceof RequestFailure) throw lastFailure;
+    throw new RequestFailure(502, 'Job sources unavailable', 'JOB_SOURCES_UNAVAILABLE');
+  }
   return {
     source_provider: 'combined', primary_provider: providers[0], sources,
     opportunities, related_roles_searched, partial_results,
