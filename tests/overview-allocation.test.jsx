@@ -1,13 +1,13 @@
 import React from 'react';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, NavLink } from 'react-router-dom';
 import { projectYearlyPlan, round2 } from '../src/services/financialCalculations';
 import { monthlyAllocation } from '../src/services/overviewAllocation';
 import MonthlyAllocationChart from '../src/components/overview/MonthlyAllocationChart';
 import OverviewChart from '../src/components/overview/OverviewChart';
 import Overview from '../src/pages/Overview';
-import { setModeOwner, setDataMode } from '../src/lib/mode';
+import { setModeOwner, setDataMode, clearDataMode } from '../src/lib/mode';
 import { matches } from './queryFixture';
 
 const sdk = vi.hoisted(() => ({ auth: { me: vi.fn() }, entities: {}, functions: { invoke: vi.fn() } }));
@@ -118,6 +118,23 @@ describe('Overview charts use the active authenticated dataset; SDK fixtures', (
       Transaction: [{ created_by_id: 'a', type: 'income', amount: 3000, date: '2026-10-01', plaid_item_id: 'item', plaid_transaction_id: 'income' }, { created_by_id: 'a', type: 'expense', amount: 600, date: '2026-10-01', plaid_item_id: 'item', plaid_transaction_id: 'rent' }],
     };
     for (const name of ['Account', 'IncomeSource', 'Bill', 'BudgetCategory', 'Transaction', 'Property', 'MortgageRecord']) sdk.entities[name] = { filter: vi.fn(async query => ({ items: (records[name] || []).filter(record => matches(record, query)), has_more: false })) };
+  });
+  it('opens Overview from navigation without a session mode selection', async () => {
+    clearDataMode();
+    render(
+      <MemoryRouter initialEntries={['/settings']}>
+        <NavLink to="/">Overview</NavLink>
+        <Routes>
+          <Route path="/settings" element={<h1>Settings</h1>} />
+          <Route path="/" element={<Overview />} />
+          <Route path="/welcome" element={<h1>Choose a demo profile</h1>} />
+        </Routes>
+      </MemoryRouter>
+    );
+    fireEvent.click(screen.getByRole('link', { name: 'Overview' }));
+    expect(await screen.findByRole('heading', { name: 'Overview', exact: true })).toBeTruthy();
+    expect(await screen.findByRole('region', { name: 'Monthly income allocation' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Choose a demo profile' })).toBeNull();
   });
   it('shows row-four allocation and four projected months without doubling manual and imported figures', async () => {
     render(<MemoryRouter><Overview /></MemoryRouter>);
