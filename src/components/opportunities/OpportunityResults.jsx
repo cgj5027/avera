@@ -60,6 +60,7 @@ function OpportunityItem({ item }) {
           <p className="mt-0.5 text-sm text-muted-foreground">
             {item.company}
             {item.location ? ` · ${item.location}` : ''}
+            {typeof item.distance_miles === 'number' ? ` · Approx. ${item.distance_miles} miles away` : ''}
             {item.posted_at ? ` · Posted ${item.posted_at}` : ''}
           </p>
         </div>
@@ -75,7 +76,7 @@ function OpportunityItem({ item }) {
           </a>
         )}
       </div>
-      <p className="mt-2 break-all text-sm text-muted-foreground">Source: {new URL(item.url).hostname} · Posting availability and freshness not verified</p>
+      <p className="mt-2 break-all text-sm text-muted-foreground">Source: {item.source_provider === 'linkedin' ? 'LinkedIn' : new URL(item.url).hostname} · Posting availability and freshness not verified</p>
       {typeof item.match_score === 'number' && (
         <div className="mt-2 space-y-2 text-sm text-muted-foreground">
           <p>Match confidence: {item.match_confidence || 'low'}. Measures profile fit, not your chance of being hired.</p>

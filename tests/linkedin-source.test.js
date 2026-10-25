@@ -1,3 +1,4 @@
+vi.mock('../base44/shared/jobDistance.ts', async importOriginal => ({...await importOriginal(), createJobArea: () => ({validate:async()=>null,filter:async rows=>rows})}));
 import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 const runtime = vi.hoisted(() => ({ key: undefined }));
 vi.mock('base44:runtime', () => ({ secrets: { get: name => name === 'OPENWEBNINJA_API_KEY' ? runtime.key : undefined } }));
@@ -34,7 +35,7 @@ describe('OpenWeb Ninja LinkedIn adapter (contract fixtures, not live API)', () 
     expect(url.searchParams.has('seniority_levels')).toBe(false);
     expect(options.headers['x-api-key']).toBe('fixture-key');
     expect(options.redirect).toBe('manual');
-    expect(results[0]).toMatchObject({title:'Bookkeeper',publisher:'LinkedIn via OpenWeb Ninja',compensation:'USD 20–25/hour',source_provider:'linkedin'});
+    expect(results[0]).toMatchObject({title:'Bookkeeper',publisher:'LinkedIn',compensation:'USD 20–25/hour',source_provider:'linkedin'});
     expect(JSON.stringify(results)).not.toContain('fixture-key');
   });
   it('caps selected search jobs and detail IDs at twelve while preserving search order', async () => {

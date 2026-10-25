@@ -65,6 +65,7 @@ export async function searchOpportunities(profile, { includeMetadata = false } =
     job_type: profile?.job_type ?? 'any',
     work_mode: profile?.work_mode ?? 'any',
     location: profile?.location ?? '',
+    distance_miles: profile?.distance_miles ?? 25,
   }, JOB_SEARCH_TIMEOUT_MS);
   if (!Array.isArray(data?.opportunities)) throw new Error('Invalid search response.');
   const items = data.opportunities.filter(item =>
@@ -84,6 +85,7 @@ export async function searchOpportunities(profile, { includeMetadata = false } =
     missing_skills: Array.isArray(item.missing_skills) ? item.missing_skills.filter(v => typeof v === 'string') : [],
     match_unknowns: Array.isArray(item.match_unknowns) ? item.match_unknowns.filter(v => typeof v === 'string') : [],
     location: typeof item.location === 'string' && item.location.trim() ? item.location : null,
+    distance_miles: Number.isFinite(item.distance_miles) && item.distance_miles >= 0 ? item.distance_miles : null,
     source_provider: item.source_provider === 'linkedin' ? 'linkedin' : 'web_search',
     publisher: typeof item.publisher === 'string' && item.publisher.trim() ? item.publisher : null,
     posted_at: typeof item.posted_at === 'string' && item.posted_at.trim() ? item.posted_at : null,

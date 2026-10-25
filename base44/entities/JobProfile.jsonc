@@ -53,6 +53,13 @@
     "interests": {
       "type": "string",
       "description": "Preferred industries and work activities for opportunity matching."
+    },
+    "distance_miles": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 250,
+      "default": 25,
+      "description": "Approximate search radius in miles around the saved location."
     }
   },
   "required": [

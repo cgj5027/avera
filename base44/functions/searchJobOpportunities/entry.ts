@@ -1,4 +1,5 @@
 import { readJsonLimited, requestFailureResponse } from '../../shared/requestSafety.ts';
+import { validDistance, DEFAULT_DISTANCE_MILES } from '../../shared/jobDistance.ts';
 import { claimUsage } from '../../shared/usageLimits.ts';
 // Employment discovery: finds real, current job/gig listings matching the
 // user's opportunity profile. Source selection is isolated behind the shared
@@ -27,8 +28,10 @@ export default async function(req) {
       preferred_roles: str(body.preferred_roles),
       work_mode: ['any', 'remote', 'hybrid', 'onsite'].includes(body.work_mode) ? body.work_mode : 'any',
       location: str(body.location),
+      distance_miles: body.distance_miles ?? DEFAULT_DISTANCE_MILES,
       job_type: JOB_TYPES.includes(body.job_type) ? body.job_type : 'any',
     };
+    if (!validDistance(profile.distance_miles)) return Response.json({ error: 'Choose a search distance from 1 to 250 miles.' }, { status: 400 });
     if (!profile.skills) return Response.json({ error: 'Describe your skills to search for opportunities.' }, { status: 400 });
 
     const result = await searchListings(base44, profile, 'combined');

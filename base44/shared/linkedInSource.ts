@@ -38,7 +38,7 @@ export function linkedInListing(job) {
     employment_type, work_mode, experience_level,
     description_excerpt: description.slice(0, 3000), required_skills: required,
     posted_at: posted && Number.isFinite(Date.parse(posted)) ? posted : null,
-    publisher: 'LinkedIn via OpenWeb Ninja', source_provider: 'linkedin',
+    publisher: 'LinkedIn', source_provider: 'linkedin',
   };
 }
 

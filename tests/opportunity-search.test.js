@@ -1,3 +1,4 @@
+vi.mock('../base44/shared/jobDistance.ts', async importOriginal => ({...await importOriginal(), createJobArea: () => ({validate:async()=>null,filter:async rows=>rows})}));
 // Existing handler fixtures isolate provider/data behavior; durable limits are exercised in request-safety.test.js.
 import {beforeEach,describe,it,expect,vi} from 'vitest';
 const fixture=vi.hoisted(()=>({client:null}));
@@ -19,6 +20,9 @@ describe('actual web-search adapter/handler with provider fixtures, not live pos
   it('rejects anonymous and empty-profile requests before contacting the provider',async()=>{
     fixture.client.auth.me.mockResolvedValueOnce(null);expect((await search(request(profile))).status).toBe(401);
     expect((await search(request({skills:''}))).status).toBe(400);expect(llm).not.toHaveBeenCalled();
+  });
+  it.each([0,251,25.5,'25'])('rejects invalid search distance before provider work: %j',async distance => {
+    expect((await search(request({...profile,distance_miles:distance}))).status).toBe(400);expect(llm).not.toHaveBeenCalled();
   });
   it('accepts valid structured JSON strings and preserves posted pay',async()=>{
     llm.mockResolvedValue(JSON.stringify({opportunities:[posting(1)]}));const result=await searchListings(fixture.client,profile);

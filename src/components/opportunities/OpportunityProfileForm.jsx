@@ -22,6 +22,10 @@ export default function OpportunityProfileForm({ profile, saving, onSave, onCanc
       setError('Enter your skills to save your profile.');
       return;
     }
+    const distance = Number(f.get('distance_miles'));
+    if (!Number.isInteger(distance) || distance < 1 || distance > 250) {
+      setError('Choose a search distance from 1 to 250 miles.'); return;
+    }
     setError('');
     onSave({
       skills,
@@ -34,6 +38,7 @@ export default function OpportunityProfileForm({ profile, saving, onSave, onCanc
       job_type: JOB_TYPES.some((t) => t.value === f.get('job_type')) ? String(f.get('job_type')) : 'any',
       work_mode: String(f.get('work_mode') ?? 'any'),
       location: String(f.get('location') ?? '').trim(),
+      distance_miles: distance,
     });
   };
 
@@ -122,9 +127,15 @@ export default function OpportunityProfileForm({ profile, saving, onSave, onCanc
           id="opp-location"
           name="location"
           defaultValue={profile?.location ?? ''}
-          placeholder="City, state or country — leave blank for any location"
+          placeholder="City and state, or postal code"
           className="mt-1.5 min-h-11 rounded-xl bg-surface"
         />
+      </div>
+      <div className="sm:col-span-2">
+        <Label htmlFor="opp-distance">Search distance (miles)</Label>
+        <Input id="opp-distance" name="distance_miles" type="number" min={1} max={250} step={1} required
+          defaultValue={profile?.distance_miles ?? 25} aria-describedby="opp-distance-hint" className="mt-1.5 min-h-11 rounded-xl bg-surface" />
+        <p id="opp-distance-hint" className="mt-1 text-sm text-muted-foreground">Default 25 miles from your saved location. Distances use approximate place centres, not driving routes. Jobs without a resolvable location are excluded, including remote listings. Leave location blank to search without a distance limit.</p>
       </div>
       {error && <p role="alert" className="text-base text-danger-text sm:col-span-2">{error}</p>}
       <div className="flex flex-wrap gap-3 sm:col-span-2">

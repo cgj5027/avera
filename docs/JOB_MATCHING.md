@@ -73,8 +73,8 @@ Matching uses normalized, case-insensitive phrases. It does not infer equivalent
 credentials or transferable skills. Required skill phrases must occur in the
 posting excerpt returned by search. Duplicate skill/interest phrases do not
 increase their weight. Missing or unmatched information earns zero points.
-Location comparison uses the supplied location phrase, not geocoding or radius
-matching. A score is profile fit, never an interview or hiring probability.
+Location preference points use the supplied location phrase. A separate
+server-side distance filter enforces the saved radius before ranking. A score is profile fit, never an interview or hiring probability.
 
 Confidence describes information coverage across the four components: high for
 four, medium for two or three, low otherwise. It does not certify the source.
@@ -83,8 +83,7 @@ the profile, missing information, and the excerpt used for comparison.
 
 Explicit employment-type and work-mode preferences require matching posting
 fields; unknown values are excluded for those preferences. Clear seniority
-mismatches are excluded. Location eligibility remains dependent on search
-extraction and user review. Duplicate URLs are compared after removing fragments
+mismatches are excluded. Location eligibility and work authorization still require user review. Duplicate URLs are compared after removing fragments
 and common tracking parameters, with the higher-rated version retained.
 
 ## Deployment and validation
@@ -105,3 +104,33 @@ the integration uses the supplied endpoint documentation and its stated
 JSearch-compatible contract. No live API call was made because a credential was
 not available. Confirm response compatibility and subscription access during
 the live check above. Posting availability checks remain a separate integration.
+
+## Location and search distance
+
+`JobProfile.distance_miles` defaults to 25; users can save an integer from 1 to
+250 in the work profile. Existing profiles receive the 25-mile default. When a
+location is provided, both sources are filtered by that radius before ranking
+and related-role expansion. A blank location explicitly leaves distance
+unrestricted. Country/state-only or ambiguous origins are rejected with an
+instruction to enter a city/state or postal code; the search never silently
+widens the radius.
+
+`jobDistance.ts` resolves location labels through Photon
+(`https://photon.komoot.io/api/`), then calculates great-circle miles in code.
+Profile and posting location labels are sent to that external geocoding service;
+financial data and credentials are not sent. The request-scoped cache retains
+no locations across searches. Origin lookup happens before paid search requests.
+Each search allows an origin plus twelve distinct destination lookups, with
+small batches and two-second request timeouts. Unresolved listings, including
+remote postings with no specific resolvable location, are excluded. Exhausting
+the destination lookup budget also excludes additional unverified locations.
+Distances are approximate place-centre straight-line distances, not commuting
+routes, exact workplace distances, or confirmation of remote-work eligibility.
+
+Deploy the updated JobProfile schema, backend/shared helpers, and frontend.
+Permit `photon.komoot.io` in backend outbound networking when restricted.
+Photon is a public geocoding service; assess its usage policy and service
+capacity before high-volume production use. It requires no API key. Geocoder
+HTTP failures fail closed rather than returning unrestricted matches. This
+cloud's policy denied a live request (403), so geocoding was validated with
+fixtures in `tests/job-distance.test.js`, not a live production check.

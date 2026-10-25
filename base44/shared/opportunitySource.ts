@@ -1,3 +1,4 @@
+import { createJobArea } from './jobDistance.ts';
 import { linkedInConfigured, searchLinkedIn } from './linkedInSource.ts';
 
 /**
@@ -152,6 +153,7 @@ function normalizeListing(raw) {
     // Pay is shown only when the posting states an amount; a vague answer is no answer.
     compensation: pay && /\d/.test(pay) ? pay : null,
     employment_type: JOB_TYPES.includes(raw.employment_type) && raw.employment_type !== 'any' ? raw.employment_type : employmentTypeFrom(raw.employment_type),
+    distance_miles: typeof raw.distance_miles === 'number' && Number.isFinite(raw.distance_miles) ? raw.distance_miles : null,
     source_provider: raw.source_provider === 'linkedin' ? 'linkedin' : 'web_search',
     location: text(raw.location, 120),
     publisher: text(raw.publisher, 60),
@@ -185,6 +187,7 @@ async function searchViaWebSearch(base44, profile, relatedRoles = false) {
       `Work mode: ${profile.work_mode}`,
       'When a work mode is specified, only include postings that explicitly support it. Never assume an unspecified job is remote.',
       `Location: ${profile.location || 'any (prefer remote or major US metros)'}`,
+      ...(profile.location ? [`Only search within ${profile.distance_miles ?? 25} miles of this location. Return the posting city and state or postal code; never broaden the radius for related roles. Exclude listings without a specific workplace location.`] : []),
       '',
       'Return up to 24 REAL listings from the search results, varied across employers. More candidates allow validation and matching to retain the best twelve.',
       ...(relatedRoles ? ['Expand the search using closely related titles and skill synonyms, while preserving location, experience level, role type and work mode. Do not invent results or loosen these constraints.'] : []),
@@ -278,8 +281,9 @@ export function rankListings(rawList, profile) {
  * Runs the selected provider and returns validated, normalized results.
  * Invalid listings are dropped, not fixed up.
  */
-export async function searchListings(base44, profile, providerId = 'web_search') {
+export async function searchListings(base44, profile, providerId = 'web_search', area = createJobArea(profile)) {
   if (providerId === 'combined') return searchCombined(base44, profile);
+  await area.validate();
   const provider = PROVIDERS[providerId];
   if (!provider) throw new Error('Unknown opportunity source.');
   const level = EXPERIENCE_LEVELS.includes(profile.experience_level) ? profile.experience_level : 'entry_level';
@@ -287,14 +291,14 @@ export async function searchListings(base44, profile, providerId = 'web_search')
   const normalize = rawList => rankListings(rawList, profile);
   const query = {...profile,experience_level:level,job_type:jobType};
   let candidates = (await provider(base44,query)).map(item => ({...item, source_provider: providerId}));
-  let opportunities = normalize(candidates);
+  let opportunities = normalize(await area.filter(candidates));
   let partial_results = false;
   let related_roles_searched = false;
   if (providerId === 'web_search' && opportunities.length < MAX_LISTINGS) {
     related_roles_searched = true;
     try {
       candidates = [...candidates, ...(await provider(base44,query,true)).map(item => ({...item, source_provider: providerId}))];
-      opportunities = normalize(candidates);
+      opportunities = normalize(await area.filter(candidates));
     } catch (error) {
       if (!opportunities.length) throw error;
       partial_results = true;
@@ -305,7 +309,9 @@ export async function searchListings(base44, profile, providerId = 'web_search')
 /** An absent optional key preserves web search; a configured source failure is explicit. */
 async function searchCombined(base44, profile) {
   const providers = linkedInConfigured() ? ['web_search', 'linkedin'] : ['web_search'];
-  const results = await Promise.allSettled(providers.map(provider => searchListings(base44, profile, provider)));
+  const area = createJobArea(profile);
+  await area.validate();
+  const results = await Promise.allSettled(providers.map(provider => searchListings(base44, profile, provider, area)));
   const successes = results.filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled');
   if (!successes.length) throw new Error('Job sources unavailable');
   const sources = results.map((result, index) => ({

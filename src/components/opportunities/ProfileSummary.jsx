@@ -35,6 +35,7 @@ export default function ProfileSummary({ profile, onEdit }) {
         {profile.preferred_roles && <Row label="Preferred jobs or gigs" value={profile.preferred_roles} />}
         <Row label="Work preference" value={workModeLabel(profile.work_mode)} />
         {profile.location && <Row label="Location" value={profile.location} />}
+        <Row label="Search distance" value={profile.location ? `${profile.distance_miles ?? 25} miles` : 'Any location'} />
       </dl>
     </div>
   );

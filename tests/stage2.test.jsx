@@ -193,6 +193,13 @@ describe('critical function invocation boundaries (mocked, not backend authoriza
     sdk.user={id:'b'};view.rerender(<AskAveraConversation />);
     expect(screen.queryByText('Private question')).toBeNull();expect(screen.queryByText('$100')).toBeNull();
   });
+  it('defaults search distance to 25 miles and saves a custom distance', () => {
+    const save=vi.fn();render(<OpportunityProfileForm profile={{skills:'Bookkeeping',location:'Boston, MA'}} saving={false} onSave={save} />);
+    expect(screen.getByLabelText('Search distance (miles)').value).toBe('25');
+    fireEvent.change(screen.getByLabelText('Search distance (miles)'),{target:{value:'50'}});
+    fireEvent.click(screen.getByRole('button',{name:'Save profile'}));
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({location:'Boston, MA',distance_miles:50}));
+  });
   it('validates profile whitespace before persistence and saves a role type instead of hours or income target', () => {
     const save=vi.fn(); render(<OpportunityProfileForm profile={null} saving={false} onSave={save} />);
     fireEvent.change(screen.getByLabelText('Skills'),{target:{value:'   '}});
