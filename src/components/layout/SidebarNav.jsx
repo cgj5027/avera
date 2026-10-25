@@ -10,10 +10,19 @@ const linkClass = (isActive) =>
   );
 
 /** Desktop sidebar: Avera Forest, six destinations, Settings anchored at bottom. */
-export default function SidebarNav() {
+export default function SidebarNav({ open = true }) {
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col bg-sidebar text-sidebar-foreground lg:flex">
-      <Link to="/" className="flex h-16 items-center gap-3 border-b border-white/10 px-5">
+    <aside
+      id="desktop-navigation"
+      aria-label="Navigation pane"
+      aria-hidden={!open}
+      {...(!open ? { inert: '' } : {})}
+      className={cn(
+        'fixed inset-y-0 left-0 z-40 hidden w-60 flex-col bg-sidebar text-sidebar-foreground transition-transform duration-200 ease-in-out motion-reduce:transition-none lg:flex',
+        open ? 'translate-x-0' : '-translate-x-full'
+      )}
+    >
+      <Link to="/" className="flex h-16 items-center gap-3 border-b border-white/10 pl-16 pr-5">
         <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-base font-semibold text-white">
           A
         </span>

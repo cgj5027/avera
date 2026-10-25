@@ -1,3 +1,6 @@
+import { useState } from 'react';
+import { Menu } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Outlet, useLocation } from 'react-router-dom';
 import SidebarNav from './SidebarNav';
 import MobileNav from './MobileNav';
@@ -8,6 +11,7 @@ import FeedbackDialog from '@/components/settings/FeedbackDialog';
 
 /** App shell: forest sidebar on desktop, labeled bar + More sheet on mobile. */
 export default function AppLayout() {
+  const [navigationOpen, setNavigationOpen] = useState(true);
   const isChat = useLocation().pathname.replace(/\/$/, '') === '/ask-avera';
   return (
     <div className="min-h-dvh bg-background">
@@ -17,10 +21,29 @@ export default function AppLayout() {
       >
         Skip to main content
       </a>
-      <SidebarNav />
-      <div className={isChat ? 'flex h-dvh flex-col lg:pl-60' : 'lg:pl-60'}>
+      <button
+        type="button"
+        aria-label={navigationOpen ? 'Close navigation' : 'Open navigation'}
+        aria-expanded={navigationOpen}
+        aria-controls="desktop-navigation"
+        onClick={() => setNavigationOpen((open) => !open)}
+        className={cn(
+          'fixed left-4 top-1.5 z-50 hidden h-11 w-11 items-center justify-center rounded-xl border shadow-md transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:flex',
+          navigationOpen
+            ? 'border-white/20 bg-sidebar text-sidebar-foreground hover:bg-white/10'
+            : 'border-border bg-surface text-foreground hover:bg-surface-subtle'
+        )}
+      >
+        <Menu className="h-5 w-5" aria-hidden="true" />
+      </button>
+      <SidebarNav open={navigationOpen} />
+      <div className={cn(
+        'transition-[padding-left] duration-200 ease-in-out motion-reduce:transition-none',
+        navigationOpen ? 'lg:pl-60' : 'lg:pl-0',
+        isChat && 'flex h-dvh flex-col'
+      )}>
         <header className="sticky top-0 z-40 shrink-0 border-b border-border bg-surface/95 backdrop-blur">
-          <div className="flex min-h-14 flex-wrap items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:justify-end">
+          <div className="flex min-h-14 flex-wrap items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:justify-end lg:pl-20">
             <div className="flex shrink-0 items-center gap-2.5 lg:hidden">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">A</span>
               <span className="text-base font-semibold tracking-tight text-foreground">Avera</span>
