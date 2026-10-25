@@ -28,6 +28,7 @@ export default function ProfileSummary({ profile, onEdit }) {
       </div>
       <dl className="mt-4 space-y-3">
         <Row label="Skills" value={profile.skills} />
+        {profile.interests && <Row label="Interests and industries" value={profile.interests} />}
         {profile.experience && <Row label="Professional experience" value={profile.experience} />}
         <Row label="Experience level" value={experienceLevelLabel(profile.experience_level)} />
         <Row label="Role type" value={jobTypeLabel(profile.job_type) ?? 'Any'} />

@@ -25,6 +25,7 @@ export default function OpportunityProfileForm({ profile, saving, onSave, onCanc
     setError('');
     onSave({
       skills,
+      interests: String(f.get('interests') ?? '').trim(),
       experience: String(f.get('experience') ?? '').trim(),
       experience_level: EXPERIENCE_LEVELS.some((l) => l.value === f.get('experience_level'))
         ? String(f.get('experience_level'))
@@ -49,6 +50,11 @@ export default function OpportunityProfileForm({ profile, saving, onSave, onCanc
           placeholder="e.g. bookkeeping, tutoring, licensed driver"
           className="mt-1.5 rounded-xl bg-surface"
         />
+      </div>
+      <div className="sm:col-span-2">
+        <Label htmlFor="opp-interests">Interests and industries</Label>
+        <Input id="opp-interests" name="interests" maxLength={400} defaultValue={profile?.interests ?? ''}
+          placeholder="e.g. education, healthcare, helping customers" className="mt-1.5 min-h-11 rounded-xl bg-surface" />
       </div>
       <div className="sm:col-span-2">
         <Label htmlFor="opp-experience">Professional experience</Label>
@@ -116,7 +122,7 @@ export default function OpportunityProfileForm({ profile, saving, onSave, onCanc
           id="opp-location"
           name="location"
           defaultValue={profile?.location ?? ''}
-          placeholder="City, state — or leave blank for remote only"
+          placeholder="City, state or country — leave blank for any location"
           className="mt-1.5 min-h-11 rounded-xl bg-surface"
         />
       </div>

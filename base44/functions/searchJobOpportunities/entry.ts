@@ -19,6 +19,7 @@ export default async function(req) {
     const str = (v) => (typeof v === 'string' ? v.trim().slice(0, 400) : '');
     const profile = {
       skills: str(body.skills),
+      interests: str(body.interests),
       experience: str(body.experience),
       experience_level: ['entry_level', 'mid_level', 'senior'].includes(body.experience_level)
         ? body.experience_level

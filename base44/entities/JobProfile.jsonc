@@ -49,6 +49,10 @@
     "demo_profile": {
       "type": "string",
       "description": "Demo Mode workspace this record belongs to: early_career, multi_income, or financial_improvement. Empty for ordinary records; demo reset only removes records carrying this tag for the signed-in user."
+    },
+    "interests": {
+      "type": "string",
+      "description": "Preferred industries and work activities for opportunity matching."
     }
   },
   "required": [

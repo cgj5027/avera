@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { askAvera, searchOpportunities, sourceListingUrl, SERVICE_TIMEOUT_MS } from '../src/services/assistantService';
 import { calculateIncomeGapAllocated } from '../src/services/financialCalculations';
 import AskAveraConversation from '../src/components/askavera/AskAveraConversation';
@@ -123,6 +123,22 @@ describe('critical function invocation boundaries (mocked, not backend authoriza
     expect(screen.getByText('Part-time')).toBeTruthy();
     expect(screen.queryByText(/take-home/i)).toBeNull();
   });
+  it('shows match ratings and expands results without another provider request', async () => {
+    sdk.functions.invoke.mockResolvedValue({data:{opportunities:Array.from({length:12},(_,i)=>({
+      title:`Matched role ${i+1}`,company:'Fixture employer',url:`https://jobs.org/post/${i+1}`,
+      match_score:80,match_confidence:'medium',missing_skills:['Payroll'],match_unknowns:['Experience requirements unavailable'],
+      match_breakdown:{skills:30,interests:25,experience:20,preferences:5},
+    })),related_roles_searched:true}});
+    render(<OpportunityResults profile={{skills:'Bookkeeping'}} />);
+    fireEvent.click(screen.getByRole('button',{name:'Find opportunities'}));
+    await screen.findByText('12 matching opportunities found');
+    expect(screen.getAllByText(/80\/100 profile match/)).toHaveLength(6);
+    expect(screen.queryByText('Matched role 7')).toBeNull();
+    expect(screen.getAllByText(/Required skills not listed in your profile: Payroll/)).toHaveLength(6);
+    fireEvent.click(screen.getByRole('button',{name:'Show more opportunities'}));
+    expect(screen.getByText('Matched role 12')).toBeTruthy();
+    expect(sdk.functions.invoke).toHaveBeenCalledTimes(1);
+  });
   it('omits the pay range and role type when the posting does not list them', async () => {
     sdk.functions.invoke.mockResolvedValue({data:{opportunities:[{title:'Role',company:'Employer',url:'https://jobs.org/post'}]}});
     render(<OpportunityResults profile={{skills:'Bookkeeping'}} />);
@@ -140,6 +156,34 @@ describe('critical function invocation boundaries (mocked, not backend authoriza
     render(<AskAveraConversation />);fireEvent.change(screen.getByLabelText('Ask Avera'),{target:{value:'Savings?'}});fireEvent.click(screen.getByRole('button',{name:'Send question'}));
     expect(await screen.findByText(/Data may already have been sent/)).toBeTruthy();
     expect(screen.getByRole('button',{name:'Send question'}).disabled).toBe(true);
+  });
+  it('sends successful exchanges with follow-ups and clears them when the dataset changes', async () => {
+    setModeOwner('a'); setDataMode('manual');
+    sdk.functions.invoke.mockResolvedValue({data:{answer:'Your recorded planning surplus is $500.'}});
+    render(<AskAveraConversation />);
+    const send = async question => {
+      fireEvent.change(screen.getByLabelText('Ask Avera'), {target:{value:question}});
+      fireEvent.click(screen.getByRole('button', {name:'Send question'}));
+      await waitFor(() => expect(screen.getByLabelText('Ask Avera').disabled).toBe(false));
+    };
+    await send('What is my surplus?');
+    await send('What does that mean?');
+    expect(sdk.functions.invoke.mock.calls[1][1].history).toEqual([
+      {role:'user',text:'What is my surplus?'},
+      {role:'assistant',text:'Your recorded planning surplus is $500.'},
+    ]);
+    sdk.functions.invoke.mockRejectedValueOnce(new Error('AI unavailable'));
+    await send('Failed question');
+    await send('Try another question');
+    expect(sdk.functions.invoke.mock.calls.at(-1)[1].history.some(m => m.text === 'Failed question')).toBe(false);
+    await send('Another follow-up');
+    await send('One more follow-up');
+    expect(sdk.functions.invoke.mock.calls.at(-1)[1].history).toHaveLength(6);
+    expect(sdk.functions.invoke.mock.calls.at(-1)[1].history.some(m => m.text === 'What is my surplus?')).toBe(false);
+    act(() => setDataMode('sandbox'));
+    expect(screen.queryByText('What is my surplus?')).toBeNull();
+    await send('New dataset question');
+    expect(sdk.functions.invoke.mock.calls.at(-1)[1]).not.toHaveProperty('history');
   });
   it('resets conversations between users and suppresses AI image/link exfiltration', async () => {
     sdk.functions.invoke.mockResolvedValue({data:{answer:'[Balance](https://evil.org/?balance=100) ![track](https://evil.org/image) **$100**\n\n- Review the saved electricity bill\n- Confirm your income\n\n1. Open Bills & Budget\n2. Review the amount'}});

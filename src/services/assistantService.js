@@ -29,12 +29,12 @@ async function authenticatedInvoke(name, payload, timeoutMs = SERVICE_TIMEOUT_MS
   }
 }
 
-export async function askAvera(question) {
+export async function askAvera(question, history = []) {
   if (typeof question !== 'string' || !question.trim() || question.length > MAX_QUESTION_LENGTH) {
     throw new Error('Enter a question of up to 2,000 characters.');
   }
   // Never accept user IDs, financial context, or system instructions from the UI.
-  const data = await authenticatedInvoke('askAvera', { question: question.trim(), dataset: getDataMode() === 'demo' ? {mode:'demo',profile:getDemoWorkspace()?.profile} : {mode:'ordinary'} });
+  const data = await authenticatedInvoke('askAvera', { question: question.trim(), ...(history.length ? { history } : {}), dataset: getDataMode() === 'demo' ? {mode:'demo',profile:getDemoWorkspace()?.profile} : {mode:'ordinary'} });
   if (typeof data?.answer !== 'string' || !data.answer.trim() || data.answer.length > 20000) {
     throw new Error('Invalid assistant response.');
   }
@@ -58,6 +58,7 @@ export function sourceListingUrl(value) {
 export async function searchOpportunities(profile, { includeMetadata = false } = {}) {
   const data = await authenticatedInvoke('searchJobOpportunities', {
     skills: profile?.skills ?? '',
+    interests: profile?.interests ?? '',
     experience: profile?.experience ?? '',
     experience_level: profile?.experience_level ?? 'entry_level',
     preferred_roles: profile?.preferred_roles ?? '',
@@ -75,7 +76,13 @@ export async function searchOpportunities(profile, { includeMetadata = false } =
     url: sourceListingUrl(item.url),
     compensation: typeof item.compensation === 'string' && item.compensation.trim() ? item.compensation : null,
     employment_type: typeof item.employment_type === 'string' && item.employment_type.trim() ? item.employment_type : null,
-    match_score: typeof item.match_score === 'number' ? item.match_score : null,
+    match_score: Number.isFinite(item.match_score) && item.match_score >= 0 && item.match_score <= 100 ? item.match_score : null,
+    match_confidence: ['high','medium','low'].includes(item.match_confidence) ? item.match_confidence : 'low',
+    match_breakdown: item.match_breakdown && ['skills','interests','experience','preferences'].every((key, index) => Number.isFinite(item.match_breakdown[key]) && item.match_breakdown[key] >= 0 && item.match_breakdown[key] <= [45,25,20,10][index]) ? item.match_breakdown : null,
+    description_excerpt: typeof item.description_excerpt === 'string' ? item.description_excerpt.slice(0, 3000) : null,
+    matched_skills: Array.isArray(item.matched_skills) ? item.matched_skills.filter(v => typeof v === 'string') : [],
+    missing_skills: Array.isArray(item.missing_skills) ? item.missing_skills.filter(v => typeof v === 'string') : [],
+    match_unknowns: Array.isArray(item.match_unknowns) ? item.match_unknowns.filter(v => typeof v === 'string') : [],
     location: typeof item.location === 'string' && item.location.trim() ? item.location : null,
     publisher: typeof item.publisher === 'string' && item.publisher.trim() ? item.publisher : null,
     posted_at: typeof item.posted_at === 'string' && item.posted_at.trim() ? item.posted_at : null,
@@ -84,5 +91,5 @@ export async function searchOpportunities(profile, { includeMetadata = false } =
       : [],
   }));
   if (items.length !== data.opportunities.length) throw new Error('Search returned unverified listing data.');
-  return includeMetadata ? {items,relatedRolesSearched:data.related_roles_searched === true} : items;
+  return includeMetadata ? {items,relatedRolesSearched:data.related_roles_searched === true,partialResults:data.partial_results === true} : items;
 }
