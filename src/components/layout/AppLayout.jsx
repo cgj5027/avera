@@ -27,7 +27,12 @@ export default function AppLayout() {
         aria-expanded={navigationOpen}
         aria-controls="desktop-navigation"
         onClick={() => setNavigationOpen((open) => !open)}
-        className="fixed left-4 top-1.5 z-50 hidden h-11 w-11 items-center justify-center rounded-xl border border-border bg-surface text-foreground shadow-md transition-colors duration-200 hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:flex"
+        className={cn(
+          'fixed left-4 top-1.5 z-50 hidden h-11 w-11 items-center justify-center rounded-xl border shadow-md transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:flex',
+          navigationOpen
+            ? 'border-white/20 bg-sidebar text-sidebar-foreground hover:bg-white/10'
+            : 'border-border bg-surface text-foreground hover:bg-surface-subtle'
+        )}
       >
         <Menu className="h-5 w-5" aria-hidden="true" />
       </button>
