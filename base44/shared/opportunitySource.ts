@@ -242,7 +242,7 @@ const PROVIDERS = {
   linkedin: (_base44, profile) => searchLinkedIn(profile),
 };
 
-export function rankListings(rawList, profile) {
+export function rankListings(rawList, profile, primaryProvider = null) {
   const level = EXPERIENCE_LEVELS.includes(profile.experience_level) ? profile.experience_level : 'entry_level';
   const jobType = JOB_TYPES.includes(profile.job_type) ? profile.job_type : 'any';
   const normalize = rawList => {
@@ -258,7 +258,7 @@ export function rankListings(rawList, profile) {
     .filter(item => !profile.work_mode || profile.work_mode === 'any' || item.work_mode === profile.work_mode)
     .map((item) => ({ ...item, ...rateOpportunity(item, { ...profile, job_type: jobType }) }))
     // Best fit first; Array.prototype.sort is stable, so equal scores keep order.
-    .sort((a, b) => b.match_score - a.match_score)
+    .sort((a, b) => (primaryProvider ? Number(b.source_provider === primaryProvider) - Number(a.source_provider === primaryProvider) : 0) || b.match_score - a.match_score)
     .filter((item) => {
       // Different postings occasionally collapse onto one board page; show it once.
       const canonical = new URL(item.url);
@@ -306,21 +306,33 @@ export async function searchListings(base44, profile, providerId = 'web_search',
   }
   return { source_provider: providerId, experience_level: level, job_type: jobType, related_roles_searched, partial_results, opportunities };
 }
-/** An absent optional key preserves web search; a configured source failure is explicit. */
+/** LinkedIn is primary. Web search fills remaining slots or handles source failures. */
 async function searchCombined(base44, profile) {
-  const providers = linkedInConfigured() ? ['web_search', 'linkedin'] : ['web_search'];
+  const providers = linkedInConfigured() ? ['linkedin', 'web_search'] : ['web_search'];
   const area = createJobArea(profile);
   await area.validate();
-  const results = await Promise.allSettled(providers.map(provider => searchListings(base44, profile, provider, area)));
-  const successes = results.filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled');
-  if (!successes.length) throw new Error('Job sources unavailable');
-  const sources = results.map((result, index) => ({
-    provider: providers[index], status: result.status === 'fulfilled' ? 'searched' : 'unavailable',
-  }));
+  const sources: Array<{provider:string; status:string}> = [];
+  let opportunities = [];
+  let related_roles_searched = false;
+  let partial_results = false;
+  let succeeded = false;
+  for (const provider of providers) {
+    if (opportunities.length >= MAX_LISTINGS) break;
+    try {
+      const result = await searchListings(base44, profile, provider, area);
+      succeeded = true;
+      sources.push({provider, status:'searched'});
+      opportunities = rankListings([...opportunities, ...result.opportunities], profile, 'linkedin');
+      related_roles_searched ||= result.related_roles_searched;
+      partial_results ||= result.partial_results;
+    } catch {
+      sources.push({provider, status:'unavailable'});
+      partial_results = true;
+    }
+  }
+  if (!succeeded) throw new Error('Job sources unavailable');
   return {
-    source_provider: 'combined', sources,
-    opportunities: rankListings(successes.flatMap(result => result.value.opportunities), profile),
-    related_roles_searched: successes.some(result => result.value.related_roles_searched),
-    partial_results: results.some(result => result.status === 'rejected') || successes.some(result => result.value.partial_results),
+    source_provider: 'combined', primary_provider: providers[0], sources,
+    opportunities, related_roles_searched, partial_results,
   };
 }

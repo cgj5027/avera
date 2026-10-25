@@ -85,10 +85,26 @@ describe('OpenWeb Ninja LinkedIn adapter (contract fixtures, not live API)', () 
     const llm=vi.fn(async()=>({opportunities:[web]}));
     const result=await searchListings(client(llm),profile,'combined');
     expect(result.opportunities).toHaveLength(2);
-    expect(result.sources).toEqual([{provider:'web_search',status:'searched'},{provider:'linkedin',status:'searched'}]);
+    expect(result.sources).toEqual([{provider:'linkedin',status:'searched'},{provider:'web_search',status:'searched'}]);
     expect(result.opportunities.find(item=>item.source_provider==='linkedin').matched_skills).toEqual(['bookkeeping','payroll']);
     expect(result.partial_results).toBe(false);
     expect(fetchMock).toHaveBeenCalledTimes(2);expect(llm).toHaveBeenCalledTimes(2);
+  });
+  it('skips web AI when LinkedIn fills all twelve slots', async () => {
+    const jobs=Array.from({length:12},(_,i)=>job(String(i+1)));
+    fetchMock.mockImplementation(async()=>Response.json({status:'OK',data:jobs}));
+    const llm=vi.fn();const result=await searchListings(client(llm),profile,'combined');
+    expect(result.opportunities).toHaveLength(12);expect(llm).not.toHaveBeenCalled();
+    expect(result.sources).toEqual([{provider:'linkedin',status:'searched'}]);
+    expect(result.primary_provider).toBe('linkedin');
+  });
+  it('places LinkedIn matches ahead of supplemental web results', async () => {
+    const llm=vi.fn(async()=>{
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      return {opportunities:[{...web,required_skills:['Bookkeeping','payroll'],experience_level:'entry_level'}]};
+    });
+    const result=await searchListings(client(llm),profile,'combined');
+    expect(result.opportunities.map(item=>item.source_provider)).toEqual(['linkedin','web_search']);
   });
   it('deduplicates a LinkedIn posting also returned by web search', async () => {
     const llm=vi.fn(async()=>({opportunities:[{...web,url:job().job_apply_link}]}));
@@ -98,7 +114,7 @@ describe('OpenWeb Ninja LinkedIn adapter (contract fixtures, not live API)', () 
   it('retains API results when web AI fails', async () => {
     const result=await searchListings(client(vi.fn(async()=>{throw new Error('AI unavailable')})),profile,'combined');
     expect(result.opportunities).toHaveLength(1);expect(result.partial_results).toBe(true);
-    expect(result.sources[0].status).toBe('unavailable');
+    expect(result.sources.find(source=>source.provider==='web_search').status).toBe('unavailable');
   });
   it('retains web results when the API fails and does not expose provider errors', async () => {
     fetchMock.mockResolvedValue(new Response('sensitive provider failure',{status:401}));

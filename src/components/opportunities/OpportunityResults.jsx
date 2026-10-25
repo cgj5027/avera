@@ -211,7 +211,7 @@ export default function OpportunityResults({ profile }) {
           </ul>
           {visibleCount < items.length && <Button variant="outline" className="mt-4 min-h-11" onClick={() => setVisibleCount(count => count + 6)}>Show more opportunities</Button>}
           <p className="mt-3 text-sm text-muted-foreground">
-            Profile match uses skills (4.5 points), interests and preferred roles (2.5), experience (2), and work preferences (1). Missing or unmatched information earns no points. Confidence reflects how much comparison information is available, not independent verification. AI extracts posting requirements; code calculates the rating. Listings are ranked by how well each one fits your profile — skills, interests, role type, and experience level.{' '}
+            Profile match uses skills (4.5 points), interests and preferred roles (2.5), experience (2), and work preferences (1). Missing or unmatched information earns no points. Confidence reflects how much comparison information is available, not independent verification. AI extracts posting requirements; code calculates the rating. LinkedIn matches appear first when connected; web search fills remaining slots. Within each source, listings are ranked by how well each one fits your profile — skills, interests, role type, and experience level.{' '}
             Pay ranges appear only when the posting lists one and are shown as advertised, before taxes and deductions. Postings come from public web search and LinkedIn when connected; coverage is not exhaustive and availability is not verified.
           </p>
         </>

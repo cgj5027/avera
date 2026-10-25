@@ -7,8 +7,10 @@ than 12 usable matches remain. Both result sets are combined, ranked and capped
 at 12. The interface initially shows six; Show more reveals the rest without
 another search. If expansion fails, valid first-pass matches remain available.
 One search can therefore make two AI integration calls. When configured, LinkedIn
-is queried concurrently and its results join the same ranking and deduplication
-pipeline. A failed source does not discard successful results from the other.
+is queried first. Web search runs only when LinkedIn returns fewer than twelve
+usable matches, is not configured, or fails. LinkedIn matches take precedence,
+with each source ranked by match score and duplicates removed. A full set of
+twelve LinkedIn matches makes no web AI calls. A failed source does not discard successful results from the other.
 The interface identifies searched sources and warns about partial failures.
 
 ## LinkedIn source setup
