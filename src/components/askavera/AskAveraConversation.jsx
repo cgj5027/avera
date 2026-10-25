@@ -1,10 +1,11 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Loader2, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import StatusPill from '@/components/states/StatusPill';
 import { askAvera, MAX_QUESTION_LENGTH } from '@/services/assistantService';
+import { getDataMode, getDemoWorkspace, subscribeToModeChanges } from '@/lib/mode';
 import { useAuth } from '@/lib/AuthContext';
 
 const SUGGESTIONS = [
@@ -19,7 +20,7 @@ const SERVICE_UNAVAILABLE =
   'Ask Avera could not reach its AI service just now. No changes were requested to your financial records. Data may already have been sent to the service. Please try again — if this keeps happening, the AI service may not be configured yet.';
 
 const READ_ONLY_NOTE =
-  'Sending a question shares your question and relevant saved financial records with an external AI service. Provider retention settings need verification. Response grounding is not yet verified. Check financial figures against your saved records. This interface requests no changes to records or movement of money.';
+  'Sending a question shares your question, recent conversation, and relevant saved financial records with an external AI service. Provider retention settings need verification. Response grounding is not yet verified. Check financial figures against your saved records. This interface requests no changes to records or movement of money.';
 
 /**
  * Shared page/drawer conversation. The backend remains responsible for
@@ -27,7 +28,8 @@ const READ_ONLY_NOTE =
  */
 export default function AskAveraConversation() {
   const { user } = useAuth();
-  return user ? <Conversation key={user.id} /> : <p role="status" className="p-4 text-base text-muted-foreground">Sign in to ask about your finances.</p>;
+  const dataset = useSyncExternalStore(subscribeToModeChanges, () => JSON.stringify([getDataMode(), getDemoWorkspace()?.profile]));
+  return user ? <Conversation key={`${user.id}:${dataset}`} /> : <p role="status" className="p-4 text-base text-muted-foreground">Sign in to ask about your finances.</p>;
 }
 
 function Conversation() {
@@ -35,6 +37,7 @@ function Conversation() {
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState(false);
   const logRef = useRef(null);
+  const historyRef = useRef([]);
   const followLatest = useRef(true);
   const questionId = useId();
 
@@ -52,7 +55,8 @@ function Conversation() {
     setMessages((m) => [...m, { role: 'user', text: value }, { role: 'assistant', text: null }]);
     setPending(true);
     try {
-      const answer = await askAvera(value);
+      const answer = await askAvera(value, historyRef.current);
+      historyRef.current = [...historyRef.current, { role: 'user', text: value.slice(0, 1000) }, { role: 'assistant', text: answer.slice(0, 1000) }].slice(-6);
       setMessages((m) => [
         ...m.slice(0, -1),
         { role: 'assistant', text: answer ?? 'I could not generate an answer just now. Please try again.' },

@@ -3,7 +3,7 @@ import { ExternalLink, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import StatusPill from '@/components/states/StatusPill';
 import SourceChip from '@/components/states/SourceChip';
-import { searchOpportunities } from '@/services/assistantService';
+import { searchOpportunities, jobSearchErrorMessage } from '@/services/assistantService';
 import { jobTypeLabel } from './jobTypes';
 
 /**
@@ -36,8 +36,8 @@ const SAMPLE_OPPORTUNITIES = [
 
 /** Maps a server-side match score to a clearly labeled fit tier. */
 function fitTier(score) {
-  if (score >= 4) return { label: 'Strong fit', tone: 'success' };
-  if (score >= 2) return { label: 'Good fit', tone: 'info' };
+  if (score >= 80) return { label: 'Strong fit', tone: 'success' };
+  if (score >= 60) return { label: 'Good fit', tone: 'info' };
   return { label: 'Possible fit', tone: 'neutral' };
 }
 
@@ -52,7 +52,7 @@ function OpportunityItem({ item }) {
             {item.publisher && <SourceChip source={item.publisher} />}
             {typeof item.match_score === 'number' && (
               <StatusPill tone={fitTier(item.match_score).tone}>
-                {fitTier(item.match_score).label}
+                {Math.round(item.match_score) / 10}/10 profile match · {fitTier(item.match_score).label}
               </StatusPill>
             )}
             <p className="font-heading text-base font-semibold text-foreground">{item.title}</p>
@@ -60,6 +60,7 @@ function OpportunityItem({ item }) {
           <p className="mt-0.5 text-sm text-muted-foreground">
             {item.company}
             {item.location ? ` · ${item.location}` : ''}
+            {typeof item.distance_miles === 'number' ? ` · Approx. ${item.distance_miles} miles away` : ''}
             {item.posted_at ? ` · Posted ${item.posted_at}` : ''}
           </p>
         </div>
@@ -75,7 +76,16 @@ function OpportunityItem({ item }) {
           </a>
         )}
       </div>
-      <p className="mt-2 break-all text-sm text-muted-foreground">Source: {new URL(item.url).hostname} · Posting availability and freshness not verified</p>
+      <p className="mt-2 break-all text-sm text-muted-foreground">Source: {item.source_provider === 'linkedin' ? 'LinkedIn' : new URL(item.url).hostname} · Posting availability and freshness not verified</p>
+      {typeof item.match_score === 'number' && (
+        <div className="mt-2 space-y-2 text-sm text-muted-foreground">
+          <p>Match confidence: {item.match_confidence || 'low'}. Measures profile fit, not your chance of being hired.</p>
+          {item.match_breakdown && <p>Skills {item.match_breakdown.skills / 10}/4.5 · Interests {item.match_breakdown.interests / 10}/2.5 · Experience {item.match_breakdown.experience / 10}/2 · Preferences {item.match_breakdown.preferences / 10}/1</p>}
+          {item.description_excerpt && <details><summary className="cursor-pointer py-2 text-foreground">Posting excerpt used for matching</summary><p className="mt-1 whitespace-pre-wrap">{item.description_excerpt}</p></details>}
+          {item.missing_skills?.length > 0 && <p>Required skills not listed in your profile: {item.missing_skills.join(', ')}</p>}
+          {item.match_unknowns?.length > 0 && <p>Missing information: {item.match_unknowns.join('; ')}.</p>}
+        </div>
+      )}
       {item.match_reasons?.length > 0 && (
         <ul className="mt-2 flex flex-wrap gap-2">
           {item.match_reasons.map((reason, i) => (
@@ -114,6 +124,10 @@ function OpportunityItem({ item }) {
 export default function OpportunityResults({ profile }) {
   const [status, setStatus] = useState('idle'); // idle | loading | live | none | unavailable
   const [items, setItems] = useState([]);
+  const [failureMessage, setFailureMessage] = useState('');
+  const [partialResults, setPartialResults] = useState(false);
+  const [sources, setSources] = useState([]);
+  const [visibleCount, setVisibleCount] = useState(6);
   const [relatedRolesSearched,setRelatedRolesSearched] = useState(false);
   const hasProfile = Boolean(profile?.skills?.trim());
 
@@ -123,9 +137,13 @@ export default function OpportunityResults({ profile }) {
     try {
       const result = await searchOpportunities(profile,{includeMetadata:true});
       setItems(result.items);
+      setPartialResults(result.partialResults);
+      setSources(result.sources);
+      setVisibleCount(6);
       setRelatedRolesSearched(result.relatedRolesSearched);
       setStatus(result.items.length === 0 ? 'none' : 'live');
-    } catch {
+    } catch (error) {
+      setFailureMessage(jobSearchErrorMessage(error));
       setItems([]);
       setRelatedRolesSearched(false);
       setStatus('unavailable');
@@ -152,19 +170,22 @@ export default function OpportunityResults({ profile }) {
           )}
         </Button>
         {status === 'live' && <StatusPill tone="success">Source-linked results</StatusPill>}
-        {status === 'unavailable' && <StatusPill tone="warning">Not connected</StatusPill>}
+        {status === 'unavailable' && <StatusPill tone="warning">Search unavailable</StatusPill>}
         {status === 'none' && <StatusPill tone="neutral">No matches found</StatusPill>}
         {relatedRolesSearched && (status === 'live' || status === 'none') && <StatusPill tone="neutral">Also searched related roles</StatusPill>}
       </div>
+
+      {(status === 'live' || status === 'none') && sources.length > 0 && <p className="mt-3 text-sm text-muted-foreground">Sources searched: {sources.filter(source => source.status === 'searched').map(source => source.provider === 'linkedin' ? 'LinkedIn' : 'Web search').join(', ')}</p>}
+      {partialResults && (status === 'live' || status === 'none') && <p role="status" className="mt-2 text-sm text-muted-foreground">Some search sources or related-role searches were unavailable. Showing the matches already found.</p>}
 
       {!hasProfile && <p className="mt-3 text-base text-muted-foreground">Save your work profile above before searching for opportunities.</p>}
 
       {status === 'unavailable' && (
         <div className="mt-4 rounded-2xl border border-border bg-info-surface p-4">
+          <p role="alert" className="mb-3 text-base text-info">{failureMessage}</p>
           <StatusPill tone="info">Demonstration listings</StatusPill>
           <p className="mt-2 text-base text-info">
-            Job search could not be completed or its results could not be validated. The service may be unavailable or unconfigured. The listings below are clearly labeled samples for layout only and are never presented as live
-            postings.
+            These sample listings illustrate the layout only. They are not live postings and do not represent search results.
           </p>
           <ul className="mt-4 space-y-3">
             {SAMPLE_OPPORTUNITIES.map((item) => (
@@ -184,14 +205,16 @@ export default function OpportunityResults({ profile }) {
 
       {status === 'live' && (
         <>
+          <p className="mt-3 text-sm text-muted-foreground">{items.length} matching {items.length === 1 ? 'opportunity' : 'opportunities'} found</p>
           <ul className="mt-4 space-y-3">
-            {items.map((item, i) => (
+            {items.slice(0, visibleCount).map((item, i) => (
               <OpportunityItem key={item.url ?? i} item={item} />
             ))}
           </ul>
+          {visibleCount < items.length && <Button variant="outline" className="mt-4 min-h-11" onClick={() => setVisibleCount(count => count + 6)}>Show more opportunities</Button>}
           <p className="mt-3 text-sm text-muted-foreground">
-            Listings are ranked by how well each one fits your profile — preferred roles, role type, and experience level (results that clearly do not match your experience level or role type are excluded).{' '}
-            Pay ranges appear only when the posting lists one and are shown as advertised, before taxes and deductions. Postings come from public web search; coverage is not exhaustive and availability is not verified.
+            Profile match uses skills (4.5 points), interests and preferred roles (2.5), experience (2), and work preferences (1). Missing or unmatched information earns no points. Confidence reflects how much comparison information is available, not independent verification. AI extracts posting requirements; code calculates the rating. LinkedIn matches appear first when connected; web search fills remaining slots. Within each source, listings are ranked by how well each one fits your profile — skills, interests, role type, and experience level.{' '}
+            Pay ranges appear only when the posting lists one and are shown as advertised, before taxes and deductions. Postings come from public web search and LinkedIn when connected; coverage is not exhaustive and availability is not verified.
           </p>
         </>
       )}

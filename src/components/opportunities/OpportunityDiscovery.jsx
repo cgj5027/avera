@@ -123,7 +123,7 @@ export default function OpportunityDiscovery() {
         <div className="flex flex-wrap items-center gap-3">
           <Search className="h-5 w-5 text-primary" aria-hidden="true" />
           <h2 className="font-heading text-base font-semibold text-foreground">Job search</h2>
-          <InfoHint text="Searches current postings on the public web using your work profile. Results link to the source; availability and pay are not verified." />
+          <InfoHint text="Searches public web postings and LinkedIn when connected using your work profile. Results link to the source; availability and pay are not verified." />
         </div>
         <p className="mt-2 max-w-2xl text-base text-muted-foreground">
           Request current job and gig listings matched to your profile.

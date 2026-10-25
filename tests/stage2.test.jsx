@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { askAvera, searchOpportunities, sourceListingUrl, SERVICE_TIMEOUT_MS } from '../src/services/assistantService';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { askAvera, searchOpportunities, sourceListingUrl, SERVICE_TIMEOUT_MS, jobSearchErrorMessage } from '../src/services/assistantService';
 import { calculateIncomeGapAllocated } from '../src/services/financialCalculations';
 import AskAveraConversation from '../src/components/askavera/AskAveraConversation';
 import OpportunityResults from '../src/components/opportunities/OpportunityResults';
@@ -123,11 +123,35 @@ describe('critical function invocation boundaries (mocked, not backend authoriza
     expect(screen.getByText('Part-time')).toBeTruthy();
     expect(screen.queryByText(/take-home/i)).toBeNull();
   });
+  it('shows match ratings and expands results without another provider request', async () => {
+    sdk.functions.invoke.mockResolvedValue({data:{opportunities:Array.from({length:12},(_,i)=>({
+      title:`Matched role ${i+1}`,company:'Fixture employer',url:`https://jobs.org/post/${i+1}`,
+      match_score:80,match_confidence:'medium',missing_skills:['Payroll'],match_unknowns:['Experience requirements unavailable'],
+      match_breakdown:{skills:30,interests:25,experience:20,preferences:5},
+    })),related_roles_searched:true}});
+    render(<OpportunityResults profile={{skills:'Bookkeeping'}} />);
+    fireEvent.click(screen.getByRole('button',{name:'Find opportunities'}));
+    await screen.findByText('12 matching opportunities found');
+    expect(screen.getAllByText(/8\/10 profile match/)).toHaveLength(6);
+    expect(screen.queryByText('Matched role 7')).toBeNull();
+    expect(screen.getAllByText(/Required skills not listed in your profile: Payroll/)).toHaveLength(6);
+    fireEvent.click(screen.getByRole('button',{name:'Show more opportunities'}));
+    expect(screen.getByText('Matched role 12')).toBeTruthy();
+    expect(sdk.functions.invoke).toHaveBeenCalledTimes(1);
+  });
   it('omits the pay range and role type when the posting does not list them', async () => {
     sdk.functions.invoke.mockResolvedValue({data:{opportunities:[{title:'Role',company:'Employer',url:'https://jobs.org/post'}]}});
     render(<OpportunityResults profile={{skills:'Bookkeeping'}} />);
     fireEvent.click(screen.getByRole('button',{name:'Find opportunities'}));await screen.findByText('Source-linked results');
     expect(screen.queryByText('Pay range')).toBeNull();expect(screen.queryByText('Role type')).toBeNull();
+  });
+  it('shows a specific location failure rather than incorrectly saying not connected', async () => {
+    sdk.functions.invoke.mockRejectedValue({response:{status:503,data:{code:'LOCATION_UNAVAILABLE',error:'private provider detail'}}});
+    render(<OpportunityResults profile={{skills:'Bookkeeping'}} />);
+    fireEvent.click(screen.getByRole('button',{name:'Find opportunities'}));
+    expect(await screen.findByRole('alert')).toHaveProperty('textContent','Location lookup is temporarily unavailable. Your distance limit has been kept. Please retry shortly.');
+    expect(screen.queryByText('Not connected')).toBeNull();expect(screen.queryByText('private provider detail')).toBeNull();
+    expect(screen.getByText('Search unavailable')).toBeTruthy();
   });
   it('rejects fabricated entries without a source and labels fallback samples', async () => {
     sdk.functions.invoke.mockResolvedValue({data:{opportunities:[{title:'Invented',company:'Employer'}]}});
@@ -141,6 +165,34 @@ describe('critical function invocation boundaries (mocked, not backend authoriza
     expect(await screen.findByText(/Data may already have been sent/)).toBeTruthy();
     expect(screen.getByRole('button',{name:'Send question'}).disabled).toBe(true);
   });
+  it('sends successful exchanges with follow-ups and clears them when the dataset changes', async () => {
+    setModeOwner('a'); setDataMode('manual');
+    sdk.functions.invoke.mockResolvedValue({data:{answer:'Your recorded planning surplus is $500.'}});
+    render(<AskAveraConversation />);
+    const send = async question => {
+      fireEvent.change(screen.getByLabelText('Ask Avera'), {target:{value:question}});
+      fireEvent.click(screen.getByRole('button', {name:'Send question'}));
+      await waitFor(() => expect(screen.getByLabelText('Ask Avera').disabled).toBe(false));
+    };
+    await send('What is my surplus?');
+    await send('What does that mean?');
+    expect(sdk.functions.invoke.mock.calls[1][1].history).toEqual([
+      {role:'user',text:'What is my surplus?'},
+      {role:'assistant',text:'Your recorded planning surplus is $500.'},
+    ]);
+    sdk.functions.invoke.mockRejectedValueOnce(new Error('AI unavailable'));
+    await send('Failed question');
+    await send('Try another question');
+    expect(sdk.functions.invoke.mock.calls.at(-1)[1].history.some(m => m.text === 'Failed question')).toBe(false);
+    await send('Another follow-up');
+    await send('One more follow-up');
+    expect(sdk.functions.invoke.mock.calls.at(-1)[1].history).toHaveLength(6);
+    expect(sdk.functions.invoke.mock.calls.at(-1)[1].history.some(m => m.text === 'What is my surplus?')).toBe(false);
+    act(() => setDataMode('sandbox'));
+    expect(screen.queryByText('What is my surplus?')).toBeNull();
+    await send('New dataset question');
+    expect(sdk.functions.invoke.mock.calls.at(-1)[1]).not.toHaveProperty('history');
+  });
   it('resets conversations between users and suppresses AI image/link exfiltration', async () => {
     sdk.functions.invoke.mockResolvedValue({data:{answer:'[Balance](https://evil.org/?balance=100) ![track](https://evil.org/image) **$100**\n\n- Review the saved electricity bill\n- Confirm your income\n\n1. Open Bills & Budget\n2. Review the amount'}});
     const view=render(<AskAveraConversation />);
@@ -148,6 +200,13 @@ describe('critical function invocation boundaries (mocked, not backend authoriza
     await screen.findByText('$100');expect(screen.getByText(/AI can make mistakes/)).toBeTruthy();expect(screen.getAllByRole('list')).toHaveLength(2);expect(screen.getAllByRole('listitem')).toHaveLength(4);expect(screen.queryByRole('link')).toBeNull();expect(screen.queryByRole('img')).toBeNull();
     sdk.user={id:'b'};view.rerender(<AskAveraConversation />);
     expect(screen.queryByText('Private question')).toBeNull();expect(screen.queryByText('$100')).toBeNull();
+  });
+  it('defaults search distance to 25 miles and saves a custom distance', () => {
+    const save=vi.fn();render(<OpportunityProfileForm profile={{skills:'Bookkeeping',location:'Boston, MA'}} saving={false} onSave={save} />);
+    expect(screen.getByLabelText('Search distance (miles)').value).toBe('25');
+    fireEvent.change(screen.getByLabelText('Search distance (miles)'),{target:{value:'50'}});
+    fireEvent.click(screen.getByRole('button',{name:'Save profile'}));
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({location:'Boston, MA',distance_miles:50}));
   });
   it('validates profile whitespace before persistence and saves a role type instead of hours or income target', () => {
     const save=vi.fn(); render(<OpportunityProfileForm profile={null} saving={false} onSave={save} />);
@@ -200,5 +259,18 @@ describe('critical function invocation boundaries (mocked, not backend authoriza
     await expect(data.updateRecord('jobProfile','other',{})).rejects.toThrow('cannot access');
     await expect(data.deleteRecord('jobProfile','other')).rejects.toThrow('cannot access');
     expect(sdk.entities.JobProfile.update).not.toHaveBeenCalled();expect(sdk.entities.JobProfile.delete).not.toHaveBeenCalled();
+  });
+});
+
+describe('safe job-search error guidance', () => {
+  it.each([
+    {response:{data:{code:'LOCATION_REQUIRED'}}},
+    {status:422,code:'LOCATION_REQUIRED'},
+    {data:{code:'LOCATION_REQUIRED'}},
+  ])('handles both Base44 SDK and Axios error shapes',error => {
+    expect(jobSearchErrorMessage(error)).toContain('city and state or postal code');
+  });
+  it('does not display unknown upstream details',()=>{
+    expect(jobSearchErrorMessage({code:'__proto__',message:'private provider response'})).toBe('Job search could not be completed. Please retry. If it keeps failing, contact support.');
   });
 });

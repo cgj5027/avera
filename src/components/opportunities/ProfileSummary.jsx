@@ -28,12 +28,14 @@ export default function ProfileSummary({ profile, onEdit }) {
       </div>
       <dl className="mt-4 space-y-3">
         <Row label="Skills" value={profile.skills} />
+        {profile.interests && <Row label="Interests and industries" value={profile.interests} />}
         {profile.experience && <Row label="Professional experience" value={profile.experience} />}
         <Row label="Experience level" value={experienceLevelLabel(profile.experience_level)} />
         <Row label="Role type" value={jobTypeLabel(profile.job_type) ?? 'Any'} />
         {profile.preferred_roles && <Row label="Preferred jobs or gigs" value={profile.preferred_roles} />}
         <Row label="Work preference" value={workModeLabel(profile.work_mode)} />
         {profile.location && <Row label="Location" value={profile.location} />}
+        <Row label="Search distance" value={profile.location ? `${profile.distance_miles ?? 25} miles` : 'Any location'} />
       </dl>
     </div>
   );

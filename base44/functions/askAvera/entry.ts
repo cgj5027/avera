@@ -20,11 +20,17 @@ export default async function(req) {
     if (!user?.id) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     await claimUsage(base44, user, 'askAvera');
-    const body = await readJsonLimited(req);
+    const body = await readJsonLimited(req, 65536);
     const question = typeof body.question === 'string' ? body.question.trim() : '';
     if (!question || question.length > 2000) {
       return Response.json({ error: 'Enter a question of up to 2,000 characters.' }, { status: 400 });
     }
+
+    const history = body.history ?? [];
+    if (!Array.isArray(history) || history.length > 6 || history.length % 2 !== 0 || history.some((message, index) =>
+      !message || typeof message !== 'object' || message.role !== (index % 2 === 0 ? 'user' : 'assistant') ||
+      typeof message.text !== 'string' || !message.text.trim() || message.text.length > 1000
+    )) return Response.json({ error: 'Invalid conversation history.' }, { status: 400 });
 
     const scope = datasetQuery(user, body.dataset);
     // Read-only, user-scoped pulls. Field lists keep the context small.
@@ -106,7 +112,7 @@ export default async function(req) {
 
     context['insights'] = assistantInsights({ incomes: incomeRows, bills: billRows.map(b => ({...b, monthly_equivalent: typeof b.amount === 'number' && Number.isFinite(b.amount) && b.amount >= 0 ? monthlyFromFrequency(b.amount, b.frequency) : null})), categories: categoryRows, accounts: accountRows, properties: propertyRows, mortgages: mortgageRows, goals: goalRows, monthlyIncome: context.income.monthly_total, monthlyExpenses: context.planned_monthly_expenses });
 
-    const prompt = assistantPrompt(context, question);
+    const prompt = assistantPrompt(context, question, history.map(({ role, text }) => ({ role, text })));
     if (new TextEncoder().encode(prompt).byteLength > 100000) return Response.json({ error: 'Your dataset is too large for the assistant. No partial planning totals were sent.' }, { status: 413 });
 
     const llm = await base44.asServiceRole.integrations.Core.InvokeLLM({
