@@ -1,3 +1,5 @@
+import { linkedInConfigured, searchLinkedIn } from './linkedInSource.ts';
+
 /**
  * Opportunity source adapter (provider-neutral listing contract).
  *
@@ -58,7 +60,9 @@ const terms = value => String(value || '').split(/[,;\n]/).map(normalized).filte
 export function rateOpportunity(item, profile) {
   const excerpt = item.description_excerpt || '';
   const required = [...new Set((item.required_skills || []).map(normalized))].filter(skill => skill && contains(excerpt, skill));
-  const matched = required.filter(skill => contains(profile.skills, skill));
+  const profileSkills = [...new Set(terms(profile.skills))];
+  const matched = required.length ? required.filter(skill => contains(profile.skills, skill))
+    : profileSkills.filter(skill => contains(excerpt, skill));
   const missing = required.filter(skill => !contains(profile.skills, skill));
   const interests = [...new Set([...terms(profile.interests), ...terms(profile.preferred_roles)])];
   const matchedInterests = interests.filter(interest => contains(`${item.title} ${excerpt}`, interest));
@@ -69,7 +73,7 @@ export function rateOpportunity(item, profile) {
     ...(profile.location ? [item.location ? Number(contains(item.location, profile.location)) : null] : []),
   ];
   const breakdown = {
-    skills: required.length ? Math.round(45 * matched.length / required.length) : 0,
+    skills: required.length ? Math.round(45 * matched.length / required.length) : excerpt && profileSkills.length ? Math.round(45 * matched.length / profileSkills.length) : 0,
     interests: interests.length ? Math.round(25 * matchedInterests.length / interests.length) : 0,
     experience: experienceKnown && item.experience_level === profile.experience_level ? 20 : 0,
     preferences: preferences.length ? Math.round(10 * preferences.reduce((sum, value) => sum + (value || 0), 0) / preferences.length) : 0,
@@ -147,7 +151,8 @@ function normalizeListing(raw) {
     url,
     // Pay is shown only when the posting states an amount; a vague answer is no answer.
     compensation: pay && /\d/.test(pay) ? pay : null,
-    employment_type: employmentTypeFrom(raw.employment_type),
+    employment_type: JOB_TYPES.includes(raw.employment_type) && raw.employment_type !== 'any' ? raw.employment_type : employmentTypeFrom(raw.employment_type),
+    source_provider: raw.source_provider === 'linkedin' ? 'linkedin' : 'web_search',
     location: text(raw.location, 120),
     publisher: text(raw.publisher, 60),
     // A vague freshness answer is no answer: the UI only shows a real one.
@@ -231,15 +236,10 @@ async function searchViaWebSearch(base44, profile, relatedRoles = false) {
 // live only here — never in the request handler or the UI.
 const PROVIDERS = {
   web_search: searchViaWebSearch,
+  linkedin: (_base44, profile) => searchLinkedIn(profile),
 };
 
-/**
- * Runs the selected provider and returns validated, normalized results.
- * Invalid listings are dropped, not fixed up.
- */
-export async function searchListings(base44, profile, providerId = 'web_search') {
-  const provider = PROVIDERS[providerId];
-  if (!provider) throw new Error('Unknown opportunity source.');
+export function rankListings(rawList, profile) {
   const level = EXPERIENCE_LEVELS.includes(profile.experience_level) ? profile.experience_level : 'entry_level';
   const jobType = JOB_TYPES.includes(profile.job_type) ? profile.job_type : 'any';
   const normalize = rawList => {
@@ -271,15 +271,29 @@ export async function searchListings(base44, profile, providerId = 'web_search')
     })
     .slice(0, MAX_LISTINGS);
   };
+  return normalize(rawList);
+}
+
+/**
+ * Runs the selected provider and returns validated, normalized results.
+ * Invalid listings are dropped, not fixed up.
+ */
+export async function searchListings(base44, profile, providerId = 'web_search') {
+  if (providerId === 'combined') return searchCombined(base44, profile);
+  const provider = PROVIDERS[providerId];
+  if (!provider) throw new Error('Unknown opportunity source.');
+  const level = EXPERIENCE_LEVELS.includes(profile.experience_level) ? profile.experience_level : 'entry_level';
+  const jobType = JOB_TYPES.includes(profile.job_type) ? profile.job_type : 'any';
+  const normalize = rawList => rankListings(rawList, profile);
   const query = {...profile,experience_level:level,job_type:jobType};
-  let candidates = await provider(base44,query);
+  let candidates = (await provider(base44,query)).map(item => ({...item, source_provider: providerId}));
   let opportunities = normalize(candidates);
   let partial_results = false;
   let related_roles_searched = false;
-  if (opportunities.length < MAX_LISTINGS) {
+  if (providerId === 'web_search' && opportunities.length < MAX_LISTINGS) {
     related_roles_searched = true;
     try {
-      candidates = [...candidates, ...await provider(base44,query,true)];
+      candidates = [...candidates, ...(await provider(base44,query,true)).map(item => ({...item, source_provider: providerId}))];
       opportunities = normalize(candidates);
     } catch (error) {
       if (!opportunities.length) throw error;
@@ -287,4 +301,20 @@ export async function searchListings(base44, profile, providerId = 'web_search')
     }
   }
   return { source_provider: providerId, experience_level: level, job_type: jobType, related_roles_searched, partial_results, opportunities };
+}
+/** An absent optional key preserves web search; a configured source failure is explicit. */
+async function searchCombined(base44, profile) {
+  const providers = linkedInConfigured() ? ['web_search', 'linkedin'] : ['web_search'];
+  const results = await Promise.allSettled(providers.map(provider => searchListings(base44, profile, provider)));
+  const successes = results.filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled');
+  if (!successes.length) throw new Error('Job sources unavailable');
+  const sources = results.map((result, index) => ({
+    provider: providers[index], status: result.status === 'fulfilled' ? 'searched' : 'unavailable',
+  }));
+  return {
+    source_provider: 'combined', sources,
+    opportunities: rankListings(successes.flatMap(result => result.value.opportunities), profile),
+    related_roles_searched: successes.some(result => result.value.related_roles_searched),
+    partial_results: results.some(result => result.status === 'rejected') || successes.some(result => result.value.partial_results),
+  };
 }

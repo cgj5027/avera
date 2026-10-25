@@ -132,7 +132,7 @@ describe('critical function invocation boundaries (mocked, not backend authoriza
     render(<OpportunityResults profile={{skills:'Bookkeeping'}} />);
     fireEvent.click(screen.getByRole('button',{name:'Find opportunities'}));
     await screen.findByText('12 matching opportunities found');
-    expect(screen.getAllByText(/80\/100 profile match/)).toHaveLength(6);
+    expect(screen.getAllByText(/8\/10 profile match/)).toHaveLength(6);
     expect(screen.queryByText('Matched role 7')).toBeNull();
     expect(screen.getAllByText(/Required skills not listed in your profile: Payroll/)).toHaveLength(6);
     fireEvent.click(screen.getByRole('button',{name:'Show more opportunities'}));

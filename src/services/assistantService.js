@@ -84,6 +84,7 @@ export async function searchOpportunities(profile, { includeMetadata = false } =
     missing_skills: Array.isArray(item.missing_skills) ? item.missing_skills.filter(v => typeof v === 'string') : [],
     match_unknowns: Array.isArray(item.match_unknowns) ? item.match_unknowns.filter(v => typeof v === 'string') : [],
     location: typeof item.location === 'string' && item.location.trim() ? item.location : null,
+    source_provider: item.source_provider === 'linkedin' ? 'linkedin' : 'web_search',
     publisher: typeof item.publisher === 'string' && item.publisher.trim() ? item.publisher : null,
     posted_at: typeof item.posted_at === 'string' && item.posted_at.trim() ? item.posted_at : null,
     match_reasons: Array.isArray(item.match_reasons)
@@ -91,5 +92,5 @@ export async function searchOpportunities(profile, { includeMetadata = false } =
       : [],
   }));
   if (items.length !== data.opportunities.length) throw new Error('Search returned unverified listing data.');
-  return includeMetadata ? {items,relatedRolesSearched:data.related_roles_searched === true,partialResults:data.partial_results === true} : items;
+  return includeMetadata ? {items,relatedRolesSearched:data.related_roles_searched === true,partialResults:data.partial_results === true,sources:Array.isArray(data.sources) ? data.sources.filter(source => ['web_search','linkedin'].includes(source?.provider) && ['searched','unavailable'].includes(source?.status)) : []} : items;
 }

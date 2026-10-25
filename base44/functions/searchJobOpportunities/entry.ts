@@ -31,7 +31,7 @@ export default async function(req) {
     };
     if (!profile.skills) return Response.json({ error: 'Describe your skills to search for opportunities.' }, { status: 400 });
 
-    const result = await searchListings(base44, profile, 'web_search');
+    const result = await searchListings(base44, profile, 'combined');
     return Response.json(result);
   } catch (error) {
     const failure = requestFailureResponse(error); if (failure) return failure;

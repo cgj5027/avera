@@ -52,7 +52,7 @@ function OpportunityItem({ item }) {
             {item.publisher && <SourceChip source={item.publisher} />}
             {typeof item.match_score === 'number' && (
               <StatusPill tone={fitTier(item.match_score).tone}>
-                {item.match_score}/100 profile match · {fitTier(item.match_score).label}
+                {Math.round(item.match_score) / 10}/10 profile match · {fitTier(item.match_score).label}
               </StatusPill>
             )}
             <p className="font-heading text-base font-semibold text-foreground">{item.title}</p>
@@ -79,7 +79,7 @@ function OpportunityItem({ item }) {
       {typeof item.match_score === 'number' && (
         <div className="mt-2 space-y-2 text-sm text-muted-foreground">
           <p>Match confidence: {item.match_confidence || 'low'}. Measures profile fit, not your chance of being hired.</p>
-          {item.match_breakdown && <p>Skills {item.match_breakdown.skills}/45 · Interests {item.match_breakdown.interests}/25 · Experience {item.match_breakdown.experience}/20 · Preferences {item.match_breakdown.preferences}/10</p>}
+          {item.match_breakdown && <p>Skills {item.match_breakdown.skills / 10}/4.5 · Interests {item.match_breakdown.interests / 10}/2.5 · Experience {item.match_breakdown.experience / 10}/2 · Preferences {item.match_breakdown.preferences / 10}/1</p>}
           {item.description_excerpt && <details><summary className="cursor-pointer py-2 text-foreground">Posting excerpt used for matching</summary><p className="mt-1 whitespace-pre-wrap">{item.description_excerpt}</p></details>}
           {item.missing_skills?.length > 0 && <p>Required skills not listed in your profile: {item.missing_skills.join(', ')}</p>}
           {item.match_unknowns?.length > 0 && <p>Missing information: {item.match_unknowns.join('; ')}.</p>}
@@ -124,6 +124,7 @@ export default function OpportunityResults({ profile }) {
   const [status, setStatus] = useState('idle'); // idle | loading | live | none | unavailable
   const [items, setItems] = useState([]);
   const [partialResults, setPartialResults] = useState(false);
+  const [sources, setSources] = useState([]);
   const [visibleCount, setVisibleCount] = useState(6);
   const [relatedRolesSearched,setRelatedRolesSearched] = useState(false);
   const hasProfile = Boolean(profile?.skills?.trim());
@@ -135,6 +136,7 @@ export default function OpportunityResults({ profile }) {
       const result = await searchOpportunities(profile,{includeMetadata:true});
       setItems(result.items);
       setPartialResults(result.partialResults);
+      setSources(result.sources);
       setVisibleCount(6);
       setRelatedRolesSearched(result.relatedRolesSearched);
       setStatus(result.items.length === 0 ? 'none' : 'live');
@@ -170,6 +172,9 @@ export default function OpportunityResults({ profile }) {
         {relatedRolesSearched && (status === 'live' || status === 'none') && <StatusPill tone="neutral">Also searched related roles</StatusPill>}
       </div>
 
+      {(status === 'live' || status === 'none') && sources.length > 0 && <p className="mt-3 text-sm text-muted-foreground">Sources searched: {sources.filter(source => source.status === 'searched').map(source => source.provider === 'linkedin' ? 'LinkedIn' : 'Web search').join(', ')}</p>}
+      {partialResults && (status === 'live' || status === 'none') && <p role="status" className="mt-2 text-sm text-muted-foreground">Some search sources or related-role searches were unavailable. Showing the matches already found.</p>}
+
       {!hasProfile && <p className="mt-3 text-base text-muted-foreground">Save your work profile above before searching for opportunities.</p>}
 
       {status === 'unavailable' && (
@@ -198,7 +203,6 @@ export default function OpportunityResults({ profile }) {
       {status === 'live' && (
         <>
           <p className="mt-3 text-sm text-muted-foreground">{items.length} matching {items.length === 1 ? 'opportunity' : 'opportunities'} found</p>
-          {partialResults && <p role="status" className="mt-2 text-sm text-muted-foreground">Related-role search was unavailable. Showing the matches already found.</p>}
           <ul className="mt-4 space-y-3">
             {items.slice(0, visibleCount).map((item, i) => (
               <OpportunityItem key={item.url ?? i} item={item} />
@@ -206,8 +210,8 @@ export default function OpportunityResults({ profile }) {
           </ul>
           {visibleCount < items.length && <Button variant="outline" className="mt-4 min-h-11" onClick={() => setVisibleCount(count => count + 6)}>Show more opportunities</Button>}
           <p className="mt-3 text-sm text-muted-foreground">
-            Profile match uses skills (45 points), interests and preferred roles (25), experience (20), and work preferences (10). Missing or unmatched information earns no points. Confidence reflects how much comparison information is available, not independent verification. AI extracts posting requirements; code calculates the rating. Listings are ranked by how well each one fits your profile — skills, interests, role type, and experience level.{' '}
-            Pay ranges appear only when the posting lists one and are shown as advertised, before taxes and deductions. Postings come from public web search; coverage is not exhaustive and availability is not verified.
+            Profile match uses skills (4.5 points), interests and preferred roles (2.5), experience (2), and work preferences (1). Missing or unmatched information earns no points. Confidence reflects how much comparison information is available, not independent verification. AI extracts posting requirements; code calculates the rating. Listings are ranked by how well each one fits your profile — skills, interests, role type, and experience level.{' '}
+            Pay ranges appear only when the posting lists one and are shown as advertised, before taxes and deductions. Postings come from public web search and LinkedIn when connected; coverage is not exhaustive and availability is not verified.
           </p>
         </>
       )}
