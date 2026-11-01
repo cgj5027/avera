@@ -1,3 +1,4 @@
+import { readJsonLimited, requestFailureResponse } from '../../shared/requestSafety.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.53';
 import { plaidRequest, allRecords, safeError } from '../../shared/plaid.ts';
 import { mapAccounts, credentialFor, persistImported } from '../../shared/plaidRecords.ts';
@@ -30,7 +31,7 @@ export default async function(req) {
   try {
     const base44=createClientFromRequest(req); const user=await base44.auth.me();
     if (!user?.id) return Response.json({error:'Unauthorized'},{status:401});
-    const body=await req.json().catch(()=>({}));
+    const body=await readJsonLimited(req);
     const items=await allRecords(base44.entities.PlaidItem,{created_by_id:user.id,...(typeof body.item_id==='string'?{item_id:body.item_id}:{})});
     const results=[];
     for (const item of items.filter(i=>i.status!=='disconnected')) {
@@ -66,5 +67,8 @@ export default async function(req) {
       results.push(result);
     }
     return Response.json({results});
-  } catch {return Response.json({error:'Sandbox sync could not complete. Please retry.'},{status:502});}
+  } catch (error) {
+    const failure = requestFailureResponse(error); if (failure) return failure;
+    return Response.json({error:'Sandbox sync could not complete. Please retry.'},{status:502});
+  }
 }

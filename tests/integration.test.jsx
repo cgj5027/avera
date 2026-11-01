@@ -220,21 +220,26 @@ it('concurrent goal contributions and retries retain both independent updates', 
   expect(rows.GoalContribution).toHaveLength(0);
 });
 
-it('edits and deletes logged spending through the budget UI', async () => {
-  await data.createRecord('budgetCategory',{name:'Food',monthly_limit:100});
-  await data.createRecord('transaction',{description:'Lunch',category:'Food',amount:10,type:'expense',date:'2026-10-01'});
-  render(<BillsBudget />);
-  const tab=await screen.findByRole('tab',{name:'Budget',exact:true});
-  fireEvent.mouseDown(tab,{button:0,ctrlKey:false});fireEvent.click(tab);
-  fireEvent.click(await screen.findByRole('button',{name:/View transactions/}));
-  fireEvent.click(await screen.findByRole('button',{name:'Edit spending Lunch'}));
-  fireEvent.change(screen.getByLabelText('Amount'),{target:{value:'15'}});
-  fireEvent.click(screen.getByRole('button',{name:'Save changes'}));
-  await waitFor(()=>expect(rows.Transaction[0].amount).toBe(15));
-  await waitFor(()=>expect(screen.queryByRole('button',{name:'Save changes'})).toBeNull());
-  fireEvent.click(screen.getByRole('button',{name:'Delete spending Lunch'}));
-  fireEvent.click(screen.getByRole('button',{name:'Delete',exact:true}));
-  await waitFor(()=>expect(rows.Transaction).toHaveLength(0));
+it.each(['2026-10-15', '2026-11-01', '2027-01-01'])('edits and deletes logged spending through the budget UI across month rollover (%s)', async today => {
+  vi.setSystemTime(new Date(`${today}T12:00:00Z`));
+  try {
+    await data.createRecord('budgetCategory',{name:'Food',monthly_limit:100});
+    await data.createRecord('transaction',{description:'Lunch',category:'Food',amount:10,type:'expense',date:`${today.slice(0, 7)}-01`});
+    render(<BillsBudget />);
+    const tab=await screen.findByRole('tab',{name:'Budget',exact:true});
+    fireEvent.mouseDown(tab,{button:0,ctrlKey:false});fireEvent.click(tab);
+    fireEvent.click(await screen.findByRole('button',{name:/View transactions/}));
+    fireEvent.click(await screen.findByRole('button',{name:'Edit spending Lunch'}));
+    fireEvent.change(screen.getByLabelText('Amount'),{target:{value:'15'}});
+    fireEvent.click(screen.getByRole('button',{name:'Save changes'}));
+    await waitFor(()=>expect(rows.Transaction[0].amount).toBe(15));
+    await waitFor(()=>expect(screen.queryByRole('button',{name:'Save changes'})).toBeNull());
+    fireEvent.click(screen.getByRole('button',{name:'Delete spending Lunch'}));
+    fireEvent.click(screen.getByRole('button',{name:'Delete',exact:true}));
+    await waitFor(()=>expect(rows.Transaction).toHaveLength(0));
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 

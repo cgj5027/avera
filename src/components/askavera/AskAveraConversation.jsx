@@ -80,6 +80,7 @@ function Conversation() {
           </StatusPill>
           <p className="mt-2 text-base text-info">{READ_ONLY_NOTE}</p>
         </div>
+        <p className="text-center text-sm text-muted-foreground">AI can make mistakes. Verify important information and consult a financial advisor before making financial decisions.</p>
         <div>
           <p className="text-sm font-medium text-muted-foreground">Try a question</p>
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -113,7 +114,6 @@ function Conversation() {
         )}
       </div>
       <div className="shrink-0 border-t border-border bg-surface p-4 sm:p-6">
-        <p className="mb-3 text-center text-sm text-muted-foreground">AI can make mistakes. Verify important information and consult a financial advisor before making financial decisions.</p>
         <form
           aria-label="Send a message to Ask Avera"
           className="space-y-2"

@@ -1,3 +1,4 @@
+import { readJsonLimited, requestFailureResponse } from '../../shared/requestSafety.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.53';
 import { allRecords, plaidRequest, PlaidFailure } from '../../shared/plaid.ts';
 import { credentialFor } from '../../shared/plaidRecords.ts';
@@ -7,7 +8,7 @@ export default async function(req) {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user?.id) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    const body=await req.json().catch(()=>({}));
+    const body=await readJsonLimited(req);
     let accessToken;
     if (body.item_id) {
       const items=await allRecords(base44.entities.PlaidItem,{created_by_id:user.id,item_id:body.item_id});
@@ -23,6 +24,7 @@ export default async function(req) {
     });
     return Response.json({ link_token: token.link_token, expiration: token.expiration });
   } catch (error) {
+    const failure = requestFailureResponse(error); if (failure) return failure;
     if (error instanceof PlaidFailure && error.code === 'NOT_CONFIGURED') return Response.json({ error: 'Sandbox connections are not configured.', code: 'SANDBOX_NOT_CONFIGURED' }, { status: 503 });
     return Response.json({ error: 'Sandbox Link is unavailable. Please retry.' }, { status: 502 });
   }

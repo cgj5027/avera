@@ -1,3 +1,4 @@
+import { readJsonLimited, requestFailureResponse } from '../../shared/requestSafety.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.53';
 import { allRecords, plaidRequest } from '../../shared/plaid.ts';
 import { credentialFor } from '../../shared/plaidRecords.ts';
@@ -5,7 +6,7 @@ export default async function(req) {
   try {
     const base44=createClientFromRequest(req);const user=await base44.auth.me();
     if (!user?.id) return Response.json({error:'Unauthorized'},{status:401});
-    const body=await req.json();
+    const body=await readJsonLimited(req);
     const items=await allRecords(base44.entities.PlaidItem,{created_by_id:user.id,item_id:body.item_id});
     if(items.length!==1) return Response.json({error:'Connection not found'},{status:404});
     const item=items[0];
@@ -24,5 +25,8 @@ export default async function(req) {
     await base44.entities.PlaidItem.delete(item.id);
     await base44.asServiceRole.entities.PlaidCredential.delete(credential.id);
     return Response.json({disconnected:true});
-  } catch {return Response.json({error:'Disconnect did not finish. Retry to complete cleanup.'},{status:502});}
+  } catch (error) {
+    const failure = requestFailureResponse(error); if (failure) return failure;
+    return Response.json({error:'Disconnect did not finish. Retry to complete cleanup.'},{status:502});
+  }
 }

@@ -7,7 +7,56 @@ import { allRecords, recentRecords } from '../base44/shared/plaid.ts';
 const fixture = vi.hoisted(() => ({ client: null }));
 vi.mock('npm:@base44/sdk@0.8.53', () => ({ createClientFromRequest: () => fixture.client }));
 import resume from '../base44/functions/parseResume/entry.ts';
+import feedback from '../base44/functions/submitFeedback/entry.ts';
+import contribute from '../base44/functions/logGoalContribution/entry.ts';
+import link from '../base44/functions/plaidCreateLinkToken/entry.ts';
+import exchange from '../base44/functions/plaidExchangeToken/entry.ts';
+import disconnect from '../base44/functions/plaidDisconnect/entry.ts';
+import sync from '../base44/functions/plaidSync/entry.ts';
+import project from '../base44/functions/projectAnnualIncome/entry.ts';
 const request = body => new Request('https://fixture.test', { method: 'POST', body: JSON.stringify(body) });
+describe.each([
+  ['feedback', feedback], ['contribution', contribute], ['Plaid Link', link],
+  ['Plaid exchange', exchange], ['Plaid disconnect', disconnect], ['Plaid sync', sync],
+  ['income projection', project],
+])('%s request boundary', (_name, handler) => {
+  function authenticatedClient() {
+    const accessed = vi.fn();
+    fixture.client = { auth: { me: async () => ({ id: 'a' }) },
+      entities: new Proxy({}, { get: accessed }),
+      asServiceRole: new Proxy({}, { get: accessed }) };
+    return accessed;
+  }
+  it('rejects oversized bodies even without or with understated Content-Length', async () => {
+    for (const headers of [{}, { 'content-length': '1' }, { 'content-length': '100000' }]) {
+      const accessed = authenticatedClient();
+      const response = await handler(new Request('https://fixture.test', {
+        method: 'POST', headers, body: JSON.stringify({ padding: 'x'.repeat(100000) }),
+      }));
+      expect(response.status).toBe(413);
+      expect(accessed).not.toHaveBeenCalled();
+    }
+  });
+  it('rejects malformed JSON before database or provider access', async () => {
+    const accessed = authenticatedClient();
+    const response = await handler(new Request('https://fixture.test', { method: 'POST', body: '{broken' }));
+    expect(response.status).toBe(400);
+    expect(accessed).not.toHaveBeenCalled();
+  });
+  it('cancels stalled bodies before database or provider access', async () => {
+    vi.useFakeTimers();
+    try {
+      const accessed = authenticatedClient(), cancel = vi.fn();
+      const response = handler(new Request('https://fixture.test', {
+        method: 'POST', body: new ReadableStream({ cancel }), duplex: 'half',
+      }));
+      await vi.advanceTimersByTimeAsync(10000);
+      expect((await response).status).toBe(408);
+      expect(cancel).toHaveBeenCalledOnce();
+      expect(accessed).not.toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
+  });
+});
 const payload = (name='resume.txt', content='Skills: accounting') => ({ file_name:name, file_base64:btoa(content), consent:true });
 function quotaClient() {
   const rows = new Map();
